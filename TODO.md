@@ -64,14 +64,14 @@ plumbing as soon as its replacement is working.
 
 ### Milestone 4 — make screen ViewModels the state boundary
 
-- [ ] Add one immutable `RoutesUiState` containing favorites, first departures,
+- [x] Add one immutable `RoutesUiState` containing favorites, first departures,
   alerts, loading, and error state.
-- [ ] Convert `RoutesListActivity` into a renderer and action dispatcher; move
+- [x] Convert `RoutesListActivity` into a renderer and action dispatcher; move
   fare refresh, alert formatting decisions, and route state coordination out
   of the Activity.
 - [x] Make departures and trip-progress ViewModels expose immutable UI state
   rather than Java listener callbacks and mutable `Departure` instances.
-- [ ] Move alarm, follow-trip, delete-trip, and service-command decisions out
+- [x] Move alarm, follow-trip, delete-trip, and service-command decisions out
   of Activities and into explicit ViewModel/repository actions.
 - [x] Keep the XML layouts while these state boundaries are migrated.
 - [ ] Defer Compose until all primary screens use the same state and event

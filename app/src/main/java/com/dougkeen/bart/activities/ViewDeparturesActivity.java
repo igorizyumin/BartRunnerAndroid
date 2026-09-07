@@ -70,6 +70,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private DeparturesViewModel mDeparturesViewModel;
 
+    private TripActionsViewModel mTripActionsViewModel;
+
     private TextView mEmptyView;
     private ProgressBar mProgress;
     private RecyclerView mListView;
@@ -99,6 +101,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
         final BartRunnerApplication bartRunnerApplication = (BartRunnerApplication) getApplication();
         mTimeSource = bartRunnerApplication.getTimeSource();
+        mTripActionsViewModel = new ViewModelProvider(this)
+                .get(TripActionsViewModel.class);
 
         if (bartRunnerApplication.getAlarmController().isRingtoneRequested()
                 || bartRunnerApplication.getAlarmController().isSounding()) {
@@ -405,21 +409,10 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     private void followDeparture(Departure selectedDeparture,
                                  boolean openTripScreen) {
         selectedDeparture = prepareDepartureForTrip(selectedDeparture);
-        final BartRunnerApplication application = (BartRunnerApplication) getApplication();
-        application.getFollowedTripRepository().setFollowedDeparture(selectedDeparture);
+        TripServiceCommand command = mTripActionsViewModel.followTrip(selectedDeparture);
         requestNotificationPermissionIfNeeded();
 
-        // Start the notification service
-        final Intent intent = new Intent(ViewDeparturesActivity.this,
-                BoardedDepartureService.class)
-                .setAction(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE);
-        intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
-                new DepartureParcel(selectedDeparture));
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startBoardedDepartureService(intent);
-        }
+        startBoardedDepartureService(command);
 
         if (openTripScreen) {
             startActivity(new Intent(this, TripInProgressActivity.class));
@@ -449,7 +442,13 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
     }
 
-    private void startBoardedDepartureService(Intent intent) {
+    private void startBoardedDepartureService(TripServiceCommand command) {
+        Intent intent = new Intent(this, BoardedDepartureService.class)
+                .setAction(command.getAction());
+        if (command.getDeparture() != null) {
+            intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
+                    new DepartureParcel(command.getDeparture()));
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {

@@ -26,7 +26,6 @@ import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
 import com.dougkeen.bart.platform.DepartureParcel;
-import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.presentation.DepartureTextFormatter;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
@@ -42,6 +41,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
     private TimeSource mTimeSource;
     private Departure mDeparture;
     private TripProgressViewModel mTripProgressViewModel;
+    private TripActionsViewModel mTripActionsViewModel;
     private boolean mIsFollowing;
 
     private TextView mStatus;
@@ -79,6 +79,8 @@ public class TripInProgressActivity extends AbstractViewActivity {
 
         BartRunnerApplication application = (BartRunnerApplication) getApplication();
         mTimeSource = application.getTimeSource();
+        mTripActionsViewModel = new androidx.lifecycle.ViewModelProvider(this)
+                .get(TripActionsViewModel.class);
         DepartureParcel departureParcel = IntentCompat.getParcelableExtra(
                 getIntent(), BoardedDepartureService.DEPARTURE_EXTRA,
                 DepartureParcel.class);
@@ -86,12 +88,11 @@ public class TripInProgressActivity extends AbstractViewActivity {
                 ? null : departureParcel.getDeparture();
         if (requestedDeparture != null) {
             mDeparture = requestedDeparture;
-            Departure followedDeparture = application.getFollowedTripRepository()
-                    .getFollowedDeparture();
+            Departure followedDeparture = mTripActionsViewModel.getFollowedDeparture();
             mIsFollowing = followedDeparture != null
                     && followedDeparture.equals(requestedDeparture);
         } else {
-            mDeparture = application.getFollowedTripRepository().getFollowedDeparture();
+            mDeparture = mTripActionsViewModel.getFollowedDeparture();
             mIsFollowing = mDeparture != null;
         }
         if (mDeparture == null) {
@@ -108,8 +109,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
                     }
                     mDeparture = departure;
                     if (mIsFollowing) {
-                        application.getFollowedTripRepository()
-                                .setFollowedDeparture(mDeparture);
+                        mTripActionsViewModel.updateFollowedTrip(mDeparture);
                     }
                     renderTrip();
                     invalidateOptionsMenu();
@@ -150,9 +150,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
         MenuItem cancel = menu.findItem(R.id.cancel_alarm_button);
         MenuItem set = menu.findItem(R.id.set_alarm_button);
         MenuItem delete = menu.findItem(R.id.delete);
-        DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
-                .getFollowedTripRepository().getAlarmScheduler();
-        boolean alarmPending = alarmScheduler != null && alarmScheduler.isPending();
+        boolean alarmPending = mTripActionsViewModel.isAlarmPending();
         cancel.setVisible(mIsFollowing && alarmPending);
         set.setVisible(mIsFollowing && !alarmPending
                 && mDeparture.getMeanSecondsLeft(
@@ -176,7 +174,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
                             TrainAlarmDialogFragment.TAG);
             return true;
         } else if (item.getItemId() == R.id.cancel_alarm_button) {
-            sendServiceAction(BoardedDepartureService.ACTION_CANCEL_ALARM);
+            sendServiceAction(mTripActionsViewModel.cancelAlarm());
             return true;
         } else if (item.getItemId() == R.id.share_arrival) {
             Intent share = new Intent(Intent.ACTION_SEND);
@@ -199,7 +197,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
                                 @Override
                                 public void onClick(DialogInterface dialog,
                                                      int which) {
-                                    sendServiceAction(BoardedDepartureService.ACTION_CLEAR_DEPARTURE);
+                                    sendServiceAction(mTripActionsViewModel.clearTrip());
                                     finish();
                                 }
                             }).show();
@@ -208,9 +206,9 @@ public class TripInProgressActivity extends AbstractViewActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void sendServiceAction(String action) {
+    private void sendServiceAction(TripServiceCommand command) {
         Intent intent = new Intent(this, BoardedDepartureService.class)
-                .setAction(action);
+                .setAction(command.getAction());
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
@@ -223,23 +221,23 @@ public class TripInProgressActivity extends AbstractViewActivity {
             return;
         }
 
-        final BartRunnerApplication application =
-                (BartRunnerApplication) getApplication();
-        application.getFollowedTripRepository().setFollowedDeparture(mDeparture);
+        TripServiceCommand command = mTripActionsViewModel.followTrip(mDeparture);
         requestNotificationPermissionIfNeeded();
 
-        Intent intent = new Intent(this, BoardedDepartureService.class)
-                .setAction(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE);
-        intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
-                new DepartureParcel(mDeparture));
-        startBoardedDepartureService(intent);
+        startBoardedDepartureService(command);
 
         mIsFollowing = true;
         updateFollowState();
         invalidateOptionsMenu();
     }
 
-    private void startBoardedDepartureService(Intent intent) {
+    private void startBoardedDepartureService(TripServiceCommand command) {
+        Intent intent = new Intent(this, BoardedDepartureService.class)
+                .setAction(command.getAction());
+        if (command.getDeparture() != null) {
+            intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
+                    new DepartureParcel(command.getDeparture()));
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {

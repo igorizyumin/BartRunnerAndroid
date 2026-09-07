@@ -3,6 +3,7 @@
 
     <string name="app_name">BART Runner</string>
     <string name="favorite_routes">Favorite routes</string>
+    <string name="no_delays_reported">No delays reported</string>
     <string name="empty_favorites_list_message">No favorite routes have been added yet</string>
     <string name="add_route">Add a route</string>
     <string name="origin">Origin</string>

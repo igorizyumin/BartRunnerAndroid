@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.appcompat.app.AlertDialog;
+import androidx.lifecycle.ViewModelProvider;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.NumberPicker;
@@ -18,12 +19,12 @@ import android.widget.NumberPicker;
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.model.Departure;
-import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 
 public class TrainAlarmDialogFragment extends DialogFragment {
 
     public static final String TAG = "TRAIN_ALARM_DIALOG_FRAGMENT_TAG";
     private static final String KEY_LAST_ALARM_LEAD_TIME = "lastAlarmLeadTime";
+    private TripActionsViewModel tripActionsViewModel;
 
     public TrainAlarmDialogFragment() {
         super();
@@ -33,6 +34,8 @@ public class TrainAlarmDialogFragment extends DialogFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setShowsDialog(true);
+        tripActionsViewModel = new ViewModelProvider(requireActivity())
+                .get(TripActionsViewModel.class);
     }
 
     @Override
@@ -49,21 +52,15 @@ public class TrainAlarmDialogFragment extends DialogFragment {
         NumberPicker numberPicker = (NumberPicker) dialog
                 .findViewById(R.id.numberPicker);
 
-        BartRunnerApplication application = (BartRunnerApplication) getActivity()
-                .getApplication();
-
-        final Departure boardedDeparture = application.getFollowedTripRepository()
-                .getFollowedDeparture();
+        final Departure boardedDeparture = tripActionsViewModel.getFollowedDeparture();
         final int maxValue = boardedDeparture.getMeanSecondsLeft(
-                application.getTimeSource()) / 60;
+                ((BartRunnerApplication) getActivity().getApplication()).getTimeSource()) / 60;
 
         numberPicker.setMinValue(1);
         numberPicker.setMaxValue(maxValue);
 
-        DepartureAlarmScheduler alarmScheduler = application.getFollowedTripRepository()
-                .getAlarmScheduler();
-        if (alarmScheduler != null && alarmScheduler.isPending()) {
-            setNumber(numberPicker, alarmScheduler.getLeadTimeMinutes());
+        if (tripActionsViewModel.isAlarmPending()) {
+            setNumber(numberPicker, tripActionsViewModel.getAlarmLeadTimeMinutes());
         } else if (maxValue >= lastAlarmLeadTime) {
             setNumber(numberPicker, lastAlarmLeadTime);
         } else if (maxValue >= 5) {
@@ -108,13 +105,7 @@ public class TrainAlarmDialogFragment extends DialogFragment {
                                         alarmLeadTime);
                                 editor.apply();
 
-                                BartRunnerApplication application =
-                                        (BartRunnerApplication) getActivity().getApplication();
-                                DepartureAlarmScheduler alarmScheduler = application
-                                        .getFollowedTripRepository().getAlarmScheduler();
-                                if (alarmScheduler != null) {
-                                    alarmScheduler.setUp(alarmLeadTime);
-                                }
+                                tripActionsViewModel.setAlarm(alarmLeadTime);
                             }
                         })
                 .setNegativeButton(R.string.cancel,
