@@ -2,6 +2,9 @@ package com.dougkeen.bart.model;
 
 import android.util.Log;
 
+import com.dougkeen.bart.routing.TripPlanner;
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -11,10 +14,15 @@ import java.util.Locale;
 
 public class RealTimeDepartures {
     public RealTimeDepartures(Station origin, Station destination,
-                              List<Route> routes) {
+                              List<Route> routes,
+                              BartGtfsNetwork bartGtfsNetwork) {
+        if (bartGtfsNetwork == null) {
+            throw new IllegalArgumentException("A validated GTFS network is required");
+        }
         this.origin = origin;
         this.destination = destination;
         this.routes = routes;
+        this.bartGtfsNetwork = bartGtfsNetwork;
         this.unfilteredDepartures = new ArrayList<Departure>();
     }
 
@@ -28,6 +36,7 @@ public class RealTimeDepartures {
     final private List<Departure> unfilteredDepartures;
 
     private List<Route> routes;
+    private final BartGtfsNetwork bartGtfsNetwork;
 
     public Station getOrigin() {
         return origin;
@@ -79,7 +88,8 @@ public class RealTimeDepartures {
     }
 
     public Departure getEarliestTransferDeparture() {
-        List<Route> xferRoutes = origin.getPreferredTransferRoutes(destination);
+        List<Route> xferRoutes = TripPlanner.preferredTransferRoutes(origin,
+                destination, bartGtfsNetwork);
         List<Departure> xferDepartures = new ArrayList<>();
         for (Departure departure : unfilteredDepartures) {
             Route route = findRouteForDeparture(departure, xferRoutes);
@@ -98,13 +108,15 @@ public class RealTimeDepartures {
 
     public void includeTransferRoutes() {
         transfersIncluded = true;
-        routes.addAll(origin.getPreferredTransferRoutes(destination));
+        routes.addAll(TripPlanner.preferredTransferRoutes(origin, destination,
+                bartGtfsNetwork));
         rebuildFilteredDeparturesCollection();
     }
 
     public void includeDoubleTransferRoutes() {
         transfersIncluded = true;
-        routes.addAll(origin.getDoubleTransferRoutes(destination));
+        routes.addAll(TripPlanner.doubleTransferRoutes(origin, destination,
+                bartGtfsNetwork));
         rebuildFilteredDeparturesCollection();
     }
 
@@ -191,8 +203,9 @@ public class RealTimeDepartures {
                 Departure departure = iterator.next();
                 if (departure.getRequiresTransfer()
                         && (!departure.isTransferScheduled() || departure
-                        .getTrainDestination().isBetween(getOrigin(),
-                                getDestination(), departure.getLine()))) {
+                        .getTrainDestination() != null && bartGtfsNetwork.isBetween(
+                        departure.getTrainDestination(), getOrigin(),
+                        getDestination(), departure.getLine()))) {
                     iterator.remove();
                 }
             }

@@ -111,13 +111,14 @@ public class TripInProgressActivity extends AbstractViewActivity implements
             TransitRepository repository = ((BartRunnerApplication)
                     getApplication()).getTransitRepository();
             mTransitSubscription = repository.subscribe(
-                    new RouteDepartureProjection(mDeparture.getStationPair()),
+                    new RouteDepartureProjection(mDeparture.getStationPair(), this),
                     this);
             if (!mDeparture.getTripLegs().isEmpty()) {
                 final BartRunnerApplication application =
                         (BartRunnerApplication) getApplication();
                 mTripProgressSubscription = repository.subscribe(
                         new TripProgressProjection(
+                                this,
                                 mDeparture.getStationPair().getOrigin(),
                                 mDeparture.getStationPair().getDestination(),
                                 mDeparture.getTripLegs()),

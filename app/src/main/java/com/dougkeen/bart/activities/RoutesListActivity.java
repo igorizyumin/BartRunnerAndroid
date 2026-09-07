@@ -254,7 +254,8 @@ public class   RoutesListActivity extends AppCompatActivity implements
             @Override
             public void run() {
                 try {
-                    final GtfsStaticData staticData = GtfsStaticData.get();
+                    final GtfsStaticData staticData = GtfsStaticData.get(
+                            RoutesListActivity.this);
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -267,12 +268,10 @@ public class   RoutesListActivity extends AppCompatActivity implements
                                         stationPair.getOrigin(),
                                         stationPair.getDestination());
                                 if (fare != null) {
-                                    stationPair.setFare(fare);
-                                    stationPair.setFareLastUpdated(now);
+                                    favoritesViewModel.updateFare(stationPair,
+                                            fare, now);
                                 }
                             }
-                            favoritesViewModel.persistCurrentState();
-                            getListAdapter().notifyDataSetChanged();
                         }
                     });
                 } catch (IOException exception) {

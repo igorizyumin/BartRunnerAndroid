@@ -41,7 +41,10 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
         }
     }
     packaging {
@@ -52,6 +55,6 @@ android {
 
     namespace 'com.dougkeen.bart'
     lint {
-        abortOnError false
+        abortOnError true
     }
 }

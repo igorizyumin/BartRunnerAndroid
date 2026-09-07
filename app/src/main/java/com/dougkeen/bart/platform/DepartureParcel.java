@@ -39,27 +39,6 @@ public final class DepartureParcel implements Parcelable {
         writeDeparture(dest, departure);
     }
 
-    public byte[] toBytes() {
-        Parcel parcel = Parcel.obtain();
-        try {
-            writeToParcel(parcel, 0);
-            return parcel.marshall();
-        } finally {
-            parcel.recycle();
-        }
-    }
-
-    public static Departure fromBytes(byte[] bytes) {
-        Parcel parcel = Parcel.obtain();
-        try {
-            parcel.unmarshall(bytes, 0, bytes.length);
-            parcel.setDataPosition(0);
-            return readDeparture(parcel);
-        } finally {
-            parcel.recycle();
-        }
-    }
-
     private static void writeDeparture(Parcel dest, Departure departure) {
         dest.writeInt(FORMAT_MAGIC);
         dest.writeInt(FORMAT_VERSION);

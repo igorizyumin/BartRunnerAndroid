@@ -26,8 +26,6 @@ public class BartRunnerApplication extends Application implements
 
     private SharedPreferences mApplicationPreferences;
 
-    private static Context context;
-
     private FavoritesRepository favoritesRepository;
 
     private FollowedTripRepository followedTripRepository;
@@ -45,7 +43,6 @@ public class BartRunnerApplication extends Application implements
     @Override
     public void onCreate() {
         super.onCreate();
-        context = getApplicationContext();
         mApplicationPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         favoritesRepository = new FavoritesRepository(this);
         followedTripRepository = new FollowedTripRepository(this);
@@ -57,10 +54,6 @@ public class BartRunnerApplication extends Application implements
                 new Handler(Looper.getMainLooper())::post,
                 30_000L);
         registerActivityLifecycleCallbacks(this);
-    }
-
-    public static Context getAppContext() {
-        return context;
     }
 
     public TransitRepository getTransitRepository() {

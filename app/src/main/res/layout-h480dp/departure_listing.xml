@@ -35,7 +35,7 @@
             android:id="@+id/destinationText"
             style="@style/DepartureDestinationText"
             android:ellipsize="marquee"
-            android:maxLines="1"
+            android:singleLine="true"
             tools:text="Richmond"
             />
 

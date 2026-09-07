@@ -1,6 +1,7 @@
 package com.dougkeen.bart.backend;
 
 import com.dougkeen.bart.model.Alert;
+import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex;
 import com.google.transit.realtime.GtfsRealtime;
 
 import java.text.DateFormat;
@@ -15,8 +16,8 @@ public final class AlertProjection implements TransitProjection<Alert.AlertList>
         Alert.AlertList result = new Alert.AlertList();
         DateFormat format = DateFormat.getDateTimeInstance(DateFormat.SHORT,
                 DateFormat.SHORT, Locale.getDefault());
-        for (GtfsRealtime.FeedEntity entity
-                : snapshot.getAlerts().getEntityList()) {
+        GtfsRealtimeFeedIndex index = snapshot.getAlertIndex();
+        for (GtfsRealtime.FeedEntity entity : index.getAlertEntities()) {
             if (!entity.hasAlert()) {
                 continue;
             }

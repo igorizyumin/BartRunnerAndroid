@@ -20,12 +20,8 @@ public final class StationPairParcel implements Parcelable {
         if (in.readInt() != FORMAT_MAGIC || in.readInt() != FORMAT_VERSION) {
             throw new IllegalArgumentException("Unsupported station pair parcel format");
         }
-        StationPair pair = new StationPair(readStation(in), readStation(in));
-        pair.setFare(in.readString());
-        pair.setFareLastUpdated(in.readLong());
-        pair.setAverageTripLength(in.readInt());
-        pair.setAverageTripSampleCount(in.readInt());
-        stationPair = pair;
+        stationPair = new StationPair(readStation(in), readStation(in),
+                in.readString(), in.readLong(), in.readInt(), in.readInt());
     }
 
     public StationPair getStationPair() {

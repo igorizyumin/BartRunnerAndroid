@@ -34,6 +34,26 @@ public final class HttpTransitFeedClient implements TransitFeedClient {
                 System.currentTimeMillis());
     }
 
+    @Override
+    public TransitFeedFetchResult fetchFeeds() {
+        GtfsRealtime.FeedMessage tripUpdates = null;
+        GtfsRealtime.FeedMessage alerts = null;
+        Exception tripUpdatesError = null;
+        Exception alertsError = null;
+        try {
+            tripUpdates = fetchFeed(TRIP_UPDATES_URL);
+        } catch (Exception exception) {
+            tripUpdatesError = exception;
+        }
+        try {
+            alerts = fetchFeed(ALERTS_URL);
+        } catch (Exception exception) {
+            alertsError = exception;
+        }
+        return new TransitFeedFetchResult(tripUpdates, tripUpdatesError,
+                alerts, alertsError);
+    }
+
     private GtfsRealtime.FeedMessage fetchFeed(String url) throws IOException {
         Request request = new Request.Builder()
                 .url(url)

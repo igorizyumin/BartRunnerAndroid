@@ -8,11 +8,15 @@ import com.dougkeen.bart.model.Station;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.Alert;
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
+import com.dougkeen.bart.transit.gtfs.GtfsNetworkCatalog;
 import com.google.transit.realtime.GtfsRealtime;
 
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TransitProjectionTest {
     @Test
@@ -21,7 +25,7 @@ public class TransitProjectionTest {
         TransitFeedSnapshot snapshot = snapshotWithTripUpdate();
 
         RouteDepartureProjection projection = new RouteDepartureProjection(
-                new StationPair(Station.MONT, Station.RICH));
+                new StationPair(Station.MONT, Station.RICH), testNetwork());
         Departure departure = projection.project(snapshot).getDepartures().get(0);
 
         assertEquals(Station.RICH, departure.getTrainDestination());
@@ -71,7 +75,7 @@ public class TransitProjectionTest {
         TripProgressProjection projection = new TripProgressProjection(
                 Station.MONT, Station.RICH,
                 Collections.singletonList(existingLeg),
-                Collections.<String, String>emptyMap());
+                testNetwork());
 
         TripLeg updated = projection.project(snapshot).get(0);
 
@@ -120,6 +124,21 @@ public class TransitProjectionTest {
     private static GtfsRealtime.FeedMessage emptyFeed() {
         return GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(header(1000L)).build();
+    }
+
+    private static BartGtfsNetwork testNetwork() {
+        Map<String, String> files = new HashMap<>();
+        files.put("stops.txt", "stop_id,stop_name,zone_id\n"
+                + "M20-1,Montgomery,MONT\n"
+                + "R60-1,Richmond,RICH\n");
+        files.put("routes.txt", "route_id,route_short_name,route_long_name\n"
+                + "8,Red-N,Richmond - Daly City\n");
+        files.put("trips.txt", "route_id,service_id,trip_id\n"
+                + "8,weekday,red-1\n");
+        files.put("stop_times.txt", "trip_id,stop_id,stop_sequence\n"
+                + "red-1,M20-1,1\n"
+                + "red-1,R60-1,2\n");
+        return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files));
     }
 
     private static GtfsRealtime.FeedHeader header(long timestamp) {

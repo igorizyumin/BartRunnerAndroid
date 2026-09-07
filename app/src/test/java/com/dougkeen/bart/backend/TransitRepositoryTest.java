@@ -124,6 +124,60 @@ public class TransitRepositoryTest {
     }
 
     @Test
+    public void publishesOneFeedWhenTheOtherFeedFails() throws Exception {
+        PartialFeedClient client = new PartialFeedClient();
+        TransitFeedSnapshot first = snapshot(5, 50_000L);
+        TransitFeedSnapshot updated = new TransitFeedSnapshot(
+                snapshot(6, 60_000L).getTripUpdates(), first.getAlerts(),
+                60_000L);
+        client.enqueue(TransitFeedFetchResult.complete(first));
+        client.enqueue(new TransitFeedFetchResult(updated.getTripUpdates(), null,
+                null, new IOException("alerts unavailable")));
+        repository = newRepository(client, 60_000L);
+
+        CountDownLatch initialLatch = new CountDownLatch(1);
+        CountDownLatch updateLatch = new CountDownLatch(1);
+        CountDownLatch errorLatch = new CountDownLatch(1);
+        AtomicReference<Exception> error = new AtomicReference<Exception>();
+        AtomicReference<TransitFeedSnapshot> latest =
+                new AtomicReference<TransitFeedSnapshot>();
+        TransitRepository.Subscription subscription = repository.subscribe(
+                new TransitRepository.Listener() {
+                    @Override
+                    public void onSnapshot(TransitFeedSnapshot snapshot) {
+                        latest.set(snapshot);
+                        if (snapshot.getTripUpdates()
+                                .equals(first.getTripUpdates())) {
+                            initialLatch.countDown();
+                        }
+                        if (snapshot.getTripUpdates()
+                                .equals(updated.getTripUpdates())) {
+                            updateLatch.countDown();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Exception exception,
+                                        TransitFeedSnapshot lastSnapshot) {
+                        error.set(exception);
+                        assertSame(updated.getAlerts(),
+                                lastSnapshot.getAlerts());
+                        errorLatch.countDown();
+                    }
+                });
+        await(initialLatch);
+
+        repository.refreshNow();
+
+        await(updateLatch);
+        await(errorLatch);
+        assertEquals("alerts unavailable", error.get().getMessage());
+        assertSame(updated.getTripUpdates(), latest.get().getTripUpdates());
+        assertSame(first.getAlerts(), latest.get().getAlerts());
+        subscription.close();
+    }
+
+    @Test
     public void stopsPollingWhenLastSubscriberCloses() throws Exception {
         FakeFeedClient client = new FakeFeedClient();
         client.setGeneratedSnapshot(true);
@@ -177,7 +231,7 @@ public class TransitRepositoryTest {
         subscription.close();
     }
 
-    private TransitRepository newRepository(FakeFeedClient client,
+    private TransitRepository newRepository(TransitFeedClient client,
                                             long intervalMillis) {
         return new TransitRepository(client, scheduler, Runnable::run,
                 intervalMillis);
@@ -272,6 +326,25 @@ public class TransitRepositoryTest {
                 throw (IOException) response;
             }
             return (TransitFeedSnapshot) response;
+        }
+    }
+
+    private static final class PartialFeedClient implements TransitFeedClient {
+        private final Queue<TransitFeedFetchResult> responses =
+                new ArrayDeque<TransitFeedFetchResult>();
+
+        void enqueue(TransitFeedFetchResult response) {
+            responses.add(response);
+        }
+
+        @Override
+        public TransitFeedSnapshot fetch() throws IOException {
+            throw new UnsupportedOperationException("Use fetchFeeds");
+        }
+
+        @Override
+        public TransitFeedFetchResult fetchFeeds() {
+            return responses.remove();
         }
     }
 }

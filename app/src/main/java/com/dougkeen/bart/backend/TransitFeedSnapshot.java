@@ -1,6 +1,7 @@
 package com.dougkeen.bart.backend;
 
 import com.google.transit.realtime.GtfsRealtime;
+import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex;
 
 import java.util.Objects;
 
@@ -12,6 +13,8 @@ public final class TransitFeedSnapshot {
     private final GtfsRealtime.FeedMessage tripUpdates;
     private final GtfsRealtime.FeedMessage alerts;
     private final long receivedAtMillis;
+    private volatile GtfsRealtimeFeedIndex tripUpdateIndex;
+    private volatile GtfsRealtimeFeedIndex alertIndex;
 
     public TransitFeedSnapshot(GtfsRealtime.FeedMessage tripUpdates,
                                GtfsRealtime.FeedMessage alerts,
@@ -39,6 +42,36 @@ public final class TransitFeedSnapshot {
 
     public long getAlertsTimestampMillis() {
         return feedTimestampMillis(alerts, receivedAtMillis);
+    }
+
+    /** Builds the trip-update index once and shares it across all projections. */
+    public GtfsRealtimeFeedIndex getTripUpdateIndex() {
+        GtfsRealtimeFeedIndex current = tripUpdateIndex;
+        if (current == null) {
+            synchronized (this) {
+                current = tripUpdateIndex;
+                if (current == null) {
+                    current = GtfsRealtimeFeedIndex.from(tripUpdates);
+                    tripUpdateIndex = current;
+                }
+            }
+        }
+        return current;
+    }
+
+    /** Builds the alert index once and shares it across all projections. */
+    public GtfsRealtimeFeedIndex getAlertIndex() {
+        GtfsRealtimeFeedIndex current = alertIndex;
+        if (current == null) {
+            synchronized (this) {
+                current = alertIndex;
+                if (current == null) {
+                    current = GtfsRealtimeFeedIndex.from(alerts);
+                    alertIndex = current;
+                }
+            }
+        }
+        return current;
     }
 
     /** Returns true when a new fetch contains no changed feed data. */

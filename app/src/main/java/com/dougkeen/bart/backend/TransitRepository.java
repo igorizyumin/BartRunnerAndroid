@@ -1,6 +1,7 @@
 package com.dougkeen.bart.backend;
 
-import java.io.IOException;
+import com.google.transit.realtime.GtfsRealtime;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -112,27 +113,40 @@ public final class TransitRepository implements AutoCloseable {
             refreshInProgress = true;
         }
 
-        TransitFeedSnapshot refreshedSnapshot = null;
-        Exception refreshError = null;
+        TransitFeedFetchResult fetchResult;
         try {
-            refreshedSnapshot = feedClient.fetch();
+            fetchResult = feedClient.fetchFeeds();
         } catch (Exception exception) {
-            refreshError = exception;
+            fetchResult = TransitFeedFetchResult.failed(exception);
         }
 
-        List<Listener> listenersToNotify = new ArrayList<Listener>();
+        List<Listener> snapshotListeners = new ArrayList<Listener>();
+        List<Listener> errorListeners = new ArrayList<Listener>();
         TransitFeedSnapshot snapshotToNotify = null;
+        List<Exception> refreshErrors = new ArrayList<Exception>();
         TransitFeedSnapshot snapshotOnError;
         synchronized (lock) {
             refreshInProgress = false;
-            if (!closed && refreshedSnapshot != null
-                    && (latestSnapshot == null
-                    || !refreshedSnapshot.hasSameFeedData(latestSnapshot))) {
-                latestSnapshot = refreshedSnapshot;
-                snapshotToNotify = refreshedSnapshot;
-                listenersToNotify.addAll(listeners);
-            } else if (!closed && refreshError != null) {
-                listenersToNotify.addAll(listeners);
+            if (!closed) {
+                if (fetchResult.getTripUpdatesError() != null) {
+                    addRefreshError(refreshErrors,
+                            fetchResult.getTripUpdatesError());
+                }
+                if (fetchResult.getAlertsError() != null) {
+                    addRefreshError(refreshErrors, fetchResult.getAlertsError());
+                }
+
+                TransitFeedSnapshot mergedSnapshot = mergeSnapshot(fetchResult);
+                if (mergedSnapshot != null
+                        && (latestSnapshot == null
+                        || !mergedSnapshot.hasSameFeedData(latestSnapshot))) {
+                    latestSnapshot = mergedSnapshot;
+                    snapshotToNotify = mergedSnapshot;
+                    snapshotListeners.addAll(listeners);
+                }
+            }
+            if (!closed && !refreshErrors.isEmpty()) {
+                errorListeners.addAll(listeners);
             }
             snapshotOnError = latestSnapshot;
             if (!closed && !listeners.isEmpty()) {
@@ -141,13 +155,44 @@ public final class TransitRepository implements AutoCloseable {
         }
 
         if (snapshotToNotify != null) {
-            for (Listener listener : listenersToNotify) {
+            for (Listener listener : snapshotListeners) {
                 dispatchSnapshot(listener, snapshotToNotify);
             }
-        } else if (refreshError != null) {
-            for (Listener listener : listenersToNotify) {
-                dispatchError(listener, refreshError, snapshotOnError);
+        }
+        if (!refreshErrors.isEmpty()) {
+            for (Listener listener : errorListeners) {
+                for (Exception refreshError : refreshErrors) {
+                    dispatchError(listener, refreshError, snapshotOnError);
+                }
             }
+        }
+    }
+
+    private TransitFeedSnapshot mergeSnapshot(TransitFeedFetchResult result) {
+        if (result.getCompleteSnapshot() != null) {
+            return result.getCompleteSnapshot();
+        }
+        GtfsRealtime.FeedMessage tripUpdates = result.getTripUpdates();
+        GtfsRealtime.FeedMessage alerts = result.getAlerts();
+        if (latestSnapshot != null) {
+            if (tripUpdates == null) {
+                tripUpdates = latestSnapshot.getTripUpdates();
+            }
+            if (alerts == null) {
+                alerts = latestSnapshot.getAlerts();
+            }
+        }
+        if (tripUpdates == null || alerts == null) {
+            return null;
+        }
+        return new TransitFeedSnapshot(tripUpdates, alerts,
+                System.currentTimeMillis());
+    }
+
+    private static void addRefreshError(List<Exception> errors,
+                                        Exception error) {
+        if (!errors.contains(error)) {
+            errors.add(error);
         }
     }
 

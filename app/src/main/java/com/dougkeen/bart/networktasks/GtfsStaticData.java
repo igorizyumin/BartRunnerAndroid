@@ -3,13 +3,16 @@ package com.dougkeen.bart.networktasks;
 import android.content.Context;
 import android.util.Log;
 
-import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.ScheduleInformation;
 import com.dougkeen.bart.model.ScheduleItem;
 import com.dougkeen.bart.model.Station;
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
+import com.dougkeen.bart.transit.gtfs.GtfsNetworkCatalog;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -53,19 +56,26 @@ public final class GtfsStaticData {
     private static long cachedAt;
     private static String cachedServiceDate;
 
-    private final Map<String, String> routeIdsByTripId;
     private final Map<String, List<StopTime>> stopTimesByTripId;
     private final Map<String, String> faresByStationPair;
+    private final GtfsNetworkCatalog networkCatalog;
+    private final BartGtfsNetwork bartGtfsNetwork;
 
-    private GtfsStaticData(Map<String, String> routeIdsByTripId,
-                           Map<String, List<StopTime>> stopTimesByTripId,
-                           Map<String, String> faresByStationPair) {
-        this.routeIdsByTripId = routeIdsByTripId;
+    private GtfsStaticData(Map<String, List<StopTime>> stopTimesByTripId,
+                           Map<String, String> faresByStationPair,
+                           GtfsNetworkCatalog networkCatalog,
+                           BartGtfsNetwork bartGtfsNetwork) {
         this.stopTimesByTripId = stopTimesByTripId;
         this.faresByStationPair = faresByStationPair;
+        this.networkCatalog = networkCatalog;
+        this.bartGtfsNetwork = bartGtfsNetwork;
     }
 
-    public static GtfsStaticData get() throws IOException {
+    public static GtfsStaticData get(Context context) throws IOException {
+        if (context == null) {
+            throw new IOException("Application context is unavailable");
+        }
+        Context applicationContext = context.getApplicationContext();
         synchronized (LOCK) {
             long now = System.currentTimeMillis();
             String serviceDate = dateCode(Calendar.getInstance(PACIFIC_TIME,
@@ -75,13 +85,8 @@ public final class GtfsStaticData {
                 return cachedData;
             }
 
-            Context context = BartRunnerApplication.getAppContext();
-            if (context == null) {
-                throw new IOException("Application context is unavailable");
-            }
-
-            File cacheFile = new File(context.getFilesDir(), CACHE_FILE_NAME);
-            long lastSuccess = context.getSharedPreferences(PREFS_NAME,
+            File cacheFile = new File(applicationContext.getFilesDir(), CACHE_FILE_NAME);
+            long lastSuccess = applicationContext.getSharedPreferences(PREFS_NAME,
                     Context.MODE_PRIVATE).getLong(LAST_SUCCESS, 0L);
             if (cacheFile.isFile() && now - lastSuccess < CACHE_MILLIS) {
                 cachedData = parse(cacheFile);
@@ -90,7 +95,7 @@ public final class GtfsStaticData {
                 return cachedData;
             }
 
-            long lastAttempt = context.getSharedPreferences(PREFS_NAME,
+            long lastAttempt = applicationContext.getSharedPreferences(PREFS_NAME,
                     Context.MODE_PRIVATE).getLong(LAST_ATTEMPT, 0L);
             if (now - lastAttempt < CACHE_MILLIS) {
                 if (cacheFile.isFile()) {
@@ -102,10 +107,10 @@ public final class GtfsStaticData {
                 throw new IOException("Static GTFS refresh already attempted");
             }
 
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().putLong(LAST_ATTEMPT, now).apply();
             Log.v(Constants.TAG, "Refreshing static GTFS schedule from server");
-            File temporaryFile = new File(context.getFilesDir(),
+            File temporaryFile = new File(applicationContext.getFilesDir(),
                     CACHE_FILE_NAME + ".tmp");
             try {
                 download(temporaryFile);
@@ -116,7 +121,7 @@ public final class GtfsStaticData {
                 if (!temporaryFile.renameTo(cacheFile)) {
                     throw new IOException("Could not save static GTFS cache");
                 }
-                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                         .edit().putLong(LAST_SUCCESS, now).apply();
                 cachedData = result;
                 cachedAt = now;
@@ -135,8 +140,14 @@ public final class GtfsStaticData {
         }
     }
 
-    public Map<String, String> getRouteIdsByTripId() {
-        return routeIdsByTripId;
+    /** Returns the immutable static network catalog. */
+    public GtfsNetworkCatalog getNetworkCatalog() {
+        return networkCatalog;
+    }
+
+    /** Returns the validated BART-specific network mapping. */
+    public BartGtfsNetwork getBartGtfsNetwork() {
+        return bartGtfsNetwork;
     }
 
     public String getFare(Station origin, Station destination) {
@@ -158,8 +169,7 @@ public final class GtfsStaticData {
             StopTime destinationStop = null;
             Station terminal = null;
             for (StopTime stopTime : stopTimes) {
-                Station station = GtfsRealtimeContentHandler
-                        .stationForStopId(stopTime.stopId);
+                Station station = bartGtfsNetwork.stationForStopId(stopTime.stopId);
                 if (station != null && station != Station.SPCL) {
                     terminal = station;
                 }
@@ -233,7 +243,48 @@ public final class GtfsStaticData {
         }
     }
 
+    private static Map<String, String> readFeedFiles(File file) throws IOException {
+        Map<String, String> files = new HashMap<String, String>();
+        ZipInputStream zip = new ZipInputStream(new FileInputStream(file));
+        try {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (entry.isDirectory() || !isRelevantFeedFile(entry.getName())) {
+                    continue;
+                }
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = zip.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                }
+                files.put(entry.getName(), new String(output.toByteArray(),
+                        Charset.forName("UTF-8")));
+            }
+        } finally {
+            zip.close();
+        }
+        return files;
+    }
+
+    private static boolean isRelevantFeedFile(String name) {
+        return "calendar.txt".equals(name)
+                || "calendar_dates.txt".equals(name)
+                || "routes.txt".equals(name)
+                || "trips.txt".equals(name)
+                || "stops.txt".equals(name)
+                || "stop_times.txt".equals(name)
+                || "transfers.txt".equals(name)
+                || "fare_attributes.txt".equals(name)
+                || "fare_rules.txt".equals(name);
+    }
+
+    private static InputStream input(String value) {
+        return new ByteArrayInputStream(value.getBytes(Charset.forName("UTF-8")));
+    }
+
     private static GtfsStaticData parse(File file) throws IOException {
+        Map<String, String> feedFiles = readFeedFiles(file);
         Map<String, Trip> trips = new HashMap<String, Trip>();
         Map<String, ServiceCalendar> calendars = new HashMap<String, ServiceCalendar>();
         Map<String, Map<String, Integer>> exceptions =
@@ -243,41 +294,29 @@ public final class GtfsStaticData {
         Calendar today = Calendar.getInstance(PACIFIC_TIME, Locale.US);
         String dateCode = dateCode(today);
 
-        ZipInputStream zip = new ZipInputStream(new FileInputStream(file));
-        try {
-            ZipEntry entry;
-            while ((entry = zip.getNextEntry()) != null) {
-                if ("calendar.txt".equals(entry.getName())) {
-                    parseCalendars(zip, calendars);
-                } else if ("calendar_dates.txt".equals(entry.getName())) {
-                    parseExceptions(zip, exceptions);
-                } else if ("trips.txt".equals(entry.getName())) {
-                    parseTrips(zip, trips);
-                } else if ("fare_attributes.txt".equals(entry.getName())) {
-                    parseFareAttributes(zip, farePrices);
-                } else if ("fare_rules.txt".equals(entry.getName())) {
-                    parseFareRules(zip, fareRules);
-                }
-            }
-        } finally {
-            zip.close();
+        if (feedFiles.containsKey("calendar.txt")) {
+            parseCalendars(input(feedFiles.get("calendar.txt")), calendars);
+        }
+        if (feedFiles.containsKey("calendar_dates.txt")) {
+            parseExceptions(input(feedFiles.get("calendar_dates.txt")), exceptions);
+        }
+        if (feedFiles.containsKey("trips.txt")) {
+            parseTrips(input(feedFiles.get("trips.txt")), trips);
+        }
+        if (feedFiles.containsKey("fare_attributes.txt")) {
+            parseFareAttributes(input(feedFiles.get("fare_attributes.txt")), farePrices);
+        }
+        if (feedFiles.containsKey("fare_rules.txt")) {
+            parseFareRules(input(feedFiles.get("fare_rules.txt")), fareRules);
         }
 
         Set<String> activeServices = activeServices(calendars, exceptions,
                 dateCode, today);
         Map<String, List<StopTime>> stopTimesByTripId =
                 new HashMap<String, List<StopTime>>();
-        zip = new ZipInputStream(new FileInputStream(file));
-        try {
-            ZipEntry entry;
-            while ((entry = zip.getNextEntry()) != null) {
-                if ("stop_times.txt".equals(entry.getName())) {
-                    parseStopTimes(zip, trips, activeServices,
-                            stopTimesByTripId);
-                }
-            }
-        } finally {
-            zip.close();
+        if (feedFiles.containsKey("stop_times.txt")) {
+            parseStopTimes(input(feedFiles.get("stop_times.txt")), trips,
+                    activeServices, stopTimesByTripId);
         }
 
         Map<String, String> fares = new HashMap<String, String>();
@@ -289,14 +328,39 @@ public final class GtfsStaticData {
             }
         }
 
-        Map<String, String> routeIds = new HashMap<String, String>();
-        for (Trip trip : trips.values()) {
-            routeIds.put(trip.tripId, trip.routeId);
+        String[] requiredCatalogFiles = {
+                "stops.txt", "routes.txt", "trips.txt", "stop_times.txt"
+        };
+        for (String requiredFile : requiredCatalogFiles) {
+            if (!feedFiles.containsKey(requiredFile)) {
+                throw new IOException("Static GTFS is missing " + requiredFile);
+            }
         }
-        return new GtfsStaticData(routeIds, stopTimesByTripId, fares);
+
+        final GtfsNetworkCatalog networkCatalog;
+        final BartGtfsNetwork bartGtfsNetwork;
+        try {
+            networkCatalog = GtfsNetworkCatalog.fromFiles(feedFiles);
+            List<String> validationErrors = networkCatalog.validationErrors();
+            if (!validationErrors.isEmpty()) {
+                throw new IOException("Static GTFS catalog validation failed: "
+                        + validationErrors.get(0));
+            }
+            bartGtfsNetwork = BartGtfsNetwork.fromCatalog(networkCatalog);
+            List<String> bartErrors = bartGtfsNetwork.validationErrors();
+            if (!bartErrors.isEmpty()) {
+                throw new IOException("Static GTFS BART validation failed: "
+                        + bartErrors.get(0));
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new IOException("Could not parse static GTFS network catalog",
+                    exception);
+        }
+        return new GtfsStaticData(stopTimesByTripId, fares,
+                networkCatalog, bartGtfsNetwork);
     }
 
-    private static void parseCalendars(ZipInputStream zip,
+    private static void parseCalendars(InputStream zip,
                                        Map<String, ServiceCalendar> calendars)
             throws IOException {
         BufferedReader reader = reader(zip);
@@ -326,7 +390,7 @@ public final class GtfsStaticData {
         }
     }
 
-    private static void parseExceptions(ZipInputStream zip,
+    private static void parseExceptions(InputStream zip,
                                         Map<String, Map<String, Integer>> exceptions)
             throws IOException {
         BufferedReader reader = reader(zip);
@@ -350,7 +414,7 @@ public final class GtfsStaticData {
         }
     }
 
-    private static void parseTrips(ZipInputStream zip,
+    private static void parseTrips(InputStream zip,
                                    Map<String, Trip> trips) throws IOException {
         BufferedReader reader = reader(zip);
         String[] header = splitCsvLine(reader.readLine());
@@ -372,7 +436,7 @@ public final class GtfsStaticData {
         }
     }
 
-    private static void parseStopTimes(ZipInputStream zip,
+    private static void parseStopTimes(InputStream zip,
                                        Map<String, Trip> trips,
                                        Set<String> activeServices,
                                        Map<String, List<StopTime>> result)
@@ -416,7 +480,7 @@ public final class GtfsStaticData {
         }
     }
 
-    private static void parseFareAttributes(ZipInputStream zip,
+    private static void parseFareAttributes(InputStream zip,
                                             Map<String, String> fares)
             throws IOException {
         BufferedReader reader = reader(zip);
@@ -433,7 +497,7 @@ public final class GtfsStaticData {
         }
     }
 
-    private static void parseFareRules(ZipInputStream zip,
+    private static void parseFareRules(InputStream zip,
                                        List<FareRule> rules) throws IOException {
         BufferedReader reader = reader(zip);
         String[] header = splitCsvLine(reader.readLine());

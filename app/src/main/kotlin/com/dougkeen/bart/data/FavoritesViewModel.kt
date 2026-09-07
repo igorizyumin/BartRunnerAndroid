@@ -30,7 +30,11 @@ class FavoritesViewModel(
         repository.insertFavorite(favorite, index)
     }
 
-    fun persistCurrentState() {
-        repository.persistCurrentState()
+    fun updateFare(
+        favorite: com.dougkeen.bart.model.StationPair,
+        fare: String,
+        updatedAt: Long,
+    ) {
+        repository.updateFare(favorite, fare, updatedAt)
     }
 }

@@ -337,7 +337,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         super.onStart();
         mTransitSubscription = ((BartRunnerApplication) getApplication())
                 .getTransitRepository().subscribe(
-                        new RouteDepartureProjection(mStationPair), this);
+                        new RouteDepartureProjection(mStationPair, this), this);
         Ticker.getInstance().startTicking(this);
     }
 

@@ -1,10 +1,8 @@
 package com.dougkeen.bart.data
 
 import android.content.Context
-import android.util.Log
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.platform.DepartureAlarmScheduler
-import com.dougkeen.bart.platform.DepartureParcel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,12 +14,12 @@ import java.util.concurrent.Executors
 /** Owns the followed trip, its process-death cache, and its observable state. */
 class FollowedTripRepository(context: Context) : AutoCloseable {
     private companion object {
-        const val TAG = "FollowedTripRepository"
-        const val CACHE_FILE_NAME = "followed_trip.cache"
+        const val STORAGE_FILE_NAME = "followed_trip.json"
     }
 
     private val applicationContext = context.applicationContext
-    private val cacheFile = File(applicationContext.cacheDir, CACHE_FILE_NAME)
+    private val storageFile = File(applicationContext.filesDir, STORAGE_FILE_NAME)
+    private val store = FollowedTripStore(storageFile)
     private val persistenceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val stateLock = Any()
     private var followedDeparture: Departure? = restore()
@@ -50,6 +48,7 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
                 return
             }
             previousScheduler = alarmScheduler
+            previousScheduler?.close()
             followedDeparture = departure
             alarmScheduler = departure?.let {
                 DepartureAlarmScheduler(applicationContext, it)
@@ -57,7 +56,6 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
             _state.value = FollowedTripState(departure)
         }
 
-        previousScheduler?.close()
         persist(departure)
     }
 
@@ -69,42 +67,15 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
         return synchronized(stateLock) { alarmScheduler }
     }
 
-    private fun restore(): Departure? {
-        if (!cacheFile.exists()) {
-            return null
-        }
-        return try {
-            cacheFile.inputStream().use { input ->
-                DepartureParcel.fromBytes(input.readBytes())
-            }
-        } catch (exception: Exception) {
-            Log.w(TAG, "Could not restore followed trip", exception)
-            deleteCache()
-            null
-        }
-    }
+    private fun restore(): Departure? = store.load()
 
     private fun persist(departure: Departure?) {
         persistenceExecutor.execute {
             try {
-                if (departure == null) {
-                    deleteCache()
-                    return@execute
-                }
-                cacheFile.outputStream().use { output ->
-                    output.write(DepartureParcel(departure).toBytes())
-                }
+                store.save(departure)
             } catch (exception: Exception) {
-                Log.w(TAG, "Could not persist followed trip", exception)
+                // Persistence is best effort; the in-memory state remains authoritative.
             }
-        }
-    }
-
-    private fun deleteCache() {
-        try {
-            cacheFile.delete()
-        } catch (exception: SecurityException) {
-            Log.w(TAG, "Could not delete followed trip cache", exception)
         }
     }
 

@@ -77,9 +77,16 @@ class FavoritesRepository(context: Context) : AutoCloseable {
         }
     }
 
-    /** Persists in-place changes made to a route's fare metadata. */
-    fun persistCurrentState() {
-        val snapshot = synchronized(stateLock) { currentFavorites }
+    fun updateFare(favorite: StationPair, fare: String, updatedAt: Long) {
+        updateFavorites { favorites ->
+            val index = favorites.indexOf(favorite)
+            if (index >= 0) {
+                favorites[index] = favorite.withFare(fare, updatedAt)
+            }
+        }
+    }
+
+    private fun persistSnapshot(snapshot: List<StationPair>) {
         persistenceExecutor.execute {
             try {
                 applicationContext.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use { output ->
@@ -140,25 +147,32 @@ class FavoritesRepository(context: Context) : AutoCloseable {
 
         synchronized(stateLock) {
             val merged = restored.toMutableList()
+            val hadPendingChanges = pendingChanges.isNotEmpty()
             pendingChanges.forEach { it(merged) }
             pendingChanges.clear()
             currentFavorites = immutableCopy(merged)
             loaded = true
             _uiState.value = FavoritesUiState(currentFavorites, isLoading = false)
+            if (hadPendingChanges) {
+                // Queue this write before releasing stateLock so a concurrent
+                // update cannot enqueue a newer snapshot ahead of this merge.
+                persistSnapshot(currentFavorites)
+            }
         }
     }
 
     private fun updateFavorites(change: (MutableList<StationPair>) -> Unit) {
         val snapshot: List<StationPair>
         synchronized(stateLock) {
+            if (!loaded) {
+                pendingChanges += change
+                return
+            }
             val updated = currentFavorites.toMutableList()
             change(updated)
             currentFavorites = immutableCopy(updated)
-            if (!loaded) {
-                pendingChanges += change
-            }
             snapshot = currentFavorites
-            _uiState.value = FavoritesUiState(snapshot, isLoading = !loaded)
+            _uiState.value = FavoritesUiState(snapshot, isLoading = false)
         }
         persistenceExecutor.execute {
             try {

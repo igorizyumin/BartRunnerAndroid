@@ -263,7 +263,7 @@ public class FavoritesArrayAdapter
         EtdListener(StationPair stationPair) {
             this.stationPair = stationPair;
             subscription = transitRepository.subscribe(
-                    new RouteDepartureProjection(stationPair), this);
+                    new RouteDepartureProjection(stationPair, hostActivity), this);
         }
 
         void close() {

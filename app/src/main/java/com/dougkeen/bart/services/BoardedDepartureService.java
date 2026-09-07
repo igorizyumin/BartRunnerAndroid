@@ -30,7 +30,6 @@ import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.presentation.DepartureNotificationFactory;
 import com.dougkeen.bart.platform.DepartureParcel;
-import com.dougkeen.util.Observer;
 
 import java.lang.ref.WeakReference;
 import java.util.List;
@@ -116,6 +115,9 @@ public class BoardedDepartureService extends Service implements
     @Override
     public void onDestroy() {
         shutDown(true);
+        if (mHandler != null) {
+            mHandler.removeCallbacksAndMessages(null);
+        }
         mServiceLooper.quitSafely();
         super.onDestroy();
     }
@@ -170,7 +172,8 @@ public class BoardedDepartureService extends Service implements
         if (mStationPair != null && mTransitSubscription == null) {
             mTransitSubscription = ((BartRunnerApplication) getApplication())
                     .getTransitRepository().subscribe(
-                            new RouteDepartureProjection(mStationPair), this);
+                            new RouteDepartureProjection(mStationPair,
+                                    getApplicationContext()), this);
         }
 
         DepartureAlarmScheduler alarmScheduler = application.getFollowedTripRepository()
@@ -178,21 +181,6 @@ public class BoardedDepartureService extends Service implements
         if (alarmScheduler == null) {
             return;
         }
-        alarmScheduler.getLeadTimeMinutesObservable().registerObserver(
-                new Observer<Integer>() {
-                    @Override
-                    public void onUpdate(Integer newValue) {
-                        updateNotification();
-                    }
-                });
-        alarmScheduler.getPendingObservable().registerObserver(
-                new Observer<Boolean>() {
-                    @Override
-                    public void onUpdate(Boolean newValue) {
-                        updateNotification();
-                    }
-                });
-
         updateNotification();
 
         pollDepartureStatus();
@@ -240,10 +228,15 @@ public class BoardedDepartureService extends Service implements
     private long mNextScheduledCheckClockTime = 0;
 
     private void pollDepartureStatus() {
+        if (mHasShutDown) {
+            return;
+        }
+
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
                 .getFollowedTripRepository().getFollowedDeparture();
 
-        if (boardedDeparture == null || boardedDeparture.hasDeparted()) {
+        if (BoardedDepartureServicePolicy.shouldStop(boardedDeparture != null,
+                boardedDeparture != null && boardedDeparture.hasDeparted())) {
             shutDown(false);
             return;
         }
@@ -251,7 +244,8 @@ public class BoardedDepartureService extends Service implements
         if (mTransitSubscription == null && mStationPair != null) {
             mTransitSubscription = ((BartRunnerApplication) getApplication())
                     .getTransitRepository().subscribe(
-                            new RouteDepartureProjection(mStationPair), this);
+                            new RouteDepartureProjection(mStationPair,
+                                    getApplicationContext()), this);
         }
 
         DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
@@ -278,6 +272,9 @@ public class BoardedDepartureService extends Service implements
 
     private void shutDown(boolean isBeingDestroyed) {
         if (!mHasShutDown) {
+            if (mHandler != null) {
+                mHandler.removeCallbacksAndMessages(null);
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE);
             } else {
@@ -325,11 +322,8 @@ public class BoardedDepartureService extends Service implements
     private int getPollIntervalMillis() {
         DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
                 .getFollowedTripRepository().getAlarmScheduler();
-        if (alarmScheduler != null && alarmScheduler.getSecondsUntilAlarm() > 3 * 60) {
-            return 15 * 1000;
-        } else {
-            return 6 * 1000;
-        }
+        return BoardedDepartureServicePolicy.pollIntervalMillis(
+                alarmScheduler == null ? 0 : alarmScheduler.getSecondsUntilAlarm());
     }
 
     @Override

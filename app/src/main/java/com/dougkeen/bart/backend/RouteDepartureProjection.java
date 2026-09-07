@@ -1,73 +1,70 @@
 package com.dougkeen.bart.backend;
 
-import com.dougkeen.bart.model.Line;
+import android.content.Context;
+
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Route;
 import com.dougkeen.bart.model.Station;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler;
+import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex;
 import com.dougkeen.bart.networktasks.GtfsStaticData;
+import com.dougkeen.bart.routing.TripPlanner;
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /** Builds departures for one route from the already-downloaded feed. */
 public final class RouteDepartureProjection
         implements TransitProjection<RealTimeDepartures> {
-    public interface TripRouteIndex {
-        Map<String, String> getRouteIdsByTripId(
-                TransitFeedSnapshot snapshot) throws Exception;
-    }
-
     private final StationPair query;
     private final boolean ignoreDirection;
-    private final TripRouteIndex tripRouteIndex;
+    private final Context context;
+    private final BartGtfsNetwork bartGtfsNetwork;
 
-    public RouteDepartureProjection(StationPair query) {
-        this(query, false, new TripRouteIndex() {
-            @Override
-            public Map<String, String> getRouteIdsByTripId(
-                    TransitFeedSnapshot snapshot) throws Exception {
-                for (com.google.transit.realtime.GtfsRealtime.FeedEntity entity
-                        : snapshot.getTripUpdates().getEntityList()) {
-                    if (entity.hasTripUpdate()
-                            && entity.getTripUpdate().hasTrip()
-                            && (!entity.getTripUpdate().getTrip().hasRouteId()
-                            || entity.getTripUpdate().getTrip().getRouteId()
-                            .isEmpty())) {
-                        return GtfsStaticData.get().getRouteIdsByTripId();
-                    }
-                }
-                return Collections.emptyMap();
-            }
-        });
+    public RouteDepartureProjection(StationPair query, Context context) {
+        this(query, false, context, null);
+    }
+
+    public RouteDepartureProjection(StationPair query,
+                                    BartGtfsNetwork bartGtfsNetwork) {
+        this(query, false, null, bartGtfsNetwork);
     }
 
     public RouteDepartureProjection(StationPair query,
                                     boolean ignoreDirection,
-                                    TripRouteIndex tripRouteIndex) {
+                                    BartGtfsNetwork bartGtfsNetwork) {
+        this(query, ignoreDirection, null, bartGtfsNetwork);
+    }
+
+    private RouteDepartureProjection(StationPair query,
+                                     boolean ignoreDirection,
+                                     Context context,
+                                     BartGtfsNetwork bartGtfsNetwork) {
         if (query == null || query.getOrigin() == null) {
             throw new IllegalArgumentException("A route query needs an origin");
         }
+        if (context == null && bartGtfsNetwork == null) {
+            throw new IllegalArgumentException(
+                    "A validated GTFS network or context is required");
+        }
         this.query = query;
         this.ignoreDirection = ignoreDirection;
-        this.tripRouteIndex = tripRouteIndex;
+        this.context = context;
+        this.bartGtfsNetwork = bartGtfsNetwork;
     }
 
     @Override
     public RealTimeDepartures project(TransitFeedSnapshot snapshot)
             throws Exception {
-        List<Route> routes = resolveRoutes(query);
-        Map<String, String> routeIds = tripRouteIndex
-                .getRouteIdsByTripId(snapshot);
+        BartGtfsNetwork network = network();
+        List<Route> routes = resolveRoutes(query, network);
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 query.getOrigin(), query.getDestination(), routes,
-                ignoreDirection, routeIds == null
-                ? Collections.<String, String>emptyMap() : routeIds);
-        RealTimeDepartures result = handler.getRealTimeDepartures(
-                snapshot.getTripUpdates());
+                ignoreDirection, network);
+        GtfsRealtimeFeedIndex feedIndex = snapshot.getTripUpdateIndex();
+        RealTimeDepartures result = handler.getRealTimeDepartures(feedIndex,
+                snapshot.getTripUpdatesTimestampMillis());
 
         if (result.getDepartures().isEmpty() && query.getDestination() != null) {
             result.includeTransferRoutes();
@@ -89,33 +86,19 @@ public final class RouteDepartureProjection
                 && previous.getDepartures().equals(current.getDepartures());
     }
 
-    private static List<Route> resolveRoutes(StationPair query) {
-        Station origin = query.getOrigin();
-        Station destination = query.getDestination();
-        List<Route> routes = new ArrayList<Route>();
-        if (destination == null) {
-            for (Line line : Line.getLinesForStation(origin)) {
-                Route route = new Route();
-                route.setOrigin(origin);
-                route.setDestination(null);
-                route.setDirectLine(line);
-                route.setTransfer(false);
-                routes.add(route);
-            }
-            return routes;
+    private BartGtfsNetwork network() throws Exception {
+        if (bartGtfsNetwork != null) {
+            return bartGtfsNetwork;
         }
+        if (context == null) {
+            throw new IllegalStateException("A validated GTFS network is required");
+        }
+        return GtfsStaticData.get(context).getBartGtfsNetwork();
+    }
 
-        routes.addAll(origin.getDirectRoutesForDestination(destination));
-        boolean hasDirectLine = false;
-        for (Route route : routes) {
-            if (!route.hasTransfer()) {
-                hasDirectLine = true;
-                break;
-            }
-        }
-        if (routes.isEmpty() || (origin.transferFriendly && !hasDirectLine)) {
-            routes.addAll(origin.getPreferredTransferRoutes(destination));
-        }
-        return routes;
+    private static List<Route> resolveRoutes(StationPair query,
+                                             BartGtfsNetwork network) {
+        return TripPlanner.routesFor(query.getOrigin(), query.getDestination(),
+                network);
     }
 }

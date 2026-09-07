@@ -3,24 +3,36 @@ package com.dougkeen.bart.model;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class StationPair {
     @JsonCreator
     public StationPair(@JsonProperty("origin") Station origin,
-                       @JsonProperty("destination") Station destination) {
-        super();
+                       @JsonProperty("destination") Station destination,
+                       @JsonProperty("fare") String fare,
+                       @JsonProperty("fareLastUpdated") long fareLastUpdated,
+                       @JsonProperty("averageTripLength") int averageTripLength,
+                       @JsonProperty("averageTripSampleCount") int averageTripSampleCount) {
         this.origin = origin;
         this.destination = destination;
+        this.fare = fare;
+        this.fareLastUpdated = fareLastUpdated;
+        this.averageTripLength = averageTripLength;
+        this.averageTripSampleCount = averageTripSampleCount;
     }
 
-    private Station origin;
-    private Station destination;
-    private String fare;
+    public StationPair(Station origin, Station destination) {
+        this(origin, destination, null, 0L, 0, 0);
+    }
 
-    private long fareLastUpdated;
-    private int averageTripLength;
-    private int averageTripSampleCount;
+    private final Station origin;
+    private final Station destination;
+    private final String fare;
+
+    private final long fareLastUpdated;
+    private final int averageTripLength;
+    private final int averageTripSampleCount;
 
     public Station getOrigin() {
         return origin;
@@ -30,6 +42,7 @@ public class StationPair {
         return destination;
     }
 
+    @JsonIgnore
     public boolean isStationOnly() {
         return origin != null && destination == null;
     }
@@ -38,32 +51,21 @@ public class StationPair {
         return fare;
     }
 
-    public void setFare(String fare) {
-        this.fare = fare;
-    }
-
     public long getFareLastUpdated() {
         return fareLastUpdated;
-    }
-
-    public void setFareLastUpdated(long fareLastUpdated) {
-        this.fareLastUpdated = fareLastUpdated;
     }
 
     public int getAverageTripLength() {
         return averageTripLength;
     }
 
-    public void setAverageTripLength(int averageTripLength) {
-        this.averageTripLength = averageTripLength;
-    }
-
     public int getAverageTripSampleCount() {
         return averageTripSampleCount;
     }
 
-    public void setAverageTripSampleCount(int averageTripSampleCount) {
-        this.averageTripSampleCount = averageTripSampleCount;
+    public StationPair withFare(String fare, long fareLastUpdated) {
+        return new StationPair(origin, destination, fare, fareLastUpdated,
+                averageTripLength, averageTripSampleCount);
     }
 
     public boolean isBetweenStations(Station station1, Station station2) {

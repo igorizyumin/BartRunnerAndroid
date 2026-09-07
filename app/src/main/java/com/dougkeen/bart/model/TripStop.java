@@ -1,13 +1,10 @@
 package com.dougkeen.bart.model;
 
 /** A stop arrival belonging to a train leg. */
-public class TripStop {
-    private Station station;
-    private long arrivalTime;
-    private long departureTime;
-
-    public TripStop() {
-    }
+public final class TripStop {
+    private final Station station;
+    private final long arrivalTime;
+    private final long departureTime;
 
     public TripStop(Station station, long arrivalTime) {
         this(station, arrivalTime, arrivalTime);

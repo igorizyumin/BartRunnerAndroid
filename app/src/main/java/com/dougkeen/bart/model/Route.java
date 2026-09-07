@@ -3,7 +3,9 @@ package com.dougkeen.bart.model;
 import java.util.Collection;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Route {
     private Station origin;
@@ -15,6 +17,8 @@ public class Route {
     private String direction;
     private List<Line> lines = new ArrayList<Line>();
     private List<Station> transferStations = new ArrayList<Station>();
+    private final Map<Line, List<Station>> stationSequencesByLine =
+            new HashMap<Line, List<Station>>();
 
     public Station getOrigin() {
         return origin;
@@ -112,6 +116,25 @@ public class Route {
                 ? null : this.transferStations.get(0);
     }
 
+    /** Associates a route with the feed pattern used to build it. */
+    public void setStationSequence(Line line, List<Station> stations) {
+        if (line == null || stations == null || stations.isEmpty()) {
+            return;
+        }
+        stationSequencesByLine.put(line,
+                Collections.unmodifiableList(new ArrayList<Station>(stations)));
+    }
+
+    /** Returns the feed pattern used for this line. */
+    public List<Station> getStationSequence(Line line) {
+        return stationsForLine(line);
+    }
+
+    private List<Station> stationsForLine(Line line) {
+        List<Station> sequence = stationSequencesByLine.get(line);
+        return sequence == null ? Collections.<Station>emptyList() : sequence;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -133,22 +156,22 @@ public class Route {
 
     public boolean trainDestinationIsApplicable(Station lineDestination,
                                                 Line viaLine) {
-        int originIndex = viaLine.stations.indexOf(origin);
+        List<Station> viaStations = stationsForLine(viaLine);
+        int originIndex = viaStations.indexOf(origin);
         if (destination == null) {
             return originIndex >= 0 && lineDestination != null
                     && viaLine.equals(directLine)
-                    && viaLine.stations.indexOf(lineDestination) >= 0
+                    && viaStations.indexOf(lineDestination) >= 0
                     && lineDestination != origin;
         }
-        int routeDestinationIndex = viaLine.stations.indexOf(destination);
-        int lineDestinationIndex = viaLine.stations
-                .indexOf(lineDestination);
+        int routeDestinationIndex = viaStations.indexOf(destination);
+        int lineDestinationIndex = viaStations.indexOf(lineDestination);
 
         boolean hasDirectRouteViaLine = originIndex >= 0 && routeDestinationIndex >= 0;
 
         if (requiresTransfer && !lines.isEmpty()) {
             if (transferStations.isEmpty() && directLine != null
-                    && directLine.requiresTransfer) {
+                    && directLine.requiresTransfer()) {
                 return viaLine.equals(directLine.transferLine1)
                         || viaLine.equals(directLine.transferLine2);
             }
@@ -161,7 +184,7 @@ public class Route {
             }
             Station firstTransfer = transferStations.isEmpty()
                     ? destination : transferStations.get(0);
-            int transferIndex = viaLine.stations.indexOf(firstTransfer);
+            int transferIndex = viaStations.indexOf(firstTransfer);
             if (originIndex < 0 || transferIndex < 0 || lineDestinationIndex < 0) {
                 return false;
             }

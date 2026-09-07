@@ -8,6 +8,7 @@ import com.dougkeen.bart.model.Station;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
 import com.google.transit.realtime.GtfsRealtime;
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -27,108 +28,40 @@ public class GtfsRealtimeContentHandler {
     private static final TimeZone PACIFIC_TIME =
             TimeZone.getTimeZone("America/Los_Angeles");
 
-    private static final Map<String, Station> STATIONS_BY_STOP_PREFIX =
-            new HashMap<String, Station>();
-
-    static {
-        addStations(Station.LAKE, "A10");
-        addStations(Station.FTVL, "A20");
-        addStations(Station.COLS, "A30");
-        addStations(Station.SANL, "A40");
-        addStations(Station.BAYF, "A50");
-        addStations(Station.HAYW, "A60");
-        addStations(Station.SHAY, "A70");
-        addStations(Station.UCTY, "A80");
-        addStations(Station.FRMT, "A90");
-
-        addStations(Station.ROCK, "C10");
-        addStations(Station.ORIN, "C20");
-        addStations(Station.LAFY, "C30");
-        addStations(Station.WCRK, "C40");
-        addStations(Station.PHIL, "C50");
-        addStations(Station.CONC, "C60");
-        addStations(Station.NCON, "C70");
-        addStations(Station.PITT, "C80");
-
-        addStations(Station.PCTR, "E20");
-        addStations(Station.ANTC, "E30");
-
-        addStations(Station._12TH, "K10");
-        addStations(Station._19TH, "K20");
-        addStations(Station.MCAR, "K30");
-
-        addStations(Station.CAST, "L10");
-        addStations(Station.WDUB, "L20");
-        addStations(Station.DUBL, "L30");
-
-        addStations(Station.WOAK, "M10");
-        addStations(Station.EMBR, "M16");
-        addStations(Station.MONT, "M20");
-        addStations(Station.POWL, "M30");
-        addStations(Station.CIVC, "M40");
-        addStations(Station._16TH, "M50");
-        addStations(Station._24TH, "M60");
-        addStations(Station.GLEN, "M70");
-        addStations(Station.BALB, "M80");
-        addStations(Station.DALY, "M90");
-
-        addStations(Station.ASHB, "R10");
-        addStations(Station.DBRK, "R20");
-        addStations(Station.NBRK, "R30");
-        addStations(Station.PLZA, "R40");
-        addStations(Station.DELN, "R50");
-        addStations(Station.RICH, "R60");
-
-        addStations(Station.WARM, "S20");
-        addStations(Station.MLPT, "S40");
-        addStations(Station.BERY, "S50");
-
-        addStations(Station.COLM, "W10");
-        addStations(Station.SSAN, "W20");
-        addStations(Station.SBRN, "W30");
-        addStations(Station.MLBR, "W40");
-        addStations(Station.SFIA, "Y10");
-    }
-
-    private static void addStations(Station station, String prefix) {
-        STATIONS_BY_STOP_PREFIX.put(prefix, station);
-    }
-
     private final Station origin;
     private final Station destination;
     private final List<Route> routes;
     private final boolean ignoreDirection;
-    private final Map<String, String> routeIdsByTripId;
-
-    public GtfsRealtimeContentHandler(Station origin, Station destination,
-                                      List<Route> routes,
-                                      boolean ignoreDirection) {
-        this(origin, destination, routes, ignoreDirection,
-                Collections.<String, String>emptyMap());
-    }
+    private final BartGtfsNetwork bartGtfsNetwork;
 
     public GtfsRealtimeContentHandler(Station origin, Station destination,
                                       List<Route> routes,
                                       boolean ignoreDirection,
-                                      Map<String, String> routeIdsByTripId) {
+                                      BartGtfsNetwork bartGtfsNetwork) {
+        if (bartGtfsNetwork == null) {
+            throw new IllegalArgumentException("A validated GTFS network is required");
+        }
         this.origin = origin;
         this.destination = destination;
         this.routes = routes;
         this.ignoreDirection = ignoreDirection;
-        this.routeIdsByTripId = routeIdsByTripId;
+        this.bartGtfsNetwork = bartGtfsNetwork;
     }
 
     public RealTimeDepartures getRealTimeDepartures(
             GtfsRealtime.FeedMessage feed) {
+        return getRealTimeDepartures(GtfsRealtimeFeedIndex.from(feed),
+                feedTime(feed));
+    }
+
+    public RealTimeDepartures getRealTimeDepartures(
+            GtfsRealtimeFeedIndex feedIndex, long feedTime) {
         RealTimeDepartures departures = new RealTimeDepartures(origin,
-                destination, routes);
-        long feedTime = feed.hasHeader() && feed.getHeader().hasTimestamp()
-                && feed.getHeader().getTimestamp() > 0
-                ? feed.getHeader().getTimestamp() * 1000L
-                : System.currentTimeMillis();
+                destination, routes, bartGtfsNetwork);
         departures.setTime(feedTime);
 
-        List<TripSnapshot> trips = parseTrips(feed, feedTime);
+        List<TripSnapshot> trips = parseTrips(feedIndex.getTripUpdateEntities(),
+                feedTime);
         for (TripSnapshot trip : trips) {
             addTripUpdate(departures, trip, trips);
         }
@@ -144,7 +77,15 @@ public class GtfsRealtimeContentHandler {
     public List<TripLeg> updateTripLegs(GtfsRealtime.FeedMessage feed,
                                         List<TripLeg> existingLegs,
                                         long feedTime) {
-        List<TripSnapshot> trips = parseTrips(feed, feedTime);
+        return updateTripLegs(GtfsRealtimeFeedIndex.from(feed), existingLegs,
+                feedTime);
+    }
+
+    public List<TripLeg> updateTripLegs(GtfsRealtimeFeedIndex feedIndex,
+                                        List<TripLeg> existingLegs,
+                                        long feedTime) {
+        List<TripSnapshot> trips = parseTrips(feedIndex.getTripUpdateEntities(),
+                feedTime);
         Map<String, TripSnapshot> tripsById = new HashMap<String, TripSnapshot>();
         for (TripSnapshot trip : trips) {
             if (trip.tripId != null && !trip.tripId.isEmpty()) {
@@ -164,10 +105,10 @@ public class GtfsRealtimeContentHandler {
         return updatedLegs;
     }
 
-    private List<TripSnapshot> parseTrips(GtfsRealtime.FeedMessage feed,
-                                          long feedTime) {
+    private List<TripSnapshot> parseTrips(
+            List<GtfsRealtime.FeedEntity> entities, long feedTime) {
         List<TripSnapshot> trips = new ArrayList<TripSnapshot>();
-        for (GtfsRealtime.FeedEntity entity : feed.getEntityList()) {
+        for (GtfsRealtime.FeedEntity entity : entities) {
             if (entity.hasTripUpdate()) {
                 TripSnapshot trip = parseTrip(entity.getTripUpdate(),
                         feedTime);
@@ -177,6 +118,13 @@ public class GtfsRealtimeContentHandler {
             }
         }
         return trips;
+    }
+
+    private static long feedTime(GtfsRealtime.FeedMessage feed) {
+        return feed.hasHeader() && feed.getHeader().hasTimestamp()
+                && feed.getHeader().getTimestamp() > 0
+                ? feed.getHeader().getTimestamp() * 1000L
+                : System.currentTimeMillis();
     }
 
     private TripSnapshot findMatchingTrip(TripLeg leg,
@@ -271,8 +219,11 @@ public class GtfsRealtimeContentHandler {
         }
         GtfsRealtime.TripDescriptor trip = tripUpdate.getTrip();
         String routeId = trip.hasRouteId() && !trip.getRouteId().isEmpty()
-                ? trip.getRouteId() : routeIdsByTripId.get(trip.getTripId());
-        Line line = lineForRouteId(routeId);
+                ? trip.getRouteId() : null;
+        if (routeId == null || routeId.isEmpty()) {
+            routeId = bartGtfsNetwork.routeIdForTrip(trip.getTripId());
+        }
+        Line line = bartGtfsNetwork.lineForRouteId(routeId);
         if (line == null) {
             return null;
         }
@@ -289,7 +240,7 @@ public class GtfsRealtimeContentHandler {
                 updateIndex++;
                 continue;
             }
-            Station station = stationForStopId(update.getStopId());
+            Station station = bartGtfsNetwork.stationForStopId(update.getStopId());
             long departure = departureTime(update);
             long arrival = arrivalTime(update);
             if (station != null && station != Station.SPCL
@@ -487,7 +438,7 @@ public class GtfsRealtimeContentHandler {
                 return route.getDirection();
             }
         }
-        return directionForRouteId(routeId);
+        return bartGtfsNetwork.directionForRouteId(routeId);
     }
 
     private static long departureTime(
@@ -555,15 +506,6 @@ public class GtfsRealtimeContentHandler {
         return update.hasStopSequence() ? update.getStopSequence() : listIndex;
     }
 
-    public static Station stationForStopId(String stopId) {
-        if (stopId == null) {
-            return null;
-        }
-        int separator = stopId.indexOf('-');
-        String prefix = separator >= 0 ? stopId.substring(0, separator) : stopId;
-        return STATIONS_BY_STOP_PREFIX.get(prefix.toUpperCase(Locale.ROOT));
-    }
-
     private static String platformForStopId(String stopId) {
         if (stopId == null) {
             return null;
@@ -572,40 +514,6 @@ public class GtfsRealtimeContentHandler {
         return separator >= 0 && separator + 1 < stopId.length()
                 ? stopId.substring(separator + 1)
                 : null;
-    }
-
-    private static Line lineForRouteId(String routeId) {
-        if (routeId == null) {
-            return null;
-        }
-        switch (routeId) {
-            case "1":
-            case "2":
-                return Line.YELLOW;
-            case "3":
-            case "4":
-                return Line.ORANGE;
-            case "5":
-            case "6":
-                return Line.GREEN;
-            case "7":
-            case "8":
-                return Line.RED;
-            case "11":
-            case "12":
-                return Line.BLUE;
-            default:
-                return null;
-        }
-    }
-
-    private static String directionForRouteId(String routeId) {
-        if ("1".equals(routeId) || "4".equals(routeId)
-                || "5".equals(routeId) || "7".equals(routeId)
-                || "11".equals(routeId)) {
-            return "s";
-        }
-        return "n";
     }
 
     private Line lineForDestination(Line line, Station trainDestination) {
