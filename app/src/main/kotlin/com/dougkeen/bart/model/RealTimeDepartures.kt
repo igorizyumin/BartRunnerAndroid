@@ -49,8 +49,8 @@ class RealTimeDepartures(
     fun getEarliestDirectDeparture(): Departure? =
         getDepartures()
             .asSequence()
-            .filter { !it.getRequiresTransfer() }
-            .minByOrNull { it.getMinutes() }
+            .filter { !it.requiresTransfer }
+            .minByOrNull { it.minutes }
 
     fun getEarliestTransferDeparture(): Departure? {
         val transferRoutes = TripPlanner.preferredTransferRoutes(
@@ -61,7 +61,7 @@ class RealTimeDepartures(
         return unfilteredDepartures
             .asSequence()
             .filter { findRouteForDeparture(it, transferRoutes)?.hasTransfer() == true }
-            .minByOrNull { it.getMinutes() }
+            .minByOrNull { it.minutes }
     }
 
     fun includeTransferRoutes() {
@@ -83,7 +83,7 @@ class RealTimeDepartures(
         }
         val normalizedDirection = direction.lowercase(Locale.ROOT)
         unfilteredDepartures.removeAll {
-            !it.getDirection().orEmpty().lowercase(Locale.ROOT)
+            !it.direction.orEmpty().lowercase(Locale.ROOT)
                 .startsWith(normalizedDirection)
         }
         rebuildFilteredDeparturesCollection()
@@ -101,12 +101,11 @@ class RealTimeDepartures(
 
     private fun addDepartureIfApplicable(departure: Departure) {
         val route = findRouteForDeparture(departure, routes) ?: return
-        departure.setRequiresTransfer(route.hasTransfer())
-        departure.setTransferScheduled(
-            Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine
+        val enriched = departure.copy(
+            requiresTransfer = route.hasTransfer(),
+            transferScheduled = Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine,
         )
-        getDepartures() += departure
-        departure.calculateEstimates(time)
+        getDepartures() += enriched
     }
 
     private fun findRouteForDeparture(
@@ -114,19 +113,19 @@ class RealTimeDepartures(
         routes: List<Route>
     ): Route? {
         val destination = Station.getByAbbreviation(
-            departure.getTrainDestinationAbbreviation()
+            departure.trainDestination?.abbreviation
         )
-        val line = departure.getLine() ?: return null
+        val line = departure.line ?: return null
         return routes.firstOrNull { route ->
             route.trainDestinationIsApplicable(destination, line)
                 && (route.destination == null
                 || route.destination!!.includedInLimitedService
-                || !departure.isLimited())
+                || !departure.limited)
         }
     }
 
     fun sortDepartures() {
-        getDepartures().sortBy { it.getMinutes() }
+        getDepartures().sortBy { it.minutes }
     }
 
     fun finalizeDeparturesList() {
@@ -134,17 +133,17 @@ class RealTimeDepartures(
             sortDepartures()
             return
         }
-        val hasDirectRoute = getDepartures().any { !it.getRequiresTransfer() }
+        val hasDirectRoute = getDepartures().any { !it.requiresTransfer }
         if (hasDirectRoute) {
             getDepartures().removeAll { departure ->
-                departure.getRequiresTransfer()
-                    && (!departure.isTransferScheduled()
-                    || (departure.getTrainDestination() != null
+                departure.requiresTransfer
+                    && (!departure.transferScheduled
+                    || (departure.trainDestination != null
                     && bartGtfsNetwork.isBetween(
-                    departure.getTrainDestination(),
+                    departure.trainDestination,
                     origin,
                     destination,
-                    departure.getLine()
+                    departure.line
                 )))
             }
         }

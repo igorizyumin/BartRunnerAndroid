@@ -2,6 +2,8 @@ package com.dougkeen.bart.data
 
 import android.content.Context
 import com.dougkeen.bart.model.Departure
+import com.dougkeen.bart.model.SystemTimeSource
+import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.platform.DepartureAlarmScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +14,10 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /** Owns the followed trip, its process-death cache, and its observable state. */
-class FollowedTripRepository(context: Context) : AutoCloseable {
+class FollowedTripRepository @JvmOverloads constructor(
+    context: Context,
+    private val timeSource: TimeSource = SystemTimeSource
+) : AutoCloseable {
     private companion object {
         const val STORAGE_FILE_NAME = "followed_trip.json"
     }
@@ -27,12 +32,12 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
         DepartureAlarmScheduler(applicationContext, it)
     }
 
-    private val _state = MutableStateFlow(FollowedTripState(followedDeparture))
+    private val _state = MutableStateFlow(toState(followedDeparture))
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
 
     fun getFollowedDeparture(): Departure? {
         val departure = synchronized(stateLock) { followedDeparture }
-        if (departure != null && departure.hasExpired()) {
+        if (departure != null && departure.hasExpired(timeSource.nowMillis())) {
             clearFollowedDeparture()
             return null
         }
@@ -53,7 +58,7 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
             alarmScheduler = departure?.let {
                 DepartureAlarmScheduler(applicationContext, it)
             }
-            _state.value = FollowedTripState(departure)
+            _state.value = toState(departure)
         }
 
         persist(departure)
@@ -85,6 +90,9 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
         if (second == null) return 1
         return first.compareTo(second)
     }
+
+    private fun toState(departure: Departure?): FollowedTripState =
+        FollowedTripState(departure)
 
     override fun close() {
         synchronized(stateLock) { alarmScheduler }?.close()

@@ -30,18 +30,19 @@ public class TripLegTest {
 
     @Test
     public void partialItineraryDoesNotBecomeFinalArrivalEstimate() {
-        Departure departure = new Departure();
-        departure.setOrigin(Station.CAST);
-        departure.setPassengerDestination(Station.PITT);
-        departure.setMinEstimate(1_000L);
-        departure.setMaxEstimate(2_000L);
-        departure.setTripLegs(Collections.singletonList(new TripLeg(
+        Departure departure = Departure.builder()
+                .setOrigin(Station.CAST)
+                .setPassengerDestination(Station.PITT)
+                .setMinEstimate(1_000L)
+                .setMaxEstimate(2_000L)
+                .setTripLegs(Collections.singletonList(new TripLeg(
                 Line.BLUE, Station.CAST, Station.BAYF, Station.DUBL,
-                "blue-1", 1_000L, 3_000L, Collections.emptyList())));
+                "blue-1", 1_000L, 3_000L, Collections.emptyList())))
+                .build();
 
         assertFalse(departure.hasAnyArrivalEstimate());
 
-        departure.setTripLegs(java.util.Arrays.asList(
+        departure = departure.withTripLegs(java.util.Arrays.asList(
                 new TripLeg(Line.BLUE, Station.CAST, Station.BAYF, Station.DUBL,
                         "blue-1", 1_000L, 3_000L, Collections.emptyList()),
                 new TripLeg(Line.YELLOW, Station.BAYF, Station.PITT, Station.ANTC,

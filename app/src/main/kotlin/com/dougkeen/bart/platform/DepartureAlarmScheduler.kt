@@ -9,13 +9,19 @@ import android.util.Log
 import com.dougkeen.bart.model.Constants
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Station
+import com.dougkeen.bart.model.SystemTimeSource
+import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.receivers.AlarmBroadcastReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Owns Android alarm scheduling for one followed departure. */
-class DepartureAlarmScheduler(context: Context, private val departure: Departure) :
+class DepartureAlarmScheduler @JvmOverloads constructor(
+    context: Context,
+    private val departure: Departure,
+    private val timeSource: TimeSource = SystemTimeSource
+) :
     AutoCloseable {
 
     private companion object {
@@ -40,8 +46,9 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
     val state: StateFlow<DepartureAlarmState> = _state.asStateFlow()
 
     init {
+        val nowMillis = timeSource.nowMillis()
         if (DepartureAlarmPolicy.shouldRestore(isPending,
-                departure.hasDeparted(), departure.hasExpired())) {
+                departure.hasDeparted(nowMillis), departure.hasExpired(nowMillis))) {
             schedule()
         } else if (isPending) {
             cancel()
@@ -56,7 +63,7 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
 
     val secondsUntilAlarm: Int
         get() = DepartureAlarmPolicy.secondsUntilAlarm(
-            departure.getMeanEstimate(), leadTimeMinutes, System.currentTimeMillis())
+            departure.getMeanEstimate(), leadTimeMinutes, timeSource.nowMillis())
 
     fun setUp(leadTimeMinutes: Int) {
         require(leadTimeMinutes >= 0) {
@@ -117,7 +124,7 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
 
         val alarmTime = alarmClockTime()
         val intent = alarmIntent()
-        if (alarmTime < System.currentTimeMillis()) {
+        if (alarmTime < timeSource.nowMillis()) {
             manager.set(AlarmManager.RTC_WAKEUP, alarmTime, intent)
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -160,14 +167,14 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
 
     private fun buildStateKey(departure: Departure): String = buildString {
         append("alarm.")
-        appendStation(this, departure.getOrigin())
-        appendStation(this, departure.getTrainDestination())
-        appendStation(this, departure.getPassengerDestination())
-        append('|').append(departure.getLine())
-        append('|').append(departure.getDirection())
-        append('|').append(departure.getPlatform())
-        append('|').append(departure.getMinEstimate())
-        append('|').append(departure.getMaxEstimate())
+        appendStation(this, departure.origin)
+        appendStation(this, departure.trainDestination)
+        appendStation(this, departure.passengerDestination)
+        append('|').append(departure.line)
+        append('|').append(departure.direction)
+        append('|').append(departure.platform)
+        append('|').append(departure.minEstimate)
+        append('|').append(departure.maxEstimate)
     }
 
     private fun appendStation(builder: StringBuilder, station: Station?) {

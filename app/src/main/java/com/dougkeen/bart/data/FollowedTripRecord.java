@@ -73,35 +73,34 @@ public final class FollowedTripRecord {
             throw new IllegalArgumentException(
                     "Unsupported followed trip format version: " + version);
         }
-        Departure departure = new Departure();
-        departure.setOrigin(station(origin));
-        departure.setTrainDestination(station(trainDestination));
-        departure.setPassengerDestination(station(passengerDestination));
-        departure.setLine(line == null ? null : Line.valueOf(line));
-        departure.setTrainDestinationColorHex(trainDestinationColorHex);
-        departure.setTrainDestinationColorText(trainDestinationColorText);
-        departure.setPlatform(platform);
-        departure.setDirection(direction);
-        departure.setBikeAllowed(bikeAllowed);
-        departure.setTrainLength(trainLength);
-        departure.setRequiresTransfer(requiresTransfer);
-        departure.setTransferScheduled(transferScheduled);
-        departure.setLimited(limited);
-        departure.setCanceled(canceled);
-        departure.setListedInETDs(listedInETDs);
-        departure.setMinutes(minutes);
-        departure.setMinEstimate(minEstimate);
-        departure.setMaxEstimate(maxEstimate);
-        departure.setArrivalTimeOverride(arrivalTimeOverride);
-        departure.setEstimatedTripTime(estimatedTripTime);
+        Departure.Builder builder = Departure.builder()
+                .setOrigin(station(origin))
+                .setTrainDestination(station(trainDestination))
+                .setPassengerDestination(station(passengerDestination))
+                .setLine(line == null ? null : Line.valueOf(line))
+                .setTrainDestinationColorHex(trainDestinationColorHex)
+                .setTrainDestinationColorText(trainDestinationColorText)
+                .setPlatform(platform)
+                .setDirection(direction)
+                .setBikeAllowed(bikeAllowed)
+                .setTrainLength(trainLength)
+                .setRequiresTransfer(requiresTransfer)
+                .setTransferScheduled(transferScheduled)
+                .setLimited(limited)
+                .setCanceled(canceled)
+                .setListedInETDs(listedInETDs)
+                .setMinutes(minutes)
+                .setMinEstimate(minEstimate)
+                .setMaxEstimate(maxEstimate)
+                .setArrivalTimeOverride(arrivalTimeOverride)
+                .setEstimatedTripTime(estimatedTripTime);
         List<TripLeg> legs = new ArrayList<>();
         if (tripLegs != null) {
             for (TripLegRecord leg : tripLegs) {
                 legs.add(leg.toTripLeg());
             }
         }
-        departure.setTripLegs(legs);
-        return departure;
+        return builder.setTripLegs(legs).build();
     }
 
     private static String abbreviation(Station station) {

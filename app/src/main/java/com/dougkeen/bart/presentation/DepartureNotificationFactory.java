@@ -9,8 +9,9 @@ import androidx.core.app.NotificationCompat;
 
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.activities.TripInProgressActivity;
-import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.model.SystemTimeSource;
+import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
@@ -23,7 +24,16 @@ public final class DepartureNotificationFactory {
 
     public static Notification create(Context context, Departure departure,
                                       DepartureAlarmScheduler alarmScheduler) {
-        final int halfMinutes = (departure.getMeanSecondsLeft() + 15) / 30;
+        return create(context, departure, alarmScheduler, SystemTimeSource.INSTANCE);
+    }
+
+    public static Notification create(Context context, Departure departure,
+                                      DepartureAlarmScheduler alarmScheduler,
+                                      TimeSource timeSource) {
+        final long nowMillis = timeSource.nowMillis();
+        final int secondsLeft = departure.getMeanSecondsLeft(
+                departure.getMinEstimate(), departure.getMaxEstimate(), nowMillis);
+        final int halfMinutes = (secondsLeft + 15) / 30;
         float minutes = halfMinutes / 2f;
         final String minutesText = (minutes < 1) ? "Less than one minute"
                 : (String.format(Locale.US, "~%.1f minute", minutes)
@@ -31,8 +41,8 @@ public final class DepartureNotificationFactory {
         final String directionText = departure.getOrigin().shortName + " to "
                 + departure.getPassengerDestination().shortName;
 
-        Intent cancelAlarmIntent = new Intent(context, BoardedDepartureService.class);
-        cancelAlarmIntent.putExtra("cancelNotifications", true);
+        Intent cancelAlarmIntent = new Intent(context, BoardedDepartureService.class)
+                .setAction(BoardedDepartureService.ACTION_CANCEL_ALARM);
 
         String channelId = context.getString(R.string.notification_channel_id);
         NotificationCompat.Builder notificationBuilder =
@@ -42,9 +52,8 @@ public final class DepartureNotificationFactory {
                         .setContentIntent(notificationIntent(context))
                         .setDeleteIntent(deleteNotificationIntent(context));
 
-        if (departure.getMeanSecondsLeft() > 0) {
-            notificationBuilder.setWhen(System.currentTimeMillis()
-                    + departure.getMeanSecondsLeft() * 1000L)
+        if (secondsLeft > 0) {
+            notificationBuilder.setWhen(nowMillis + secondsLeft * 1000L)
                     .setUsesChronometer(true);
         }
 
@@ -73,7 +82,7 @@ public final class DepartureNotificationFactory {
 
     private static PendingIntent deleteNotificationIntent(Context context) {
         Intent targetIntent = new Intent(context, BoardedDepartureService.class);
-        targetIntent.putExtra(Constants.CLEAR_DEPARTURE, true);
+        targetIntent.setAction(BoardedDepartureService.ACTION_CLEAR_DEPARTURE);
         return PendingIntent.getService(context, 0, targetIntent,
                 PendingIntent.FLAG_IMMUTABLE);
     }

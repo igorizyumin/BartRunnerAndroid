@@ -17,5 +17,4 @@ public class Constants {
     public static final String TAG = "BartRunner";
     public static final String ACTION_ALARM = "com.dougkeen.action.ALARM";
     public static final String STATION_PAIR_EXTRA = "StationPair";
-    public static final String CLEAR_DEPARTURE =  "com.dougkeen.action.clearBoardedDeparture";
 }

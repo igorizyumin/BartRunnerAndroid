@@ -15,33 +15,33 @@ import org.junit.Test;
 public class FollowedTripRecordTest {
     @Test
     public void jsonRoundTripRestoresFollowedTripState() throws Exception {
-        Departure original = new Departure();
-        original.setOrigin(Station.MONT);
-        original.setTrainDestination(Station.RICH);
-        original.setPassengerDestination(Station.DUBL);
-        original.setLine(Line.RED);
-        original.setTrainDestinationColorHex("#ff0000");
-        original.setTrainDestinationColorText("Red");
-        original.setPlatform("2");
-        original.setDirection("north");
-        original.setBikeAllowed(true);
-        original.setTrainLength("10");
-        original.setRequiresTransfer(true);
-        original.setTransferScheduled(true);
-        original.setLimited(true);
-        original.setCanceled(false);
-        original.setListedInETDs(false);
-        original.setMinutes(8);
-        original.setMinEstimate(1_000_000L);
-        original.setMaxEstimate(1_060_000L);
-        original.setArrivalTimeOverride(1_800_000L);
-        original.setEstimatedTripTime(600);
-
         TripLeg leg = new TripLeg(Line.RED, Station.MONT, Station.RICH,
                 Station.RICH, "red-1", 1_000_000L, 1_500_000L,
                 java.util.Collections.singletonList(
                         new TripStop(Station.EMBR, 1_200_000L, 1_210_000L)));
-        original.setTripLegs(java.util.Collections.singletonList(leg));
+        Departure original = Departure.builder()
+                .setOrigin(Station.MONT)
+                .setTrainDestination(Station.RICH)
+                .setPassengerDestination(Station.DUBL)
+                .setLine(Line.RED)
+                .setTrainDestinationColorHex("#ff0000")
+                .setTrainDestinationColorText("Red")
+                .setPlatform("2")
+                .setDirection("north")
+                .setBikeAllowed(true)
+                .setTrainLength("10")
+                .setRequiresTransfer(true)
+                .setTransferScheduled(true)
+                .setLimited(true)
+                .setCanceled(false)
+                .setListedInETDs(false)
+                .setMinutes(8)
+                .setMinEstimate(1_000_000L)
+                .setMaxEstimate(1_060_000L)
+                .setArrivalTimeOverride(1_800_000L)
+                .setEstimatedTripTime(600)
+                .setTripLegs(java.util.Collections.singletonList(leg))
+                .build();
 
         ObjectMapper mapper = new ObjectMapper();
         byte[] bytes = mapper.writeValueAsBytes(

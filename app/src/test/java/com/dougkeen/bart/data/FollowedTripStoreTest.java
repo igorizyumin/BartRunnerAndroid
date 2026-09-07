@@ -65,21 +65,20 @@ public class FollowedTripStoreTest {
     }
 
     private static Departure departure() {
-        Departure departure = new Departure();
-        departure.setOrigin(Station.MONT);
-        departure.setTrainDestination(Station.RICH);
-        departure.setPassengerDestination(Station.RICH);
-        departure.setLine(Line.RED);
-        departure.setDirection("n");
-        departure.setPlatform("2");
-        departure.setMinEstimate(4_000_000_000L);
-        departure.setMaxEstimate(4_000_060_000L);
-
         com.dougkeen.bart.model.TripLeg leg = new com.dougkeen.bart.model.TripLeg(
                 Line.RED, Station.MONT, Station.RICH, Station.RICH, "trip-1",
                 0L, 0L, java.util.Collections.emptyList());
-        departure.setTripLegs(java.util.Collections.singletonList(leg));
-        return departure;
+        return Departure.builder()
+                .setOrigin(Station.MONT)
+                .setTrainDestination(Station.RICH)
+                .setPassengerDestination(Station.RICH)
+                .setLine(Line.RED)
+                .setDirection("n")
+                .setPlatform("2")
+                .setMinEstimate(4_000_000_000L)
+                .setMaxEstimate(4_000_060_000L)
+                .setTripLegs(java.util.Collections.singletonList(leg))
+                .build();
     }
 
     private static void delete(File file) {

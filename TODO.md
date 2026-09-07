@@ -1,58 +1,116 @@
-# BartRunner remediation backlog
+# BartRunner modernization backlog
 
-This backlog turns the architecture audit into incremental, verifiable work.
+This backlog is intentionally forward-looking. Existing feed, GTFS, routing,
+persistence, alarm, lint, and test improvements are treated as the baseline.
+The remaining work should simplify the architecture before introducing new UI
+or dependency frameworks.
 
-## P0 — correctness and release safety
+## Execution order
 
-- [x] Make lint a real gate (`abortOnError = true`) after fixing the existing lint errors.
-- [x] Remove the foreground-service polling leak after shutdown.
-- [x] Add bounded OkHttp call/read/write timeouts.
-- [x] Define independent failure/staleness handling for trip updates and alerts.
-- [x] Fix the favorites restore/update race.
-- [x] Persist and reconcile alarm lead time and pending state across process death.
-- [x] Replace custom `Observable` usage with lifecycle-aware `StateFlow`/`SharedFlow`.
-- [x] Test alarm timing/state policy, service stop/poll policy, and followed-trip persistence.
-- [ ] Add an instrumented activity recreation test for the followed-trip screen.
+Each milestone should remain independently buildable and should delete old
+plumbing as soon as its replacement is working.
 
-## P1 — architecture and maintainability
+### Milestone 1 — simplify the boarded-departure service
 
-- [x] Make the route and trip-leg models immutable.
-- [ ] Separate mutable realtime aggregation state from immutable transit values.
-- [ ] Move transit subscriptions and presentation decisions out of RecyclerView adapters.
-- [x] Centralize transit polling and index each feed once for all route queries.
-- [x] Extract trip planning into a platform-independent `TripPlanner` and add graph-wide routing invariants.
-- [x] Define an immutable static-GTFS `NetworkCatalog` for stops, route patterns, service calendars, and route metadata.
-- [x] Use catalog-backed route patterns for validated production direct and transfer planning.
-- [x] Use catalog-backed stop IDs and route names for validated production realtime resolution.
-- [x] Remove the legacy hardcoded topology/stop resolver; missing catalog data is now a hard failure.
-- [x] Parse static GTFS transfer edges into the immutable catalog.
-- [x] Use static transfer edges for route-specific transfer eligibility.
-- [x] Apply GTFS minimum transfer times during departure pairing.
-- [ ] Keep app-specific station identity, display aliases, routing exceptions, transfer preferences, and timing tolerances outside GTFS.
-- [x] Add fixture-based GTFS parser tests and structural feed-drift validation.
-- [x] Validate the catalog against BART-specific station/route invariants before making it authoritative.
-- [x] Check in an official GTFS snapshot and validate daytime/nighttime cross-line routing against it.
-- [x] Remove the static application-context accessor and inject dependencies at boundaries.
-- [x] Move trip planning into platform-independent Kotlin.
-- [x] Move the core transit models, GTFS adapter, routing, feed values, and pure projections into Kotlin.
-- [x] Move the transit repository, realtime feed adapters, and static GTFS loader into Kotlin.
-- [x] Replace durable `Parcel.marshall()` storage with a versioned persistence format.
-- [ ] Replace manual adapter merging with `ListAdapter`/`DiffUtil`.
+- [x] Delete `BoardedDepartureServicePolicy` and its dedicated test. Keep the
+  stop and polling decisions as private service logic, tested through service
+  behavior.
+- [x] Fold `BoardedDepartureMonitor` into `BoardedDepartureService`; it is a
+  one-consumer subscription wrapper with no independent domain responsibility.
+- [x] Replace stringly-typed service commands such as
+  `cancelNotifications` and `clearDeparture` with explicit intent actions.
+- [x] Rewrite the service in Kotlin around a service-owned coroutine scope.
+  Remove the `HandlerThread`, `WeakReference`, `Message`, and duplicated
+  handler scheduling paths.
+- [x] Keep the foreground service for near-real-time trip notifications; do
+  not replace this behavior with WorkManager.
+- [x] Add service-level regression coverage for startup, shutdown, followed
+  trip disappearance, departure, polling cadence, and notification updates.
 
-## P2 — modernization and cleanup
+### Milestone 2 — establish one immutable departure model
 
-- [ ] Upgrade dependencies through a version catalog and compatibility checks.
-- [ ] Raise the Java/Kotlin compilation baseline to Java 17 when validated.
-- [ ] Replace legacy date/time and string formatting with `java.time` and resources.
-- [ ] Review alarm UX against current background-launch and notification rules.
-- [x] Enable and verify R8 for release builds.
-- [ ] Replace the obsolete Travis configuration with CI that runs build, lint, and tests.
-- [x] Remove unused legacy resources and the unused drag-sort-listview project.
-- [ ] Decide whether to modernize the XML UI incrementally or adopt Compose per screen.
+- [x] Make `Departure` the immutable Kotlin domain model, preferably a
+  `data class` with immutable trip-leg collections.
+- [x] Move realtime merge and estimate reconciliation into pure model
+  functions that return new departures.
+- [x] Remove the parallel `DepartureSnapshot` conversion layer once callers
+  use the immutable model directly.
+- [x] Remove `DepartureRealtimeState` when no caller needs a mutable
+  aggregation holder.
+- [x] Move selection, followed-trip, alarm, and other screen state outside the
+  departure model.
+- [x] Put stable departure identity on the domain model and remove the
+  separate `DepartureIdentity` helper.
+- [x] Finish injecting `TimeSource` anywhere domain or presentation code still
+  calls the system clock directly.
+- [x] Preserve regression coverage for snapshot replacement, estimate merging,
+  trip-leg updates, identity matching, and followed-trip updates while this
+  migration is performed.
+
+### Milestone 3 — use one observation mechanism
+
+- [ ] Replace `TransitRepository.Subscription`, projection listener interfaces,
+  and manual callback dispatch with a coroutine `Flow`/`StateFlow` API.
+- [ ] Keep feed polling centralized in `TransitRepository`; consumers should
+  derive route, alert, and trip-progress state from the shared feed stream.
+- [ ] Remove ViewModel `start()`/`stop()` lifecycle plumbing where
+  `viewModelScope` and lifecycle collection can own the subscription.
+- [ ] Remove the custom favorites lifecycle bridge (`FavoritesObserver` and
+  `FavoritesRepository.observe`) in favor of direct `StateFlow` collection.
+- [ ] Verify that recreation and stopping a screen do not duplicate
+  subscriptions or leave callbacks, timers, or background work running.
+
+### Milestone 4 — make screen ViewModels the state boundary
+
+- [ ] Add one immutable `RoutesUiState` containing favorites, first departures,
+  alerts, loading, and error state.
+- [ ] Convert `RoutesListActivity` into a renderer and action dispatcher; move
+  fare refresh, alert formatting decisions, and route state coordination out
+  of the Activity.
+- [ ] Make departures and trip-progress ViewModels expose immutable UI state
+  rather than Java listener callbacks and mutable `Departure` instances.
+- [ ] Move alarm, follow-trip, delete-trip, and service-command decisions out
+  of Activities and into explicit ViewModel/repository actions.
+- [ ] Keep the XML layouts while these state boundaries are migrated.
+- [ ] Defer Compose until all primary screens use the same state and event
+  model; do not introduce Compose as a parallel UI architecture.
+
+### Milestone 5 — remove object-graph transport and global UI plumbing
+
+- [ ] Stop passing whole `Departure` objects between Activities and the
+  service. Pass station IDs, trip/departure identity, and screen mode, then
+  rehydrate current state from the repository.
+- [ ] Remove `DepartureParcel`, `TripLegParcel`, and `TripStopParcel` after
+  their callers are migrated.
+- [ ] Replace `StationPairParcel` with small primitive route arguments or a
+  single route-arguments type at the Activity boundary.
+- [ ] Replace the global `Ticker` singleton and view-owned tick callbacks with
+  lifecycle-bound timer state collected only while a screen is visible.
+- [ ] Remove obsolete adapter compatibility methods and make adapters consume
+  immutable UI items with `ListAdapter`/`DiffUtil`.
+
+## Platform and release modernization
+
+- [ ] Replace `Date`, `Calendar`, `SimpleDateFormat`, and direct date-string
+  construction with `java.time` and localized Android resources.
+- [ ] Move all user-facing strings out of Java/Kotlin code and into resources,
+  including notification text, adapter text, dialogs, and error messages.
+- [ ] Review exact-alarm, notification, foreground-service, and background
+  launch behavior against current Android platform rules.
+- [ ] Add dependency version management through a version catalog and define
+  compatibility checks for AGP, Gradle, Kotlin, and AndroidX.
+- [ ] Validate and then raise the Java/Kotlin compilation baseline to Java 17.
+- [ ] Replace Travis CI with CI covering unit tests, instrumentation tests,
+  lint, debug builds, and release/R8 builds.
+- [ ] Keep the project single-module unless a real ownership or build-time
+  boundary emerges.
 
 ## Working agreement
 
 - Keep each change small and independently buildable.
-- Add regression coverage before changing feed, alarm, or persistence behavior.
+- Add regression coverage before changing feed, alarm, service, or persistence
+  behavior.
+- Prefer deleting a layer over adding an adapter or migration layer.
 - Do not mix generated Gradle state with application changes.
-- Minimize cruft.  Do not add migration layers.  Assume any user preferences are disposable.
+- Treat user preferences as disposable unless a migration is specifically
+  required.

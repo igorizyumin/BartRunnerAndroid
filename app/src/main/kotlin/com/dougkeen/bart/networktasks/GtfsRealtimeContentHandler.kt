@@ -7,6 +7,8 @@ import com.dougkeen.bart.model.Route
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.TripLeg
 import com.dougkeen.bart.model.TripStop
+import com.dougkeen.bart.model.SystemTimeSource
+import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.routing.TransferConnectionValidator
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
@@ -19,12 +21,13 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** Converts BART's GTFS-RT trip updates into the app's departure model. */
-class GtfsRealtimeContentHandler(
+class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private val origin: Station,
     private val destination: Station?,
     private val routes: List<Route>,
     private val ignoreDirection: Boolean,
-    private val bartGtfsNetwork: BartGtfsNetwork
+    private val bartGtfsNetwork: BartGtfsNetwork,
+    private val timeSource: TimeSource = SystemTimeSource,
 ) {
     init {
         requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
@@ -309,33 +312,34 @@ class GtfsRealtimeContentHandler(
         }
         val route = findRoute(trip) ?: return
 
-        val departure = Departure()
-        departure.setOrigin(origin)
-        departure.setTrainDestination(trip.trainDestination)
-        departure.setLine(lineForDestination(trip.line, trip.trainDestination))
-        departure.setDirection(trip.direction)
-        departure.setPlatform(trip.platform)
-        departure.setLimited(false)
-        departure.setCanceled(trip.canceled)
-        departure.setTrainDestinationColorText(departure.getLine()!!.name)
-        departure.setTrainDestinationColorHex(colorForLine(departure.getLine()!!))
-
         val minutes = maxOf(0L, (originPoint.departureTime - departures.getTime()) / 60000L).toInt()
-        departure.setMinutes(minutes)
-        departures.addDeparture(departure)
-        departure.setMinEstimate(originPoint.departureTime - ESTIMATE_TOLERANCE_MILLIS)
-        departure.setMaxEstimate(originPoint.departureTime + ESTIMATE_TOLERANCE_MILLIS)
-
         val legs = buildTripLegs(route, trip, allTrips)
-        if (legs.isNotEmpty()) {
-            departure.setTripLegs(legs)
-            val finalLeg = legs.last()
-            if (finalLeg.hasArrivalTime()) {
-                departure.setEstimatedTripTime(
-                    (finalLeg.arrivalTime - originPoint.departureTime).toInt()
-                )
+        val line = lineForDestination(trip.line, trip.trainDestination)
+        val departure = Departure.builder()
+            .setOrigin(origin)
+            .setTrainDestination(trip.trainDestination)
+            .setLine(line)
+            .setDirection(trip.direction)
+            .setPlatform(trip.platform)
+            .setLimited(false)
+            .setCanceled(trip.canceled)
+            .setTrainDestinationColorText(line.name)
+            .setTrainDestinationColorHex(colorForLine(line))
+            .setMinutes(minutes)
+            .setMinEstimate(originPoint.departureTime - ESTIMATE_TOLERANCE_MILLIS)
+            .setMaxEstimate(originPoint.departureTime + ESTIMATE_TOLERANCE_MILLIS)
+            .setTripLegs(legs)
+            .let { builder ->
+                if (legs.isNotEmpty() && legs.last().hasArrivalTime()) {
+                    builder.setEstimatedTripTime(
+                        (legs.last().arrivalTime - originPoint.departureTime).toInt()
+                    )
+                } else {
+                    builder
+                }
             }
-        }
+            .build()
+        departures.addDeparture(departure)
     }
 
     private fun parseTrip(
@@ -602,21 +606,21 @@ class GtfsRealtimeContentHandler(
             line
         }
 
+    private fun feedTime(feed: GtfsRealtime.FeedMessage): Long =
+        if (feed.hasHeader() && feed.getHeader().hasTimestamp()
+            && feed.getHeader().getTimestamp() > 0
+        ) {
+            feed.getHeader().getTimestamp() * 1000L
+        } else {
+            timeSource.nowMillis()
+        }
+
     companion object {
         private const val ESTIMATE_TOLERANCE_MILLIS = 30000L
         private const val PITT_TO_PCTR_MIN_MILLIS = 5 * 60 * 1000L
         private const val PITT_TO_PCTR_TYPICAL_MILLIS = 12 * 60 * 1000L
         private const val PITT_TO_PCTR_MAX_MILLIS = 20 * 60 * 1000L
         private val PACIFIC_TIME = TimeZone.getTimeZone("America/Los_Angeles")
-
-        private fun feedTime(feed: GtfsRealtime.FeedMessage): Long =
-            if (feed.hasHeader() && feed.getHeader().hasTimestamp()
-                && feed.getHeader().getTimestamp() > 0
-            ) {
-                feed.getHeader().getTimestamp() * 1000L
-            } else {
-                System.currentTimeMillis()
-            }
 
         private fun departureTime(update: GtfsRealtime.TripUpdate.StopTimeUpdate): Long {
             if (update.hasDeparture() && update.getDeparture().hasTime()) {

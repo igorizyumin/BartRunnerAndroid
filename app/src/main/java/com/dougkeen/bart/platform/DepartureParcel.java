@@ -73,28 +73,28 @@ public final class DepartureParcel implements Parcelable {
         if (in.readInt() != FORMAT_MAGIC || in.readInt() != FORMAT_VERSION) {
             throw new IllegalArgumentException("Unsupported departure parcel format");
         }
-        Departure departure = new Departure();
-        departure.setOrigin(readStation(in));
-        departure.setTrainDestination(readStation(in));
-        departure.setPassengerDestination(readStation(in));
-        departure.setTrainDestinationColorHex(in.readString());
-        departure.setTrainDestinationColorText(in.readString());
-        departure.setPlatform(in.readString());
-        departure.setDirection(in.readString());
-        departure.setBikeAllowed(in.readByte() != 0);
-        departure.setTrainLength(in.readString());
-        departure.setRequiresTransfer(in.readByte() != 0);
-        departure.setTransferScheduled(in.readByte() != 0);
-        departure.setLimited(in.readByte() != 0);
-        departure.setCanceled(in.readByte() != 0);
-        departure.setListedInETDs(in.readByte() != 0);
-        departure.setMinutes(in.readInt());
-        departure.setMinEstimate(in.readLong());
-        departure.setMaxEstimate(in.readLong());
-        departure.setArrivalTimeOverride(in.readLong());
-        departure.setEstimatedTripTime(in.readInt());
+        Departure.Builder builder = Departure.builder()
+                .setOrigin(readStation(in))
+                .setTrainDestination(readStation(in))
+                .setPassengerDestination(readStation(in))
+                .setTrainDestinationColorHex(in.readString())
+                .setTrainDestinationColorText(in.readString())
+                .setPlatform(in.readString())
+                .setDirection(in.readString())
+                .setBikeAllowed(in.readByte() != 0)
+                .setTrainLength(in.readString())
+                .setRequiresTransfer(in.readByte() != 0)
+                .setTransferScheduled(in.readByte() != 0)
+                .setLimited(in.readByte() != 0)
+                .setCanceled(in.readByte() != 0)
+                .setListedInETDs(in.readByte() != 0)
+                .setMinutes(in.readInt())
+                .setMinEstimate(in.readLong())
+                .setMaxEstimate(in.readLong())
+                .setArrivalTimeOverride(in.readLong())
+                .setEstimatedTripTime(in.readInt());
         int lineOrdinal = in.readInt();
-        departure.setLine(lineOrdinal < 0 ? null : Line.values()[lineOrdinal]);
+        builder.setLine(lineOrdinal < 0 ? null : Line.values()[lineOrdinal]);
         ArrayList<TripLegParcel> legParcels = in.createTypedArrayList(
                 TripLegParcel.CREATOR);
         List<TripLeg> legs = new ArrayList<>();
@@ -103,8 +103,7 @@ public final class DepartureParcel implements Parcelable {
                 legs.add(legParcel.getTripLeg());
             }
         }
-        departure.setTripLegs(legs);
-        return departure;
+        return builder.setTripLegs(legs).build();
     }
 
     private static void writeStation(Parcel dest, Station station) {

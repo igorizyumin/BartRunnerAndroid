@@ -3,6 +3,7 @@ package com.dougkeen.bart.presentation;
 import android.content.Context;
 
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.model.SystemTimeSource;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.R;
 
@@ -72,10 +73,17 @@ public final class DepartureTextFormatter {
 
     public static String estimatedArrivalMinutesLeft(Context context,
                                                       Departure departure) {
+        return estimatedArrivalMinutesLeft(context, departure,
+                SystemTimeSource.INSTANCE.nowMillis());
+    }
+
+    public static String estimatedArrivalMinutesLeft(Context context,
+                                                      Departure departure,
+                                                      long nowMillis) {
         if (!departure.hasAnyArrivalEstimate()) {
             return "Estimated arrival unknown";
         }
-        long minutesLeft = departure.getEstimatedArrivalMinutesLeft();
+        long minutesLeft = departure.getEstimatedArrivalMinutesLeft(nowMillis);
         if (departure.isCanceled()) {
             return "";
         } else if (minutesLeft < 0) {
@@ -128,11 +136,17 @@ public final class DepartureTextFormatter {
     }
 
     public static String countdown(Context context, Departure departure) {
+        return countdown(context, departure, SystemTimeSource.INSTANCE.nowMillis());
+    }
+
+    public static String countdown(Context context, Departure departure,
+                                   long nowMillis) {
         StringBuilder builder = new StringBuilder();
-        int secondsLeft = departure.getMeanSecondsLeft();
+        int secondsLeft = departure.getMeanSecondsLeft(
+                departure.getMinEstimate(), departure.getMaxEstimate(), nowMillis);
         if (departure.isCanceled()) {
             return "Canceled";
-        } else if (departure.hasDeparted()) {
+        } else if (departure.hasDeparted(nowMillis)) {
             if (departure.getOrigin() != null
                     && departure.getOrigin().longStationLinger
                     && departure.beganAsDeparted()) {

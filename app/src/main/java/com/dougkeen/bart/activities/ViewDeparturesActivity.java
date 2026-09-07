@@ -1,7 +1,5 @@
 package com.dougkeen.bart.activities;
 
-import java.util.List;
-
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -12,16 +10,15 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Parcelable;
 import android.os.Vibrator;
 import android.os.VibrationEffect;
 import android.os.VibratorManager;
 import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
 import androidx.core.content.IntentCompat;
 import androidx.core.os.BundleCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.text.format.DateFormat;
@@ -37,15 +34,13 @@ import android.widget.Toast;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.backend.RouteDepartureProjection;
-import com.dougkeen.bart.backend.TransitProjectionListener;
-import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.controls.Ticker;
 import com.dougkeen.bart.data.DepartureArrayAdapter;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
-import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.StationPair;
+import com.dougkeen.bart.model.SystemTimeSource;
+import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.platform.DepartureParcel;
 import com.dougkeen.bart.platform.StationPairParcel;
 import com.dougkeen.bart.services.BoardedDepartureService;
@@ -53,14 +48,27 @@ import com.dougkeen.util.Assert;
 import com.dougkeen.util.WakeLocker;
 
 public class ViewDeparturesActivity extends AbstractViewActivity implements
-        TransitProjectionListener<RealTimeDepartures>,
         DepartureArrayAdapter.Listener {
+
+    private static final String STATE_STATION_PAIR = "stationPair";
+    private static final String STATE_SELECTED_DEPARTURE_ID =
+            "selectedDepartureIdentity";
+    private static final String STATE_HAS_DEPARTURE_ACTION_MODE =
+            "hasDepartureActionMode";
 
     private StationPair mStationPair;
 
+    private final TimeSource mTimeSource = SystemTimeSource.INSTANCE;
+
     private Departure mSelectedDeparture;
 
+    private String mSelectedDepartureIdentity;
+
+    private boolean mRestoreDepartureActionMode;
+
     private DepartureArrayAdapter mDeparturesAdapter;
+
+    private DeparturesViewModel mDeparturesViewModel;
 
     private TextView mEmptyView;
     private ProgressBar mProgress;
@@ -68,9 +76,16 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private ActionMode mActionMode;
 
-    private TransitRepository.Subscription mTransitSubscription;
-
     private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
+
+    private final Runnable mClearKeepScreenOnRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isFinishing()) {
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            }
+        }
+    };
 
     private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1001;
 
@@ -111,11 +126,13 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         });
         mDeparturesAdapter = new DepartureArrayAdapter(this, this);
         setListAdapter(mDeparturesAdapter);
+        mDeparturesViewModel = new ViewModelProvider(this)
+                .get(DeparturesViewModel.class);
 
         if (savedInstanceState != null
-                && savedInstanceState.containsKey("stationPair")) {
+                && savedInstanceState.containsKey(STATE_STATION_PAIR)) {
             StationPairParcel stationPairParcel = BundleCompat.getParcelable(
-                    savedInstanceState, "stationPair", StationPairParcel.class);
+                    savedInstanceState, STATE_STATION_PAIR, StationPairParcel.class);
             mStationPair = stationPairParcel == null
                     ? null : stationPairParcel.getStationPair();
             setListTitle();
@@ -128,24 +145,10 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
 
         if (savedInstanceState != null) {
-            Parcelable[] departuresArray = savedInstanceState.getParcelableArray("departures");
-            if (departuresArray != null) {
-                for (Parcelable departureParcel : departuresArray) {
-                    mDeparturesAdapter.add(((DepartureParcel) departureParcel)
-                            .getDeparture());
-                }
-                mDeparturesAdapter.notifyDataSetChanged();
-            }
-            if (savedInstanceState.containsKey("selectedDeparture")) {
-                DepartureParcel departureParcel = BundleCompat.getParcelable(
-                        savedInstanceState, "selectedDeparture", DepartureParcel.class);
-                setSelectedDeparture(departureParcel == null
-                        ? null : departureParcel.getDeparture());
-            }
-            if (savedInstanceState.getBoolean("hasDepartureActionMode")
-                    && mSelectedDeparture != null) {
-                startDepartureActionMode();
-            }
+            mSelectedDepartureIdentity = savedInstanceState.getString(
+                    STATE_SELECTED_DEPARTURE_ID);
+            mRestoreDepartureActionMode = savedInstanceState.getBoolean(
+                    STATE_HAS_DEPARTURE_ACTION_MODE);
         }
 
         updateEmptyState(mDeparturesAdapter.getCount() == 0);
@@ -180,14 +183,10 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     }
 
     private void setSelectedDeparture(Departure departure) {
-        if (mSelectedDeparture != null && !mSelectedDeparture.equals(departure)) {
-            mSelectedDeparture.setSelected(false);
-        }
-        if (departure != null) {
-            departure.setSelected(true);
-        }
         mSelectedDeparture = departure;
-        mDeparturesAdapter.notifyDataSetChanged();
+        mSelectedDepartureIdentity = departure == null
+                ? null : departure.getIdentity();
+        mDeparturesAdapter.setSelectedDepartureIdentity(mSelectedDepartureIdentity);
     }
 
     private void soundTheAlarm() {
@@ -300,10 +299,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     @Override
     protected void onStop() {
         super.onStop();
-        if (mTransitSubscription != null) {
-            mTransitSubscription.close();
-            mTransitSubscription = null;
-        }
+        mDeparturesViewModel.stop();
+        mHandler.removeCallbacks(mClearKeepScreenOnRunnable);
         Ticker.getInstance().stopTicking(this);
         WakeLocker.release();
     }
@@ -316,28 +313,23 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
              * A station-only lookup has a null destination and is still a
              * valid state that must survive activity recreation.
              */
-            DepartureParcel[] departures = new DepartureParcel[mDeparturesAdapter
-                    .getCount()];
-            for (int i = mDeparturesAdapter.getCount() - 1; i >= 0; i--) {
-                departures[i] = new DepartureParcel(mDeparturesAdapter.getItem(i));
+            if (mSelectedDepartureIdentity != null) {
+                outState.putString(STATE_SELECTED_DEPARTURE_ID,
+                        mSelectedDepartureIdentity);
             }
-            outState.putParcelableArray("departures", departures);
-            if (mSelectedDeparture != null) {
-                outState.putParcelable("selectedDeparture",
-                        new DepartureParcel(mSelectedDeparture));
-            }
-            outState.putBoolean("hasDepartureActionMode",
+            outState.putBoolean(STATE_HAS_DEPARTURE_ACTION_MODE,
                     isDepartureActionModeActive());
-            outState.putParcelable("stationPair", new StationPairParcel(mStationPair));
+            outState.putParcelable(STATE_STATION_PAIR,
+                    new StationPairParcel(mStationPair));
         }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        mTransitSubscription = ((BartRunnerApplication) getApplication())
-                .getTransitRepository().subscribe(
-                        new RouteDepartureProjection(mStationPair, this), this);
+        mDeparturesViewModel.start(
+                ((BartRunnerApplication) getApplication()).getTransitRepository(),
+                getApplicationContext(), mStationPair, this::renderState);
         Ticker.getInstance().startTicking(this);
     }
 
@@ -347,15 +339,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         if (hasFocus) {
             getWindow()
                     .addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            mHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (getWindow() != null)
-                        getWindow().clearFlags(
-                                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-                }
-            }, 10 * 60 * 1000);
+            mHandler.removeCallbacks(mClearKeepScreenOnRunnable);
+            mHandler.postDelayed(mClearKeepScreenOnRunnable, 10 * 60 * 1000);
             Ticker.getInstance().startTicking(this);
         }
     }
@@ -398,7 +383,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     Intent.ACTION_VIEW,
                     Uri.parse("https://m.bart.gov/schedules/qp_results.aspx?type=departure&date=today&time="
                             + DateFormat.format("h:mmaa",
-                            System.currentTimeMillis())
+                            mTimeSource.nowMillis())
                             + "&orig="
                             + mStationPair.getOrigin().abbreviation
                             + "&dest="
@@ -414,15 +399,17 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private void followDeparture(Departure selectedDeparture,
                                  boolean openTripScreen) {
-        prepareDepartureForTrip(selectedDeparture);
+        selectedDeparture = prepareDepartureForTrip(selectedDeparture);
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
         application.getFollowedTripRepository().setFollowedDeparture(selectedDeparture);
         requestNotificationPermissionIfNeeded();
 
         // Start the notification service
         final Intent intent = new Intent(ViewDeparturesActivity.this,
-                BoardedDepartureService.class);
-        intent.putExtra("departure", new DepartureParcel(selectedDeparture));
+                BoardedDepartureService.class)
+                .setAction(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE);
+        intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
+                new DepartureParcel(selectedDeparture));
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
@@ -435,14 +422,15 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     }
 
     private void openTripSchedule(Departure departure) {
-        prepareDepartureForTrip(departure);
+        departure = prepareDepartureForTrip(departure);
         Intent intent = new Intent(this, TripInProgressActivity.class);
-        intent.putExtra("departure", new DepartureParcel(departure));
+        intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
+                new DepartureParcel(departure));
         startActivity(intent);
     }
 
-    private void prepareDepartureForTrip(Departure departure) {
-        departure.setPassengerDestination(mStationPair.getDestination() != null
+    private Departure prepareDepartureForTrip(Departure departure) {
+        return departure.withPassengerDestination(mStationPair.getDestination() != null
                 ? mStationPair.getDestination()
                 : departure.getTrainDestination());
     }
@@ -503,84 +491,75 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     }
 
-    @Override
-    public void onData(RealTimeDepartures result,
-                       com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-        onETDChanged(result.getDepartures());
-    }
-
-    private void onETDChanged(final List<Departure> departures) {
+    private void renderState(final DeparturesViewModel.State state) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (departures.isEmpty()) {
-                    final TextView textView = mEmptyView;
-                    textView.setText(R.string.no_data_message);
-                    updateEmptyState(true);
-                    mProgress.setVisibility(View.GONE);
-                    Linkify.addLinks(textView, Linkify.WEB_URLS);
-                } else {
-                    updateEmptyState(false);
-                    // TODO: Figure out why Ticker occasionally stops
-                    Ticker.getInstance().startTicking(
-                            ViewDeparturesActivity.this);
-
-                    // Merge lists
-                    if (mDeparturesAdapter.getCount() > 0) {
-                        int adapterIndex = -1;
-                        for (Departure departure : departures) {
-                            adapterIndex++;
-                            Departure existingDeparture = null;
-                            if (adapterIndex < mDeparturesAdapter.getCount()) {
-                                existingDeparture = mDeparturesAdapter
-                                        .getItem(adapterIndex);
-                            }
-                            while (existingDeparture != null
-                                    && !departure.equals(existingDeparture)) {
-                                mDeparturesAdapter.remove(existingDeparture);
-                                if (adapterIndex < mDeparturesAdapter
-                                        .getCount()) {
-                                    existingDeparture = mDeparturesAdapter
-                                            .getItem(adapterIndex);
-                                } else {
-                                    existingDeparture = null;
-                                }
-                            }
-                            if (existingDeparture != null) {
-                                existingDeparture.mergeEstimate(departure);
-                            } else {
-                                mDeparturesAdapter.add(departure);
-                            }
-                        }
-                    } else {
-                        final DepartureArrayAdapter listAdapter = getListAdapter();
-                        listAdapter.clear();
-                        for (Departure departure : departures) {
-                            listAdapter.add(departure);
-                        }
-                    }
-
-                    getListAdapter().notifyDataSetChanged();
+                switch (state.getStatus()) {
+                    case LOADING:
+                        mEmptyView.setText(R.string.departure_wait_message);
+                        updateEmptyState(true);
+                        mProgress.setVisibility(View.VISIBLE);
+                        break;
+                    case CONTENT:
+                        updateEmptyState(false);
+                        mProgress.setVisibility(View.GONE);
+                        Ticker.getInstance().startTicking(
+                                ViewDeparturesActivity.this);
+                        mDeparturesAdapter.submitList(state.getDepartures(),
+                                ViewDeparturesActivity.this::restoreSelectedDeparture);
+                        break;
+                    case EMPTY:
+                        mDeparturesAdapter.submitList(state.getDepartures(),
+                                ViewDeparturesActivity.this::restoreSelectedDeparture);
+                        mEmptyView.setText(R.string.no_data_message);
+                        updateEmptyState(true);
+                        mProgress.setVisibility(View.GONE);
+                        Linkify.addLinks(mEmptyView, Linkify.WEB_URLS);
+                        break;
+                    case ERROR:
+                        mEmptyView.setText(R.string.could_not_connect);
+                        updateEmptyState(true);
+                        mProgress.setVisibility(View.GONE);
+                        break;
+                    default:
+                        throw new IllegalStateException("Unknown departures state");
                 }
-            }
-        });
-    }
-
-    @Override
-    public void onError(final Exception exception,
-                        com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-        final String errorMessage = getString(R.string.could_not_connect);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mEmptyView.setText(errorMessage);
-                updateEmptyState(true);
             }
         });
     }
 
     private boolean isDepartureActionModeActive() {
         return mActionMode != null;
+    }
+
+    private void restoreSelectedDeparture() {
+        if (mSelectedDepartureIdentity == null) {
+            return;
+        }
+
+        for (int index = 0; index < mDeparturesAdapter.getCount(); index++) {
+            Departure departure = mDeparturesAdapter.getItem(index);
+            if (mSelectedDepartureIdentity.equals(departure.getIdentity())) {
+                if (mSelectedDeparture != departure) {
+                    setSelectedDeparture(departure);
+                }
+                if (mRestoreDepartureActionMode && mActionMode == null) {
+                    mRestoreDepartureActionMode = false;
+                    startDepartureActionMode();
+                }
+                return;
+            }
+        }
+
+        if (mSelectedDeparture != null) {
+            if (mActionMode != null) {
+                mActionMode.finish();
+            } else {
+                setSelectedDeparture(null);
+            }
+        }
+        mRestoreDepartureActionMode = false;
     }
 
 }
