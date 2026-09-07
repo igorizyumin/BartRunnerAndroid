@@ -4,17 +4,13 @@
     <string name="app_name">BART Runner</string>
     <string name="favorite_routes">Favorite routes</string>
     <string name="empty_favorites_list_message">No favorite routes have been added yet</string>
-    <string name="loading_message">Loading, please wait&#8230;</string>
     <string name="add_route">Add a route</string>
     <string name="origin">Origin</string>
-    <string name="destination">Destination</string>
     <string name="destination_optional">Destination (optional)</string>
     <string name="any_destination">Any destination</string>
     <string name="arrivals_at_station">Arrivals at %1$s</string>
-    <string name="save">Save</string>
     <string name="error_matching_origin_and_destination">The origin and destination stations must be
         different</string>
-    <string name="error_null_destination">You must select a destination station</string>
     <string name="error_null_origin">You must select an origin station</string>
     <string name="departure_wait_message">Please wait while real time departure data is
         loaded</string>
@@ -22,9 +18,7 @@
         route. Note that this route may require a non-standard transfer due to
         a temporary change in service. Check for service advisories posted at
         http://m.bart.gov/schedules/advisories/</string>
-    <string name="view">View</string>
     <string name="view_departures">View departures</string>
-    <string name="missing_departure">Missing/inaccurate departure? Feature request? Please report to bartrunner@dougkeen.com</string>
     <string name="delete">Delete</string>
     <string name="yes">Yes</string>
     <string name="cancel">Cancel</string>
@@ -38,7 +32,6 @@
     <string name="ok">OK</string>
     <string name="quick_departure_lookup">Quick departure lookup</string>
     <string name="getting_on_this_train">I will board this train</string>
-    <string name="departure_options">Departure options</string>
     <string name="set_up_departure_alarm">Set alarm</string>
     <string name="train_alarm_text">Your train is leaving soon!</string>
     <string name="silence_alarm">Silence alarm</string>
@@ -56,14 +49,12 @@
     <string name="undo">Undo</string>
     <string name="drag_handle_description">Reorder route</string>
     <string name="swap_stations_description">Swap origin and destination</string>
-    <string name="bike_icon_description">Bicycle-friendly train</string>
     <string name="transfer_icon_description">Requires a transfer</string>
     <string name="trip_in_progress">Trip in progress</string>
     <string name="train_schedule">Train schedule</string>
     <string name="follow_trip">Follow trip</string>
     <string name="trip_current_train">Current train</string>
     <string name="trip_next_stop">Next stop: %1$s (%2$s)</string>
-    <string name="trip_waiting_for_connection">At %1$s · next train %2$s</string>
     <string name="trip_transfer_now">Transfer to %1$s train now</string>
     <string name="trip_arrived">Arrived at destination</string>
     <string name="trip_canceled">Trip canceled</string>
@@ -78,7 +69,6 @@
     <string name="trip_details_unavailable">Detailed stop times are not available for this trip yet.</string>
     <string name="trip_eta_unknown">ETA unavailable</string>
     <string name="trip_stop_passed">Passed</string>
-    <string name="trip_eta_minutes">in %1$d min</string>
     <string name="trip_eta_minutes_seconds">in %1$d min %2$d sec</string>
     <string name="trip_margin_seconds">%1$d sec</string>
     <string name="trip_margin_minutes">%1$d min</string>

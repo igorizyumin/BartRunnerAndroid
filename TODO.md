@@ -47,7 +47,7 @@ This backlog turns the architecture audit into incremental, verifiable work.
 - [ ] Review alarm UX against current background-launch and notification rules.
 - [x] Enable and verify R8 for release builds.
 - [ ] Replace the obsolete Travis configuration with CI that runs build, lint, and tests.
-- [ ] Remove unused legacy resources and the unused drag-sort-listview project.
+- [x] Remove unused legacy resources and the unused drag-sort-listview project.
 - [ ] Decide whether to modernize the XML UI incrementally or adopt Compose per screen.
 
 ## Working agreement
