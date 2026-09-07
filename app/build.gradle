@@ -1,39 +1,43 @@
-apply plugin: 'com.android.application'
+plugins {
+    alias(libs.plugins.android.application)
+}
 
 dependencies {
-    testImplementation 'junit:junit:4.13.2'
+    implementation(libs.kotlin.stdlib)
 
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test:runner:1.6.2'
-    androidTestImplementation 'androidx.test:rules:1.6.1'
+    testImplementation(libs.junit)
 
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.3'
-    implementation 'org.mobilitydata:gtfs-realtime-bindings:0.0.8'
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'com.github.chrisbanes:PhotoView:2.3.0'
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
 
-    implementation 'androidx.core:core:1.16.0'
-    implementation 'androidx.appcompat:appcompat:1.7.1'
-    implementation 'androidx.lifecycle:lifecycle-runtime:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
-    implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    implementation 'com.google.android.material:material:1.13.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+    implementation(libs.jackson.databind)
+    implementation(libs.gtfs.realtime.bindings)
+    implementation(libs.okhttp)
+    implementation(libs.photo.view)
+
+    implementation(libs.androidx.core)
+    implementation(libs.appcompat)
+    implementation(libs.lifecycle.runtime)
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.viewmodel)
+    implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.recyclerview)
+    implementation(libs.material)
+    implementation(libs.coroutines.android)
 }
 
 android {
     compileSdk 36
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
             jvmDefault = org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY
         }
     }

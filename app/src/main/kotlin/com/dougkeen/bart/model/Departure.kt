@@ -68,19 +68,6 @@ data class Departure(
 
     fun beganAsDeparted(): Boolean = beganAsDeparted
 
-    fun getTrainLengthText(): String =
-        if (trainLength.isNullOrBlank()) "" else "$trainLength cars"
-
-    fun getTrainLengthAndPlatform(): String = buildString {
-        if (!trainLength.isNullOrBlank()) {
-            append(trainLength).append(" cars")
-        }
-        if (!platform.isNullOrBlank()) {
-            if (isNotEmpty()) append(", ")
-            append("platform ").append(platform)
-        }
-    }
-
     fun hasEstimatedTripTime(): Boolean = estimatedTripTime > 0
 
     fun hasAnyArrivalEstimate(): Boolean =
@@ -199,9 +186,6 @@ data class Departure(
 
     override fun compareTo(other: Departure): Int =
         getMeanEstimate().compareTo(other.getMeanEstimate())
-
-    fun getUncertaintyText(timeSource: TimeSource): String =
-        if (hasDeparted(timeSource) || canceled) "" else "(±${getUncertaintySeconds()}s)"
 
     override fun toString(): String {
         return buildString {

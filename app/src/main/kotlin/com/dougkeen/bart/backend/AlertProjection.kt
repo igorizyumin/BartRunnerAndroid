@@ -3,18 +3,19 @@ package com.dougkeen.bart.backend
 import com.dougkeen.bart.model.Alert
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
 import com.google.transit.realtime.GtfsRealtime
-import java.text.DateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 /** Converts the latest alert feed into the app's alert model. */
 class AlertProjection : TransitProjection<Alert.AlertList> {
     override fun project(snapshot: TransitFeedSnapshot): Alert.AlertList {
-        val format = DateFormat.getDateTimeInstance(
-            DateFormat.SHORT,
-            DateFormat.SHORT,
-            Locale.getDefault()
-        )
+        val format = DateTimeFormatter.ofLocalizedDateTime(
+            FormatStyle.SHORT,
+            FormatStyle.SHORT
+        ).withLocale(Locale.getDefault()).withZone(ZoneId.systemDefault())
         val index: GtfsRealtimeFeedIndex = snapshot.getAlertIndex()
         val alerts = mutableListOf<Alert>()
         for (entity in index.alertEntities) {
@@ -27,10 +28,10 @@ class AlertProjection : TransitProjection<Alert.AlertList> {
             if (source.activePeriodList.isNotEmpty()) {
                 val period = source.getActivePeriod(0)
                 if (period.hasStart()) {
-                    postedTime = format.format(Date(period.start * 1000L))
+                    postedTime = format.format(Instant.ofEpochSecond(period.start))
                 }
                 if (period.hasEnd()) {
-                    expiresTime = format.format(Date(period.end * 1000L))
+                    expiresTime = format.format(Instant.ofEpochSecond(period.end))
                 }
             }
             alerts += Alert(

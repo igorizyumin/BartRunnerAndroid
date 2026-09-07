@@ -12,13 +12,12 @@ import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.routing.TransferConnectionValidator
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
-import java.text.ParseException
-import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.time.DateTimeException
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Collections
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 /** Converts BART's GTFS-RT trip updates into the app's departure model. */
 class GtfsRealtimeContentHandler @JvmOverloads constructor(
@@ -620,7 +619,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         private const val PITT_TO_PCTR_MIN_MILLIS = 5 * 60 * 1000L
         private const val PITT_TO_PCTR_TYPICAL_MILLIS = 12 * 60 * 1000L
         private const val PITT_TO_PCTR_MAX_MILLIS = 20 * 60 * 1000L
-        private val PACIFIC_TIME = TimeZone.getTimeZone("America/Los_Angeles")
+        private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
 
         private fun departureTime(update: GtfsRealtime.TripUpdate.StopTimeUpdate): Long {
             if (update.hasDeparture() && update.getDeparture().hasTime()) {
@@ -649,13 +648,12 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             if (!trip.hasStartTime()) {
                 return 0L
             }
-            val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.US).apply {
-                timeZone = PACIFIC_TIME
-            }
             val startDate = if (trip.hasStartDate()) {
                 trip.getStartDate()
             } else {
-                dateFormat.format(Date(feedTime))
+                DateTimeFormatter.BASIC_ISO_DATE.format(
+                    Instant.ofEpochMilli(feedTime).atZone(PACIFIC_ZONE).toLocalDate()
+                )
             }
             val timeParts = trip.getStartTime().split(":")
             if (timeParts.size != 3) {
@@ -665,18 +663,16 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 val hour = timeParts[0].toInt()
                 val minute = timeParts[1].toInt()
                 val second = timeParts[2].toInt()
-                val parsedDate = dateFormat.parse(startDate) ?: return 0L
-                val date = Calendar.getInstance(PACIFIC_TIME, Locale.US).apply {
-                    clear()
-                    time = parsedDate
-                    add(Calendar.HOUR_OF_DAY, hour)
-                    add(Calendar.MINUTE, minute)
-                    add(Calendar.SECOND, second)
-                }
-                date.timeInMillis
+                val date = LocalDate.parse(startDate, DateTimeFormatter.BASIC_ISO_DATE)
+                date.atStartOfDay(PACIFIC_ZONE)
+                    .plusHours(hour.toLong())
+                    .plusMinutes(minute.toLong())
+                    .plusSeconds(second.toLong())
+                    .toInstant()
+                    .toEpochMilli()
             } catch (_: NumberFormatException) {
                 0L
-            } catch (_: ParseException) {
+            } catch (_: DateTimeException) {
                 0L
             }
         }

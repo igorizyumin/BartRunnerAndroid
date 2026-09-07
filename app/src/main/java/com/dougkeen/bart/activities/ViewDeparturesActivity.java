@@ -19,7 +19,6 @@ import androidx.appcompat.view.ActionMode;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import android.text.format.DateFormat;
 import android.text.util.Linkify;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -38,6 +37,7 @@ import com.dougkeen.bart.data.LifecycleFlowCollector;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TimeSource;
+import com.dougkeen.bart.presentation.DepartureTextFormatter;
 import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.util.Assert;
 import com.dougkeen.util.WakeLocker;
@@ -259,7 +259,9 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     ? getString(R.string.arrivals_at_station,
                     mStationPair.getOrigin().getName()) : "";
         } else {
-            listTitle = mStationPair.getOrigin().getName() + " to " + mStationPair.getDestination().getName();
+            listTitle = getString(R.string.route_title,
+                    mStationPair.getOrigin().getName(),
+                    mStationPair.getDestination().getName());
         }
         ((TextView) findViewById(R.id.listTitle)).setText(listTitle);
     }
@@ -379,7 +381,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             startActivity(new Intent(
                     Intent.ACTION_VIEW,
                     Uri.parse("https://m.bart.gov/schedules/qp_results.aspx?type=departure&date=today&time="
-                            + DateFormat.format("h:mmaa",
+                            + DepartureTextFormatter.formatBartScheduleTime(
                             mTimeSource.nowMillis())
                             + "&orig="
                             + mStationPair.getOrigin().abbreviation
@@ -447,7 +449,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         if (mActionMode == null)
             mActionMode = startSupportActionMode(new DepartureActionMode());
         mActionMode.setTitle(mSelectedDeparture.getTrainDestinationName());
-        mActionMode.setSubtitle(mSelectedDeparture.getTrainLengthAndPlatform());
+        mActionMode.setSubtitle(DepartureTextFormatter.trainLengthAndPlatform(
+                this, mSelectedDeparture));
     }
 
     private class DepartureActionMode implements ActionMode.Callback {

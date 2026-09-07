@@ -149,7 +149,8 @@ public class FavoritesArrayAdapter
             countdown.setText(DepartureTextFormatter.countdown(
                     context, firstDeparture, timeSource));
 
-            String uncertaintyText = firstDeparture.getUncertaintyText(timeSource);
+            String uncertaintyText = DepartureTextFormatter.uncertainty(
+                    context, firstDeparture, timeSource);
             uncertainty.setCurrentText(favoriteSecondaryText(
                     pair, firstDeparture, tick, uncertaintyText));
         }
@@ -163,10 +164,11 @@ public class FavoritesArrayAdapter
         if (tick % mod <= 1) {
             return pair.getFare();
         } else if (tick % mod <= 3) {
-            return "Dep " + DepartureTextFormatter.estimatedDepartureTime(
-                    context, departure, true);
+            return context.getString(R.string.departure_short,
+                    DepartureTextFormatter.estimatedDepartureTime(
+                            context, departure, true));
         } else if (mod == 8 && tick % mod <= 5) {
-            return "Arr " + arrival;
+                    return context.getString(R.string.arrival_short, arrival);
         }
         return isBlank(uncertainty) ? pair.getFare() : uncertainty;
     }

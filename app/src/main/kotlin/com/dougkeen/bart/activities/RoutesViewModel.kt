@@ -21,9 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import java.util.Collections
-import java.util.TimeZone
+import java.time.Instant
+import java.time.ZoneId
 
 /** Owns all state and coordination for the favorite-routes screen. */
 class RoutesViewModel(application: Application) : AndroidViewModel(application) {
@@ -180,15 +180,11 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun needsFareRefresh(route: StationPair): Boolean {
         if (route.destination == null) return false
-        val timeZone = TimeZone.getTimeZone("America/Los_Angeles")
-        val now = Calendar.getInstance(timeZone).apply {
-            timeInMillis = timeSource.nowMillis()
-        }
-        val lastUpdate = Calendar.getInstance(timeZone).apply {
-            timeInMillis = route.fareLastUpdated
-        }
-        return now.get(Calendar.DAY_OF_YEAR) != lastUpdate.get(Calendar.DAY_OF_YEAR)
-            || now.get(Calendar.YEAR) != lastUpdate.get(Calendar.YEAR)
+        val timeZone = ZoneId.of("America/Los_Angeles")
+        val now = Instant.ofEpochMilli(timeSource.nowMillis()).atZone(timeZone).toLocalDate()
+        val lastUpdate = Instant.ofEpochMilli(route.fareLastUpdated)
+            .atZone(timeZone).toLocalDate()
+        return now != lastUpdate
     }
 
     private fun immutableList(values: List<StationPair>): List<StationPair> =

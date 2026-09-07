@@ -18,12 +18,13 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
-import java.util.Calendar
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Collections
 import java.util.HashMap
 import java.util.HashSet
 import java.util.Locale
-import java.util.TimeZone
 import java.util.zip.ZipInputStream
 
 /** Loads BART's static GTFS feed once per service day. */
@@ -35,13 +36,9 @@ class GtfsStaticData private constructor(
 ) : com.dougkeen.bart.backend.StaticScheduleSource {
 
     override fun getSchedule(origin: Station, destination: Station): ScheduleInformation {
-        val now = Calendar.getInstance(PACIFIC_TIME, Locale.US)
-        val nowMillis = now.timeInMillis
-        val day = now.clone() as Calendar
-        day.set(Calendar.HOUR_OF_DAY, 0)
-        day.set(Calendar.MINUTE, 0)
-        day.set(Calendar.SECOND, 0)
-        day.set(Calendar.MILLISECOND, 0)
+        val today = LocalDate.now(PACIFIC_ZONE)
+        val nowMillis = System.currentTimeMillis()
+        val day = today.atStartOfDay(PACIFIC_ZONE).toInstant().toEpochMilli()
 
         val trips = mutableListOf<ScheduleItem>()
         for (stopTimes in stopTimesByTripId.values) {
@@ -68,7 +65,7 @@ class GtfsStaticData private constructor(
                 continue
             }
 
-            val departureTime = day.timeInMillis + originStop!!.departureSeconds * 1000L
+            val departureTime = day + originStop!!.departureSeconds * 1000L
             if (departureTime < nowMillis) {
                 continue
             }
@@ -76,7 +73,7 @@ class GtfsStaticData private constructor(
                 origin = origin,
                 destination = destination,
                 departureTime = departureTime,
-                arrivalTime = day.timeInMillis + destinationStop!!.arrivalSeconds * 1000L,
+                arrivalTime = day + destinationStop!!.arrivalSeconds * 1000L,
                 bikesAllowed = true,
                 trainHeadStation = (terminal ?: destination).apiName
             )
@@ -100,7 +97,7 @@ class GtfsStaticData private constructor(
         private const val PREFS_NAME = "gtfs_static_schedule"
         private const val LAST_ATTEMPT = "last_attempt"
         private const val LAST_SUCCESS = "last_success"
-        private val PACIFIC_TIME = TimeZone.getTimeZone("America/Los_Angeles")
+        private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
         private val LOCK = Any()
         private val CLIENT: OkHttpClient = NetworkUtils.makeHttpClient()
 
@@ -115,7 +112,7 @@ class GtfsStaticData private constructor(
                 ?: throw IOException("Application context is unavailable")
             synchronized(LOCK) {
                 val now = System.currentTimeMillis()
-                val serviceDate = dateCode(Calendar.getInstance(PACIFIC_TIME, Locale.US))
+                val serviceDate = dateCode(LocalDate.now(PACIFIC_ZONE))
                 if (cachedData != null && now - cachedAt < CACHE_MILLIS
                     && serviceDate == cachedServiceDate
                 ) {
@@ -226,7 +223,7 @@ class GtfsStaticData private constructor(
             val exceptions = HashMap<String, MutableMap<String, Int>>()
             val farePrices = HashMap<String, String>()
             val fareRules = mutableListOf<FareRule>()
-            val today = Calendar.getInstance(PACIFIC_TIME, Locale.US)
+            val today = LocalDate.now(PACIFIC_ZONE)
             val dateCode = dateCode(today)
 
             feedFiles["calendar.txt"]?.let { parseCalendars(input(it), calendars) }
@@ -402,10 +399,10 @@ class GtfsStaticData private constructor(
             calendars: Map<String, ServiceCalendar>,
             exceptions: Map<String, Map<String, Int>>,
             date: String,
-            today: Calendar
+            today: LocalDate
         ): Set<String> {
             val active = HashSet<String>()
-            val day = today.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY
+            val day = today.dayOfWeek.value % 7
             for ((serviceId, calendar) in calendars) {
                 var isActive = date >= calendar.startDate && date <= calendar.endDate && calendar.days[day]
                 exceptions[serviceId]?.get(date)?.let { isActive = it == 1 }
@@ -417,13 +414,8 @@ class GtfsStaticData private constructor(
         private fun key(origin: Station, destination: Station): String =
             "${origin.abbreviation.uppercase(Locale.ROOT)}>${destination.abbreviation.uppercase(Locale.ROOT)}"
 
-        private fun dateCode(date: Calendar): String = String.format(
-            Locale.US,
-            "%04d%02d%02d",
-            date.get(Calendar.YEAR),
-            date.get(Calendar.MONTH) + 1,
-            date.get(Calendar.DAY_OF_MONTH)
-        )
+        private fun dateCode(date: LocalDate): String =
+            DateTimeFormatter.BASIC_ISO_DATE.format(date)
 
         private fun parseGtfsTime(time: String): Int {
             if (time.isEmpty()) return -1

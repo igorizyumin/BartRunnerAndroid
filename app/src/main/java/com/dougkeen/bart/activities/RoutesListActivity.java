@@ -268,8 +268,8 @@ public class   RoutesListActivity extends AppCompatActivity implements
         mActionMode = startSupportActionMode(new RouteActionMode());
         mActionMode.setTitle(mCurrentlySelectedStationPair.getOrigin().getName());
         if (mCurrentlySelectedStationPair.getDestination() != null) {
-            mActionMode.setSubtitle("to "
-                    + mCurrentlySelectedStationPair.getDestination().getName());
+            mActionMode.setSubtitle(getString(R.string.to_station,
+                    mCurrentlySelectedStationPair.getDestination().getName()));
         } else {
             mActionMode.setSubtitle(getString(R.string.arrivals_at_station,
                     mCurrentlySelectedStationPair.getOrigin().getName()));
@@ -312,7 +312,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                 final AlertDialog.Builder builder = new AlertDialog.Builder(
                         RoutesListActivity.this);
                 builder.setCancelable(false);
-                builder.setMessage("Are you sure you want to delete this route?");
+                builder.setMessage(R.string.route_delete_confirmation);
                 builder.setPositiveButton(R.string.yes,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog,

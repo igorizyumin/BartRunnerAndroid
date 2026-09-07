@@ -5,7 +5,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.text.format.DateFormat;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -27,7 +26,6 @@ import com.dougkeen.bart.model.TripStop;
 import com.dougkeen.bart.presentation.DepartureTextFormatter;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
-import java.util.Date;
 import java.util.List;
 
 /** Shows the live state of a selected, possibly multi-train trip. */
@@ -153,7 +151,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
         } else if (item.getItemId() == R.id.share_arrival) {
             Intent share = new Intent(Intent.ACTION_SEND);
             share.setType("text/plain");
-            share.putExtra(Intent.EXTRA_SUBJECT, "My BART trip");
+            share.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_trip_subject));
             share.putExtra(Intent.EXTRA_TEXT, getString(
                     R.string.arrival_message,
                     mDeparture.getStationPair().getDestination().getName(),
@@ -236,8 +234,9 @@ public class TripInProgressActivity extends AbstractViewActivity {
         if (mDeparture == null || mDeparture.getStationPair() == null) {
             return;
         }
-        mRoute.setText(mDeparture.getStationPair().getOrigin().getName() + " → "
-                + mDeparture.getStationPair().getDestination().getName());
+        mRoute.setText(getString(R.string.route_title_arrow,
+                mDeparture.getStationPair().getOrigin().getName(),
+                mDeparture.getStationPair().getDestination().getName()));
         mStatus.setText(getTripStatus());
         String estimatedArrival = DepartureTextFormatter.estimatedArrivalTime(
                 this, mDeparture, false);
@@ -339,7 +338,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
             if (arrivingLeg.getArrivalTime() > 0
                     && arrivingLeg.getArrivalTime() <= now
                     && nextLeg.getDepartureTime() > now) {
-                String lineName = nextLeg.getLine() == null ? "Train"
+                String lineName = nextLeg.getLine() == null ? getString(R.string.train)
                         : nextLeg.getLine().getDisplayName();
                 return getString(R.string.trip_transfer_now, lineName);
             }
@@ -354,15 +353,15 @@ public class TripInProgressActivity extends AbstractViewActivity {
 
     private void addLeg(TripLeg leg, boolean isCurrentTrain) {
         TextView heading = addText(null, true);
-        String lineName = leg.getLine() == null ? "Train"
+        String lineName = leg.getLine() == null ? getString(R.string.train)
                 : leg.getLine().getDisplayName();
         String prefix = isCurrentTrain ? getString(R.string.trip_current_train)
                 : getString(R.string.trip_connection_train);
-        heading.setText(prefix + " · " + lineName);
+        heading.setText(getString(R.string.trip_leg_heading, prefix, lineName));
 
         TextView route = addText(null, false);
-        route.setText(leg.getOrigin().getName() + " → "
-                + leg.getDestination().getName());
+        route.setText(getString(R.string.route_title_arrow,
+                leg.getOrigin().getName(), leg.getDestination().getName()));
         route.setTextColor(getResources().getColor(R.color.text_secondary));
 
         if (leg.getStops().isEmpty()) {
@@ -464,8 +463,7 @@ public class TripInProgressActivity extends AbstractViewActivity {
     }
 
     private String formatTime(long time) {
-        return time > 0 ? DateFormat.getTimeFormat(this)
-                .format(new Date(time)) : "--";
+        return time > 0 ? DepartureTextFormatter.formatTime(this, time) : "--";
     }
 
     private String formatEta(long time) {

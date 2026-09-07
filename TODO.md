@@ -93,18 +93,18 @@ plumbing as soon as its replacement is working.
 
 ## Platform and release modernization
 
-- [ ] Replace `Date`, `Calendar`, `SimpleDateFormat`, and direct date-string
+- [x] Replace `Date`, `Calendar`, `SimpleDateFormat`, and direct date-string
   construction with `java.time` and localized Android resources.
-- [ ] Move all user-facing strings out of Java/Kotlin code and into resources,
+- [x] Move all user-facing strings out of Java/Kotlin code and into resources,
   including notification text, adapter text, dialogs, and error messages.
-- [ ] Review exact-alarm, notification, foreground-service, and background
+- [x] Review exact-alarm, notification, foreground-service, and background
   launch behavior against current Android platform rules.
-- [ ] Add dependency version management through a version catalog and define
+- [x] Add dependency version management through a version catalog and define
   compatibility checks for AGP, Gradle, Kotlin, and AndroidX.
-- [ ] Validate and then raise the Java/Kotlin compilation baseline to Java 17.
+- [x] Validate and then raise the Java/Kotlin compilation baseline to Java 17.
 - [ ] Replace Travis CI with CI covering unit tests, instrumentation tests,
   lint, debug builds, and release/R8 builds.
-- [ ] Keep the project single-module unless a real ownership or build-time
+- [x] Keep the project single-module unless a real ownership or build-time
   boundary emerges.
 
 ## Working agreement

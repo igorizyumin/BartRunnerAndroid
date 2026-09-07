@@ -136,7 +136,8 @@ public class DepartureArrayAdapter
             TextView estimatedArrivalView = itemView.findViewById(R.id.estimatedArrival);
             if (estimatedArrivalView != null) {
                 ((TextView) itemView.findViewById(R.id.trainLengthText))
-                        .setText(departure.getTrainLengthAndPlatform());
+                        .setText(DepartureTextFormatter.trainLengthAndPlatform(
+                                context, departure));
                 if (departure.isCanceled()) {
                     estimatedArrivalView.setText("");
                 } else if (!isBlank(transferDetails)) {
@@ -154,10 +155,11 @@ public class DepartureArrayAdapter
                 } else if (!isBlank(estimatedArrival)) {
                     trainInfo.setCurrentText(arrivesPrefix + estimatedArrival);
                 } else {
-                    trainInfo.setCurrentText(departure.getTrainLengthAndPlatform());
+                    trainInfo.setCurrentText(DepartureTextFormatter.trainLengthAndPlatform(
+                            context, departure));
                 }
                 trainInfo.setCurrentText(tick % 4 == 0
-                        ? departure.getTrainLengthAndPlatform()
+                        ? DepartureTextFormatter.trainLengthAndPlatform(context, departure)
                         : !isBlank(transferDetails) ? transferDetails
                         : isBlank(estimatedArrival) ? "" : arrivesPrefix + estimatedArrival);
             }
@@ -177,15 +179,17 @@ public class DepartureArrayAdapter
             TextView departureTime = itemView.findViewById(R.id.departureTime);
             if (departureTime != null) {
                 ((TextView) itemView.findViewById(R.id.uncertainty))
-                        .setText(departure.getUncertaintyText(timeSource));
+                        .setText(DepartureTextFormatter.uncertainty(
+                                context, departure, timeSource));
                 departureTime.setText(departure.isCanceled() ? ""
-                        : "Dep " + DepartureTextFormatter.estimatedDepartureTime(
-                                context, departure, true));
+                        : context.getString(R.string.departure_short,
+                                DepartureTextFormatter.estimatedDepartureTime(
+                                        context, departure, true)));
             } else {
                 TimedTextSwitcher uncertainty = itemView.findViewById(R.id.uncertainty);
                 initTextSwitcher(uncertainty, R.layout.uncertainty_textview);
                 uncertainty.setCurrentText(tick % 4 == 0
-                        ? departure.getUncertaintyText(timeSource)
+                        ? DepartureTextFormatter.uncertainty(context, departure, timeSource)
                         : DepartureTextFormatter.estimatedDepartureTime(
                                 context, departure, false));
             }

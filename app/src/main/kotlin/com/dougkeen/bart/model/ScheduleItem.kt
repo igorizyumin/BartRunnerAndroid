@@ -1,7 +1,10 @@
 package com.dougkeen.bart.model
 
-import java.text.DateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 /** One immutable scheduled trip between two stations. */
 data class ScheduleItem(
@@ -20,10 +23,12 @@ data class ScheduleItem(
     fun isBikesAllowed(): Boolean = bikesAllowed
 
     override fun toString(): String {
-        val format = DateFormat.getTimeInstance()
+        val format = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+            .withLocale(Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
         return "ScheduleItem [origin=$origin, destination=$destination, fare=$fare, " +
-            "departureTime=${format.format(Date(departureTime))}, " +
-            "arrivalTime=${format.format(Date(arrivalTime))}, bikesAllowed=$bikesAllowed, " +
+            "departureTime=${format.format(Instant.ofEpochMilli(departureTime))}, " +
+            "arrivalTime=${format.format(Instant.ofEpochMilli(arrivalTime))}, bikesAllowed=$bikesAllowed, " +
             "trainHeadStation=$trainHeadStation]"
     }
 

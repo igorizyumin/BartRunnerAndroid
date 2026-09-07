@@ -14,8 +14,6 @@ import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
-import java.util.Locale;
-
 /** Builds the foreground notification for a followed departure. */
 public final class DepartureNotificationFactory {
     private DepartureNotificationFactory() {
@@ -29,11 +27,14 @@ public final class DepartureNotificationFactory {
                 departure.getMinEstimate(), departure.getMaxEstimate(), nowMillis);
         final int halfMinutes = (secondsLeft + 15) / 30;
         float minutes = halfMinutes / 2f;
-        final String minutesText = (minutes < 1) ? "Less than one minute"
-                : (String.format(Locale.US, "~%.1f minute", minutes)
-                + ((minutes != 1.0) ? "s" : ""));
-        final String directionText = departure.getOrigin().shortName + " to "
-                + departure.getPassengerDestination().shortName;
+        final String minutesText = minutes < 1
+                ? context.getString(R.string.notification_less_than_minute)
+                : context.getString(minutes == 1.0
+                        ? R.string.notification_minutes_until_departure
+                        : R.string.notification_minutes_until_departures, minutes);
+        final String directionText = context.getString(R.string.notification_direction,
+                departure.getOrigin().shortName,
+                departure.getPassengerDestination().shortName);
 
         Intent cancelAlarmIntent = new Intent(context, BoardedDepartureService.class)
                 .setAction(BoardedDepartureService.ACTION_CANCEL_ALARM);
@@ -42,7 +43,7 @@ public final class DepartureNotificationFactory {
         NotificationCompat.Builder notificationBuilder =
                 new NotificationCompat.Builder(context, channelId)
                         .setSmallIcon(R.drawable.ic_stat_notification)
-                        .setContentTitle(minutesText + " until departure")
+                        .setContentTitle(minutesText)
                         .setContentIntent(notificationIntent(context))
                         .setDeleteIntent(deleteNotificationIntent(context));
 
@@ -55,11 +56,11 @@ public final class DepartureNotificationFactory {
         if (alarmScheduler != null && alarmScheduler.isPending()) {
             PendingIntent pendingIntent = PendingIntent.getService(
                     context, 0, cancelAlarmIntent, PendingIntent.FLAG_IMMUTABLE);
-            String subText = "Alarm " + alarmScheduler.getLeadTimeMinutes()
-                    + " minutes before departure";
+            String subText = context.getString(R.string.notification_alarm,
+                    alarmScheduler.getLeadTimeMinutes());
             notificationBuilder
                     .addAction(R.drawable.ic_action_cancel_alarm,
-                            "Cancel alarm", pendingIntent)
+                            context.getString(R.string.notification_cancel_alarm), pendingIntent)
                     .setSubText(subText);
         }
 

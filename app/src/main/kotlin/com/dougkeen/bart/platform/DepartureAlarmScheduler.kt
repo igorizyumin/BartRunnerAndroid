@@ -6,6 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 import com.dougkeen.bart.model.Constants
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Station
@@ -153,8 +158,11 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             }
         }
 
-        Log.v(Constants.TAG, "Scheduling alarm for "
-            + android.text.format.DateFormat.format("h:mm:ss", alarmTime))
+        val alarmText = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)
+            .withLocale(Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.ofEpochMilli(alarmTime))
+        Log.v(Constants.TAG, "Scheduling alarm for $alarmText")
     }
 
     private fun updateState(leadTimeMinutes: Int, pending: Boolean) {

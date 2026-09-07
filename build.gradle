@@ -1,12 +1,5 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:9.4.0'
-    }
+plugins {
+    alias(libs.plugins.android.application) apply false
 }
 
 allprojects {
@@ -14,5 +7,43 @@ allprojects {
         google()
         mavenCentral()
         maven { url "https://jitpack.io" }
+    }
+}
+
+def compatibilityCatalog = file("gradle/libs.versions.toml").getText("UTF-8")
+
+tasks.register("verifyCompatibility") {
+    group = "verification"
+    description = "Checks the supported Gradle, Java, Kotlin, AGP, and AndroidX baseline."
+    doLast {
+        if (GradleVersion.current() < GradleVersion.version("9.7.1")) {
+            throw new GradleException("Gradle 9.7.1 or newer is required")
+        }
+        if (JavaVersion.current() < JavaVersion.VERSION_17) {
+            throw new GradleException("JDK 17 or newer is required to build this project")
+        }
+        [
+                'agp = "9.4.0"',
+                'kotlin = "2.2.10"',
+                'androidxCore = "1.16.0"',
+        ].each { required ->
+            if (!compatibilityCatalog.contains(required)) {
+                throw new GradleException("Version catalog is missing compatibility baseline: $required")
+            }
+        }
+        if (providers.gradleProperty("android.useAndroidX").orNull != "true") {
+            throw new GradleException("android.useAndroidX=true is required")
+        }
+        def appBuild = file("app/build.gradle").getText("UTF-8")
+        if (!appBuild.contains("JavaVersion.VERSION_17")
+                || !appBuild.contains("JvmTarget.JVM_17")) {
+            throw new GradleException("The app must compile Java and Kotlin for JVM 17")
+        }
+    }
+}
+
+subprojects {
+    tasks.matching { it.name in ["check", "lintDebug"] }.configureEach {
+        dependsOn(rootProject.tasks.named("verifyCompatibility"))
     }
 }
