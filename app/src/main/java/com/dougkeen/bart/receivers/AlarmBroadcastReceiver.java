@@ -25,7 +25,7 @@ public class AlarmBroadcastReceiver extends BroadcastReceiver {
 
         WakeLocker.acquire(context);
 
-        application.setPlayAlarmRingtone(true);
+        application.getAlarmController().requestRingtone();
 
         Intent targetIntent = new Intent(context, ViewDeparturesActivity.class);
         targetIntent.putExtra(Constants.STATION_PAIR_EXTRA,

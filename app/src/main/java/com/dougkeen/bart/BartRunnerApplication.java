@@ -8,13 +8,13 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
 import com.dougkeen.bart.data.FavoritesRepository;
 import com.dougkeen.bart.data.FollowedTripRepository;
+import com.dougkeen.bart.data.AlarmController;
 import com.dougkeen.bart.backend.HttpTransitFeedClient;
 import com.dougkeen.bart.backend.TransitRepository;
 
@@ -24,12 +24,6 @@ public class BartRunnerApplication extends Application implements
     private static final String PREFS_NAME = "prefs_bart_runner";
     private static final String PREFS_ACTIVITY_TIMESTAMP = "prefs_activity_timestamp";
 
-    private boolean mPlayAlarmRingtone;
-
-    private boolean mAlarmSounding;
-
-    private MediaPlayer mAlarmMediaPlayer;
-
     private SharedPreferences mApplicationPreferences;
 
     private static Context context;
@@ -37,6 +31,8 @@ public class BartRunnerApplication extends Application implements
     private FavoritesRepository favoritesRepository;
 
     private FollowedTripRepository followedTripRepository;
+
+    private AlarmController alarmController;
 
     private TransitRepository transitRepository;
 
@@ -53,6 +49,7 @@ public class BartRunnerApplication extends Application implements
         mApplicationPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         favoritesRepository = new FavoritesRepository(this);
         followedTripRepository = new FollowedTripRepository(this);
+        alarmController = new AlarmController();
         transitRepository = new TransitRepository(
                 new HttpTransitFeedClient(),
                 transitScheduler,
@@ -78,28 +75,8 @@ public class BartRunnerApplication extends Application implements
         return followedTripRepository;
     }
 
-    public boolean shouldPlayAlarmRingtone() {
-        return mPlayAlarmRingtone;
-    }
-
-    public void setPlayAlarmRingtone(boolean playAlarmRingtone) {
-        this.mPlayAlarmRingtone = playAlarmRingtone;
-    }
-
-    public boolean isAlarmSounding() {
-        return mAlarmSounding;
-    }
-
-    public void setAlarmSounding(boolean alarmSounding) {
-        this.mAlarmSounding = alarmSounding;
-    }
-
-    public MediaPlayer getAlarmMediaPlayer() {
-        return mAlarmMediaPlayer;
-    }
-
-    public void setAlarmMediaPlayer(MediaPlayer alarmMediaPlayer) {
-        this.mAlarmMediaPlayer = alarmMediaPlayer;
+    public AlarmController getAlarmController() {
+        return alarmController;
     }
 
     public void setActivityTimestamp(long timestamp) {

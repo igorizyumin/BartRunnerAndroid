@@ -26,7 +26,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.text.format.DateFormat;
 import android.text.util.Linkify;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -83,8 +82,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
         final BartRunnerApplication bartRunnerApplication = (BartRunnerApplication) getApplication();
 
-        if (bartRunnerApplication.shouldPlayAlarmRingtone()
-                || bartRunnerApplication.isAlarmSounding()) {
+        if (bartRunnerApplication.getAlarmController().isRingtoneRequested()
+                || bartRunnerApplication.getAlarmController().isSounding()) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
                 setShowWhenLocked(true);
                 setTurnScreenOn(true);
@@ -151,11 +150,11 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         supportActionBar.setHomeButtonEnabled(true);
         supportActionBar.setDisplayHomeAsUpEnabled(true);
 
-        if (bartRunnerApplication.shouldPlayAlarmRingtone()) {
+        if (bartRunnerApplication.getAlarmController().isRingtoneRequested()) {
             soundTheAlarm();
         }
 
-        if (bartRunnerApplication.isAlarmSounding()) {
+        if (bartRunnerApplication.getAlarmController().isSounding()) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setMessage(R.string.train_alarm_text)
                     .setCancelable(false)
@@ -196,7 +195,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                         .getDefaultUri(RingtoneManager.TYPE_RINGTONE);
             }
         }
-        if (application.getAlarmMediaPlayer() == null) {
+        if (application.getAlarmController().getMediaPlayer() == null) {
             tryToPlayRingtone(alarmSound);
         }
         final Vibrator vibrator;
@@ -218,8 +217,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             }
         }, 20000);
 
-        application.setPlayAlarmRingtone(false);
-        application.setAlarmSounding(true);
+        application.getAlarmController().consumeRingtoneRequest();
+        application.getAlarmController().setSounding(true);
     }
 
     private boolean tryToPlayRingtone(Uri alertSound) {
@@ -228,27 +227,16 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             return false;
         mediaPlayer.setLooping(true);
         mediaPlayer.start();
-        ((BartRunnerApplication) getApplication())
-                .setAlarmMediaPlayer(mediaPlayer);
+        ((BartRunnerApplication) getApplication()).getAlarmController()
+                .setMediaPlayer(mediaPlayer);
         return true;
     }
 
     private void silenceAlarm() {
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
-        final MediaPlayer mediaPlayer = application.getAlarmMediaPlayer();
-        application.setAlarmSounding(false);
-        application.setAlarmMediaPlayer(null);
+        application.getAlarmController().silence();
         final Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         vibrator.cancel();
-        try {
-            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                mediaPlayer.stop();
-                mediaPlayer.release();
-            }
-        } catch (IllegalStateException e) {
-            Log.e(Constants.TAG,
-                    "Couldn't stop media player; It was in an invalid state", e);
-        }
     }
 
     private void setListTitle() {
