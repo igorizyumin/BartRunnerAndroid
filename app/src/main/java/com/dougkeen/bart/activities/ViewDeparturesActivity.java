@@ -46,6 +46,8 @@ import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.StationPair;
+import com.dougkeen.bart.platform.DepartureParcel;
+import com.dougkeen.bart.platform.StationPairParcel;
 import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.util.Assert;
 import com.dougkeen.util.WakeLocker;
@@ -112,26 +114,33 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
         if (savedInstanceState != null
                 && savedInstanceState.containsKey("stationPair")) {
-            mStationPair = BundleCompat.getParcelable(savedInstanceState,
-                    "stationPair", StationPair.class);
+            StationPairParcel stationPairParcel = BundleCompat.getParcelable(
+                    savedInstanceState, "stationPair", StationPairParcel.class);
+            mStationPair = stationPairParcel == null
+                    ? null : stationPairParcel.getStationPair();
             setListTitle();
         } else {
-            mStationPair = IntentCompat.getParcelableExtra(intent,
-                    Constants.STATION_PAIR_EXTRA, StationPair.class);
+            StationPairParcel stationPairParcel = IntentCompat.getParcelableExtra(
+                    intent, Constants.STATION_PAIR_EXTRA, StationPairParcel.class);
+            mStationPair = stationPairParcel == null
+                    ? null : stationPairParcel.getStationPair();
             setListTitle();
         }
 
         if (savedInstanceState != null) {
             Parcelable[] departuresArray = savedInstanceState.getParcelableArray("departures");
             if (departuresArray != null) {
-                for (Parcelable departure : departuresArray) {
-                    mDeparturesAdapter.add((Departure) departure);
+                for (Parcelable departureParcel : departuresArray) {
+                    mDeparturesAdapter.add(((DepartureParcel) departureParcel)
+                            .getDeparture());
                 }
                 mDeparturesAdapter.notifyDataSetChanged();
             }
             if (savedInstanceState.containsKey("selectedDeparture")) {
-                setSelectedDeparture(BundleCompat.getParcelable(savedInstanceState,
-                        "selectedDeparture", Departure.class));
+                DepartureParcel departureParcel = BundleCompat.getParcelable(
+                        savedInstanceState, "selectedDeparture", DepartureParcel.class);
+                setSelectedDeparture(departureParcel == null
+                        ? null : departureParcel.getDeparture());
             }
             if (savedInstanceState.getBoolean("hasDepartureActionMode")
                     && mSelectedDeparture != null) {
@@ -307,16 +316,19 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
              * A station-only lookup has a null destination and is still a
              * valid state that must survive activity recreation.
              */
-            Departure[] departures = new Departure[mDeparturesAdapter
+            DepartureParcel[] departures = new DepartureParcel[mDeparturesAdapter
                     .getCount()];
             for (int i = mDeparturesAdapter.getCount() - 1; i >= 0; i--) {
-                departures[i] = mDeparturesAdapter.getItem(i);
+                departures[i] = new DepartureParcel(mDeparturesAdapter.getItem(i));
             }
             outState.putParcelableArray("departures", departures);
-            outState.putParcelable("selectedDeparture", mSelectedDeparture);
+            if (mSelectedDeparture != null) {
+                outState.putParcelable("selectedDeparture",
+                        new DepartureParcel(mSelectedDeparture));
+            }
             outState.putBoolean("hasDepartureActionMode",
                     isDepartureActionModeActive());
-            outState.putParcelable("stationPair", mStationPair);
+            outState.putParcelable("stationPair", new StationPairParcel(mStationPair));
         }
     }
 
@@ -410,7 +422,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         // Start the notification service
         final Intent intent = new Intent(ViewDeparturesActivity.this,
                 BoardedDepartureService.class);
-        intent.putExtra("departure", selectedDeparture);
+        intent.putExtra("departure", new DepartureParcel(selectedDeparture));
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
@@ -425,7 +437,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     private void openTripSchedule(Departure departure) {
         prepareDepartureForTrip(departure);
         Intent intent = new Intent(this, TripInProgressActivity.class);
-        intent.putExtra("departure", departure);
+        intent.putExtra("departure", new DepartureParcel(departure));
         startActivity(intent);
     }
 

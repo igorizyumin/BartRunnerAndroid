@@ -41,6 +41,7 @@ import com.dougkeen.bart.model.Alert.AlertList;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.networktasks.GtfsStaticData;
+import com.dougkeen.bart.platform.StationPairParcel;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -102,7 +103,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
     public void onFavoriteClicked(StationPair item) {
         Intent intent = new Intent(RoutesListActivity.this,
                 ViewDeparturesActivity.class);
-        intent.putExtra(Constants.STATION_PAIR_EXTRA, item);
+        intent.putExtra(Constants.STATION_PAIR_EXTRA, new StationPairParcel(item));
         startActivity(intent);
     }
 
@@ -475,7 +476,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                 Intent intent = new Intent(RoutesListActivity.this,
                         ViewDeparturesActivity.class);
                 intent.putExtra(Constants.STATION_PAIR_EXTRA,
-                        mCurrentlySelectedStationPair);
+                        new StationPairParcel(mCurrentlySelectedStationPair));
                 startActivity(intent);
                 mode.finish();
                 return true;

@@ -1,7 +1,6 @@
 package com.dougkeen.bart.activities;
 
 import android.annotation.SuppressLint;
-import android.app.AlarmManager;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -19,6 +18,7 @@ import android.widget.NumberPicker;
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 
 public class TrainAlarmDialogFragment extends DialogFragment {
 
@@ -59,8 +59,10 @@ public class TrainAlarmDialogFragment extends DialogFragment {
         numberPicker.setMinValue(1);
         numberPicker.setMaxValue(maxValue);
 
-        if (boardedDeparture.isAlarmPending()) {
-            setNumber(numberPicker, boardedDeparture.getAlarmLeadTimeMinutes());
+        DepartureAlarmScheduler alarmScheduler = application.getFollowedTripRepository()
+                .getAlarmScheduler();
+        if (alarmScheduler != null && alarmScheduler.isPending()) {
+            setNumber(numberPicker, alarmScheduler.getLeadTimeMinutes());
         } else if (maxValue >= lastAlarmLeadTime) {
             setNumber(numberPicker, lastAlarmLeadTime);
         } else if (maxValue >= 5) {
@@ -107,12 +109,11 @@ public class TrainAlarmDialogFragment extends DialogFragment {
 
                                 BartRunnerApplication application =
                                         (BartRunnerApplication) getActivity().getApplication();
-                                application.getFollowedTripRepository().getFollowedDeparture().setUpAlarm(
-                                        alarmLeadTime,
-                                        application,
-                                        (AlarmManager) getActivity()
-                                                .getSystemService(Context.ALARM_SERVICE)
-                                );
+                                DepartureAlarmScheduler alarmScheduler = application
+                                        .getFollowedTripRepository().getAlarmScheduler();
+                                if (alarmScheduler != null) {
+                                    alarmScheduler.setUp(alarmLeadTime);
+                                }
                             }
                         })
                 .setNegativeButton(R.string.cancel,

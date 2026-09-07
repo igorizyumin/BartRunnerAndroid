@@ -28,6 +28,8 @@ import com.dougkeen.bart.model.Line;
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
+import com.dougkeen.bart.platform.DepartureParcel;
+import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.presentation.DepartureTextFormatter;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
@@ -80,8 +82,10 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         }
 
         BartRunnerApplication application = (BartRunnerApplication) getApplication();
-        Departure requestedDeparture = IntentCompat.getParcelableExtra(
-                getIntent(), "departure", Departure.class);
+        DepartureParcel departureParcel = IntentCompat.getParcelableExtra(
+                getIntent(), "departure", DepartureParcel.class);
+        Departure requestedDeparture = departureParcel == null
+                ? null : departureParcel.getDeparture();
         if (requestedDeparture != null) {
             mDeparture = requestedDeparture;
             Departure followedDeparture = application.getFollowedTripRepository()
@@ -173,8 +177,11 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         MenuItem cancel = menu.findItem(R.id.cancel_alarm_button);
         MenuItem set = menu.findItem(R.id.set_alarm_button);
         MenuItem delete = menu.findItem(R.id.delete);
-        cancel.setVisible(mIsFollowing && mDeparture.isAlarmPending());
-        set.setVisible(mIsFollowing && !mDeparture.isAlarmPending()
+        DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
+                .getFollowedTripRepository().getAlarmScheduler();
+        boolean alarmPending = alarmScheduler != null && alarmScheduler.isPending();
+        cancel.setVisible(mIsFollowing && alarmPending);
+        set.setVisible(mIsFollowing && !alarmPending
                 && mDeparture.getMeanSecondsLeft() > 60);
         delete.setVisible(mIsFollowing);
     }
@@ -252,7 +259,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         requestNotificationPermissionIfNeeded();
 
         Intent intent = new Intent(this, BoardedDepartureService.class);
-        intent.putExtra("departure", mDeparture);
+        intent.putExtra("departure", new DepartureParcel(mDeparture));
         startBoardedDepartureService(intent);
 
         mIsFollowing = true;

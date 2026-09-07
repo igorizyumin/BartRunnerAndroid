@@ -1,24 +1,17 @@
 package com.dougkeen.bart.model;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class StationPair implements Parcelable {
+public class StationPair {
     @JsonCreator
     public StationPair(@JsonProperty("origin") Station origin,
                        @JsonProperty("destination") Station destination) {
         super();
         this.origin = origin;
         this.destination = destination;
-    }
-
-    public StationPair(Parcel in) {
-        readFromParcel(in);
     }
 
     private Station origin;
@@ -116,28 +109,4 @@ public class StationPair implements Parcelable {
                 + "]";
     }
 
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(origin == null ? null : origin.abbreviation);
-        dest.writeString(destination == null ? null : destination.abbreviation);
-    }
-
-    private void readFromParcel(Parcel in) {
-        origin = Station.getByAbbreviation(in.readString());
-        destination = Station.getByAbbreviation(in.readString());
-    }
-
-    public static final Parcelable.Creator<StationPair> CREATOR = new Parcelable.Creator<StationPair>() {
-        public StationPair createFromParcel(Parcel in) {
-            return new StationPair(in);
-        }
-
-        public StationPair[] newArray(int size) {
-            return new StationPair[size];
-        }
-    };
 }

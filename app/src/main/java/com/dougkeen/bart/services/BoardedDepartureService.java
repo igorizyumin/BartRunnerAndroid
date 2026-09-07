@@ -1,12 +1,10 @@
 package com.dougkeen.bart.services;
 
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.Manifest;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.content.pm.PackageManager;
@@ -29,7 +27,9 @@ import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
+import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.presentation.DepartureNotificationFactory;
+import com.dougkeen.bart.platform.DepartureParcel;
 import com.dougkeen.util.Observer;
 
 import java.lang.ref.WeakReference;
@@ -46,7 +46,6 @@ public class BoardedDepartureService extends Service implements
     private TransitRepository.Subscription mTransitSubscription;
     private StationPair mStationPair;
     private NotificationManagerCompat mNotificationManager;
-    private AlarmManager mAlarmManager;
     private Handler mHandler;
     private boolean mHasShutDown = false;
 
@@ -83,7 +82,6 @@ public class BoardedDepartureService extends Service implements
         mServiceHandler = new ServiceHandler(mServiceLooper, this);
 
         mNotificationManager = NotificationManagerCompat.from(this);
-        mAlarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         mHandler = new Handler(Looper.getMainLooper());
 
         if (Build.VERSION.SDK_INT >= 26) {
@@ -129,8 +127,10 @@ public class BoardedDepartureService extends Service implements
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
         final Departure boardedDeparture;
         if (intent.hasExtra("departure")) {
-            boardedDeparture = IntentCompat.getParcelableExtra(intent, "departure",
-                    Departure.class);
+            DepartureParcel departureParcel = IntentCompat.getParcelableExtra(
+                    intent, "departure", DepartureParcel.class);
+            boardedDeparture = departureParcel == null
+                    ? null : departureParcel.getDeparture();
         } else {
             boardedDeparture = application.getFollowedTripRepository().getFollowedDeparture();
         }
@@ -144,8 +144,11 @@ public class BoardedDepartureService extends Service implements
         if (intent.getBooleanExtra("cancelNotifications", false)
                 || intent.getBooleanExtra(Constants.CLEAR_DEPARTURE, false)) {
             // We want to cancel the alarm
-            boardedDeparture
-                    .cancelAlarm(getApplicationContext(), mAlarmManager);
+            DepartureAlarmScheduler alarmScheduler = application
+                    .getFollowedTripRepository().getAlarmScheduler();
+            if (alarmScheduler != null) {
+                alarmScheduler.cancel();
+            }
             if (intent.getBooleanExtra(Constants.CLEAR_DEPARTURE, false)) {
                 application.getFollowedTripRepository().clearFollowedDeparture();
                 shutDown(false);
@@ -170,14 +173,19 @@ public class BoardedDepartureService extends Service implements
                             new RouteDepartureProjection(mStationPair), this);
         }
 
-        boardedDeparture.getAlarmLeadTimeMinutesObservable().registerObserver(
+        DepartureAlarmScheduler alarmScheduler = application.getFollowedTripRepository()
+                .getAlarmScheduler();
+        if (alarmScheduler == null) {
+            return;
+        }
+        alarmScheduler.getLeadTimeMinutesObservable().registerObserver(
                 new Observer<Integer>() {
                     @Override
                     public void onUpdate(Integer newValue) {
                         updateNotification();
                     }
                 });
-        boardedDeparture.getAlarmPendingObservable().registerObserver(
+        alarmScheduler.getPendingObservable().registerObserver(
                 new Observer<Boolean>() {
                     @Override
                     public void onUpdate(Boolean newValue) {
@@ -191,11 +199,10 @@ public class BoardedDepartureService extends Service implements
     }
 
     private void updateAlarm() {
-        Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getFollowedTripRepository().getFollowedDeparture();
-        if (boardedDeparture != null) {
-            boardedDeparture
-                    .updateAlarm(getApplicationContext(), mAlarmManager);
+        DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
+                .getFollowedTripRepository().getAlarmScheduler();
+        if (alarmScheduler != null) {
+            alarmScheduler.update();
         }
     }
 
@@ -247,7 +254,11 @@ public class BoardedDepartureService extends Service implements
                             new RouteDepartureProjection(mStationPair), this);
         }
 
-        boardedDeparture.updateAlarm(getApplicationContext(), mAlarmManager);
+        DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
+                .getFollowedTripRepository().getAlarmScheduler();
+        if (alarmScheduler != null) {
+            alarmScheduler.update();
+        }
 
         updateNotification();
 
@@ -294,7 +305,9 @@ public class BoardedDepartureService extends Service implements
                 .getFollowedTripRepository().getFollowedDeparture();
         if (boardedDeparture != null) {
             Notification notification = DepartureNotificationFactory.create(
-                    getApplicationContext(), boardedDeparture);
+                    getApplicationContext(), boardedDeparture,
+                    ((BartRunnerApplication) getApplication()).getFollowedTripRepository()
+                            .getAlarmScheduler());
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
                     || ContextCompat.checkSelfPermission(this,
                     Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
@@ -310,10 +323,9 @@ public class BoardedDepartureService extends Service implements
     }
 
     private int getPollIntervalMillis() {
-        final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getFollowedTripRepository().getFollowedDeparture();
-
-        if (boardedDeparture != null && boardedDeparture.getSecondsUntilAlarm() > 3 * 60) {
+        DepartureAlarmScheduler alarmScheduler = ((BartRunnerApplication) getApplication())
+                .getFollowedTripRepository().getAlarmScheduler();
+        if (alarmScheduler != null && alarmScheduler.getSecondsUntilAlarm() > 3 * 60) {
             return 15 * 1000;
         } else {
             return 6 * 1000;

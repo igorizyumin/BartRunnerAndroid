@@ -11,6 +11,7 @@ import com.dougkeen.bart.R;
 import com.dougkeen.bart.activities.TripInProgressActivity;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
 import java.util.Locale;
@@ -20,7 +21,8 @@ public final class DepartureNotificationFactory {
     private DepartureNotificationFactory() {
     }
 
-    public static Notification create(Context context, Departure departure) {
+    public static Notification create(Context context, Departure departure,
+                                      DepartureAlarmScheduler alarmScheduler) {
         final int halfMinutes = (departure.getMeanSecondsLeft() + 15) / 30;
         float minutes = halfMinutes / 2f;
         final String minutesText = (minutes < 1) ? "Less than one minute"
@@ -47,10 +49,10 @@ public final class DepartureNotificationFactory {
         }
 
         notificationBuilder.setContentText(directionText);
-        if (departure.isAlarmPending()) {
+        if (alarmScheduler != null && alarmScheduler.isPending()) {
             PendingIntent pendingIntent = PendingIntent.getService(
                     context, 0, cancelAlarmIntent, PendingIntent.FLAG_IMMUTABLE);
-            String subText = "Alarm " + departure.getAlarmLeadTimeMinutes()
+            String subText = "Alarm " + alarmScheduler.getLeadTimeMinutes()
                     + " minutes before departure";
             notificationBuilder
                     .addAction(R.drawable.ic_action_cancel_alarm,

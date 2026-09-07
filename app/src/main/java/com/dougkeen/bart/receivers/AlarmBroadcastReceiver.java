@@ -8,6 +8,8 @@ import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.activities.ViewDeparturesActivity;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.platform.DepartureAlarmScheduler;
+import com.dougkeen.bart.platform.StationPairParcel;
 import com.dougkeen.util.WakeLocker;
 
 public class AlarmBroadcastReceiver extends BroadcastReceiver {
@@ -29,12 +31,16 @@ public class AlarmBroadcastReceiver extends BroadcastReceiver {
 
         Intent targetIntent = new Intent(context, ViewDeparturesActivity.class);
         targetIntent.putExtra(Constants.STATION_PAIR_EXTRA,
-                boardedDeparture.getStationPair());
+                new StationPairParcel(boardedDeparture.getStationPair()));
         targetIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
         context.startActivity(targetIntent);
 
-        boardedDeparture.notifyAlarmHasBeenHandled();
+        DepartureAlarmScheduler alarmScheduler = application.getFollowedTripRepository()
+                .getAlarmScheduler();
+        if (alarmScheduler != null) {
+            alarmScheduler.notifyAlarmHasBeenHandled();
+        }
     }
 
 }

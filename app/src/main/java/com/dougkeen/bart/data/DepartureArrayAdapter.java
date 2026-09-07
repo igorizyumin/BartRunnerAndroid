@@ -1,6 +1,7 @@
 package com.dougkeen.bart.data;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -160,8 +161,14 @@ public class DepartureArrayAdapter
                 });
             }
 
+            int destinationColor;
+            try {
+                destinationColor = Color.parseColor(departure.getTrainDestinationColorHex());
+            } catch (IllegalArgumentException exception) {
+                destinationColor = Color.WHITE;
+            }
             itemView.findViewById(R.id.destinationColorBar)
-                    .setBackgroundColor(departure.getTrainDestinationColor());
+                    .setBackgroundColor(destinationColor);
             CountdownTextView countdown = itemView.findViewById(R.id.countdown);
             countdown.setText(DepartureTextFormatter.countdown(context, departure));
             countdown.setTextProvider(tick -> DepartureTextFormatter.countdown(

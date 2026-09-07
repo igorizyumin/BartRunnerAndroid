@@ -1,20 +1,5 @@
 package com.dougkeen.bart.model;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
-import android.graphics.Color;
-import android.os.Build;
-import android.os.Parcel;
-import android.os.Parcelable;
-import androidx.annotation.ColorInt;
-import android.util.Log;
-
-import com.dougkeen.bart.receivers.AlarmBroadcastReceiver;
-import com.dougkeen.util.Observable;
-
-
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Comparator;
@@ -22,7 +7,7 @@ import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Departure implements Parcelable, Comparable<Departure> {
+public class Departure implements Comparable<Departure> {
     private static final int MINIMUM_MERGE_OVERLAP_MILLIS = 5000;
     private static final int EXPIRE_MINUTES_AFTER_ARRIVAL = 1;
 
@@ -43,19 +28,12 @@ public class Departure implements Parcelable, Comparable<Departure> {
         this.minutes = minutes;
     }
 
-    public Departure(Parcel in) {
-        readFromParcel(in);
-    }
-
     private Station origin;
     private Station trainDestination;
     private Station passengerDestination;
     private Line line;
     private String destinationColorHex;
     private String destinationColorText;
-
-    @ColorInt
-    private int destinationColorInt;
 
     private String platform;
     private String direction;
@@ -76,10 +54,6 @@ public class Departure implements Parcelable, Comparable<Departure> {
     private boolean beganAsDeparted;
 
     private long arrivalTimeOverride;
-
-    private Observable<Integer> alarmLeadTimeMinutes = new Observable<Integer>(
-            0);
-    private Observable<Boolean> alarmPending = new Observable<Boolean>(false);
 
     private boolean listedInETDs = true;
 
@@ -161,16 +135,8 @@ public class Departure implements Parcelable, Comparable<Departure> {
         this.line = line;
     }
 
-    @ColorInt
-    public int getTrainDestinationColor() {
-        if (destinationColorInt == 0) {
-            try {
-                destinationColorInt = Color.parseColor(destinationColorHex);
-            } catch (IllegalArgumentException e) {
-                destinationColorInt = Color.WHITE;
-            }
-        }
-        return destinationColorInt;
+    public String getTrainDestinationColorHex() {
+        return destinationColorHex;
     }
 
     public void setTrainDestinationColorHex(String destinationColor) {
@@ -442,8 +408,6 @@ public class Departure implements Parcelable, Comparable<Departure> {
          */
         if (!wasDeparted && getMeanSecondsLeft(newMin, newMax) <= 0
                 && getMeanSecondsLeft() < 60 && getUncertaintySeconds() < 30) {
-            Log.d(Constants.TAG,
-                    "Skipping estimate merge, since it would make this departure show as 'departed' prematurely");
             return;
         }
 
@@ -566,97 +530,6 @@ public class Departure implements Parcelable, Comparable<Departure> {
         this.selected = selected;
     }
 
-    public int getAlarmLeadTimeMinutes() {
-        return alarmLeadTimeMinutes.getValue();
-    }
-
-    public Observable<Integer> getAlarmLeadTimeMinutesObservable() {
-        return alarmLeadTimeMinutes;
-    }
-
-    public boolean isAlarmPending() {
-        return alarmPending.getValue();
-    }
-
-    public Observable<Boolean> getAlarmPendingObservable() {
-        return alarmPending;
-    }
-
-    private PendingIntent getAlarmIntent(Context context) {
-        Intent intent = new Intent(context, AlarmBroadcastReceiver.class);
-        intent.setAction(Constants.ACTION_ALARM);
-        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    private long getAlarmClockTime() {
-        return getMeanEstimate() - alarmLeadTimeMinutes.getValue() * 60 * 1000;
-    }
-
-    public int getSecondsUntilAlarm() {
-        return getMeanSecondsLeft() - getAlarmLeadTimeMinutes() * 60;
-    }
-
-    public void setUpAlarm(int leadTimeMinutes, Context context, AlarmManager alarmManager) {
-        this.alarmLeadTimeMinutes.setValue(leadTimeMinutes);
-        this.alarmPending.setValue(true);
-        scheduleAlarm(alarmManager, getAlarmIntent(context));
-    }
-
-    public void updateAlarm(Context context, AlarmManager alarmManager) {
-        if (alarmManager == null) {
-            Log.w(Constants.TAG, "No alarm manager available, so alarm will not be updated");
-            return;
-        }
-
-        if (isAlarmPending() && getAlarmLeadTimeMinutes() > 0) {
-            scheduleAlarm(alarmManager, getAlarmIntent(context));
-        }
-    }
-
-    private void scheduleAlarm(AlarmManager alarmManager, PendingIntent alarmIntent) {
-        if (alarmManager == null) {
-            Log.w(Constants.TAG, "No alarm manager available, so alarm will not be scheduled");
-            return;
-        }
-        long alarmTime = getAlarmClockTime();
-
-        if (alarmTime < System.currentTimeMillis()) {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                    && !alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-                Log.w(Constants.TAG, "Exact alarm permission is unavailable; using an inexact alarm");
-                return;
-            }
-            try {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-            } catch (SecurityException exception) {
-                // Exact alarms may be disabled by the user on Android 12+.
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-                Log.w(Constants.TAG, "Exact alarm permission is unavailable; using an inexact alarm");
-            }
-        } else {
-            try {
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-            } catch (SecurityException exception) {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-                Log.w(Constants.TAG, "Exact alarm permission is unavailable; using a regular alarm");
-            }
-        }
-
-        Log.v(Constants.TAG, "Scheduling alarm for "
-                + android.text.format.DateFormat.format("h:mm:ss", alarmTime));
-    }
-
-    public void cancelAlarm(Context context, AlarmManager alarmManager) {
-        if (alarmManager != null) {
-            alarmManager.cancel(getAlarmIntent(context));
-        }
-        this.alarmPending.setValue(false);
-        Log.d(Constants.TAG, "Alarm cancelled");
-    }
-
     @Override
     public String toString() {
         java.text.DateFormat format = SimpleDateFormat.getTimeInstance();
@@ -685,73 +558,4 @@ public class Departure implements Parcelable, Comparable<Departure> {
         return (secondsLeft / 60) + "m, " + (secondsLeft % 60) + "s";
     }
 
-    public int describeContents() {
-        return 0;
-    }
-
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(origin.abbreviation);
-        dest.writeString(trainDestination.abbreviation);
-        dest.writeString(passengerDestination == null ? null
-                : passengerDestination.abbreviation);
-        dest.writeString(destinationColorHex);
-        dest.writeString(platform);
-        dest.writeString(direction);
-        dest.writeByte((byte) (bikeAllowed ? 1 : 0));
-        dest.writeString(trainLength);
-        dest.writeByte((byte) (requiresTransfer ? 1 : 0));
-        dest.writeInt(minutes);
-        dest.writeLong(minEstimate);
-        dest.writeLong(maxEstimate);
-        dest.writeLong(arrivalTimeOverride);
-        dest.writeInt(estimatedTripTime);
-        dest.writeInt(line.ordinal());
-        dest.writeByte(beganAsDeparted ? (byte) 1 : (byte) 0);
-        dest.writeByte(bikeAllowed ? (byte) 1 : (byte) 0);
-        dest.writeByte(requiresTransfer ? (byte) 1 : (byte) 0);
-        dest.writeByte(transferScheduled ? (byte) 1 : (byte) 0);
-        dest.writeByte(limited ? (byte) 1 : (byte) 0);
-        dest.writeTypedList(tripLegs);
-    }
-
-    private void readFromParcel(Parcel in) {
-        origin = Station.getByAbbreviation(in.readString());
-        trainDestination = Station.getByAbbreviation(in.readString());
-        passengerDestination = Station.getByAbbreviation(in.readString());
-        destinationColorHex = in.readString();
-        platform = in.readString();
-        direction = in.readString();
-        bikeAllowed = in.readByte() != 0;
-        trainLength = in.readString();
-        requiresTransfer = in.readByte() != 0;
-        minutes = in.readInt();
-        minEstimate = in.readLong();
-        maxEstimate = in.readLong();
-        arrivalTimeOverride = in.readLong();
-        estimatedTripTime = in.readInt();
-        line = Line.values()[in.readInt()];
-        beganAsDeparted = in.readByte() == (byte) 1;
-        bikeAllowed = in.readByte() == (byte) 1;
-        requiresTransfer = in.readByte() == (byte) 1;
-        transferScheduled = in.readByte() == (byte) 1;
-        limited = in.readByte() == (byte) 1;
-        tripLegs = in.createTypedArrayList(TripLeg.CREATOR);
-        if (tripLegs == null) {
-            tripLegs = new ArrayList<TripLeg>();
-        }
-    }
-
-    public static final Parcelable.Creator<Departure> CREATOR = new Parcelable.Creator<Departure>() {
-        public Departure createFromParcel(Parcel in) {
-            return new Departure(in);
-        }
-
-        public Departure[] newArray(int size) {
-            return new Departure[size];
-        }
-    };
-
-    public void notifyAlarmHasBeenHandled() {
-        this.alarmPending.setValue(false);
-    }
 }

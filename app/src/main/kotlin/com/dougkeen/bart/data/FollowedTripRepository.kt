@@ -1,10 +1,10 @@
 package com.dougkeen.bart.data
 
-import android.app.AlarmManager
 import android.content.Context
-import android.os.Parcel
 import android.util.Log
 import com.dougkeen.bart.model.Departure
+import com.dougkeen.bart.platform.DepartureAlarmScheduler
+import com.dougkeen.bart.platform.DepartureParcel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +25,9 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
     private val persistenceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val stateLock = Any()
     private var followedDeparture: Departure? = restore()
+    private var alarmScheduler: DepartureAlarmScheduler? = followedDeparture?.let {
+        DepartureAlarmScheduler(applicationContext, it)
+    }
 
     private val _state = MutableStateFlow(FollowedTripState(followedDeparture))
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
@@ -39,19 +42,22 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
     }
 
     fun setFollowedDeparture(departure: Departure?) {
-        val previous: Departure?
+        val previousScheduler: DepartureAlarmScheduler?
         synchronized(stateLock) {
             if (Objects.equals(departure, followedDeparture)
                 && compareDepartures(departure, followedDeparture) == 0
             ) {
                 return
             }
-            previous = followedDeparture
+            previousScheduler = alarmScheduler
             followedDeparture = departure
+            alarmScheduler = departure?.let {
+                DepartureAlarmScheduler(applicationContext, it)
+            }
             _state.value = FollowedTripState(departure)
         }
 
-        release(previous)
+        previousScheduler?.close()
         persist(departure)
     }
 
@@ -59,18 +65,8 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
         setFollowedDeparture(null)
     }
 
-    private fun release(departure: Departure?) {
-        if (departure == null) {
-            return
-        }
-        departure.alarmLeadTimeMinutesObservable.unregisterAllObservers()
-        departure.alarmPendingObservable.unregisterAllObservers()
-        if (departure.isAlarmPending) {
-            departure.cancelAlarm(
-                applicationContext,
-                applicationContext.getSystemService(Context.ALARM_SERVICE) as? AlarmManager,
-            )
-        }
+    fun getAlarmScheduler(): DepartureAlarmScheduler? {
+        return synchronized(stateLock) { alarmScheduler }
     }
 
     private fun restore(): Departure? {
@@ -79,15 +75,7 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
         }
         return try {
             cacheFile.inputStream().use { input ->
-                val bytes = input.readBytes()
-                val parcel = Parcel.obtain()
-                try {
-                    parcel.unmarshall(bytes, 0, bytes.size)
-                    parcel.setDataPosition(0)
-                    Departure.CREATOR.createFromParcel(parcel)
-                } finally {
-                    parcel.recycle()
-                }
+                DepartureParcel.fromBytes(input.readBytes())
             }
         } catch (exception: Exception) {
             Log.w(TAG, "Could not restore followed trip", exception)
@@ -103,14 +91,8 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
                     deleteCache()
                     return@execute
                 }
-                val parcel = Parcel.obtain()
-                try {
-                    departure.writeToParcel(parcel, 0)
-                    cacheFile.outputStream().use { output ->
-                        output.write(parcel.marshall())
-                    }
-                } finally {
-                    parcel.recycle()
+                cacheFile.outputStream().use { output ->
+                    output.write(DepartureParcel(departure).toBytes())
                 }
             } catch (exception: Exception) {
                 Log.w(TAG, "Could not persist followed trip", exception)
@@ -134,6 +116,7 @@ class FollowedTripRepository(context: Context) : AutoCloseable {
     }
 
     override fun close() {
+        synchronized(stateLock) { alarmScheduler }?.close()
         persistenceExecutor.shutdownNow()
     }
 }
