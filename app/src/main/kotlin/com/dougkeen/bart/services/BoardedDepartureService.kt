@@ -16,12 +16,9 @@ import androidx.core.content.IntentCompat
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.backend.RouteDepartureProjection
-import com.dougkeen.bart.backend.TransitFeedSnapshot
-import com.dougkeen.bart.backend.TransitProjectionListener
-import com.dougkeen.bart.backend.TransitRepository
 import com.dougkeen.bart.model.Departure
-import com.dougkeen.bart.model.RealTimeDepartures
 import com.dougkeen.bart.model.StationPair
+import com.dougkeen.bart.model.SystemTimeSource
 import com.dougkeen.bart.platform.DepartureParcel
 import com.dougkeen.bart.presentation.DepartureNotificationFactory
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +27,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -39,9 +37,10 @@ import kotlinx.coroutines.sync.withLock
 class BoardedDepartureService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val timeSource = SystemTimeSource
     private val serviceMutex = Mutex()
     private var pollJob: Job? = null
-    private var departureSubscription: TransitRepository.Subscription? = null
+    private var departureCollection: Job? = null
     private var stationPair: StationPair? = null
     private var hasShutDown = false
     private var notificationManager: NotificationManagerCompat? = null
@@ -74,7 +73,7 @@ class BoardedDepartureService : Service() {
     override fun onDestroy() {
         hasShutDown = true
         pollJob?.cancel()
-        closeDepartureSubscription()
+        cancelDepartureCollection()
         serviceScope.cancel()
         stopForegroundCompat()
         notificationManager?.cancel(DEPARTURE_NOTIFICATION_ID)
@@ -123,34 +122,23 @@ class BoardedDepartureService : Service() {
         if (nextStationPair == stationPair) {
             return
         }
-        closeDepartureSubscription()
+        cancelDepartureCollection()
         stationPair = nextStationPair
         if (nextStationPair == null) {
             return
         }
 
-        departureSubscription = transitRepository.subscribe(
-            RouteDepartureProjection(nextStationPair, applicationContext),
-            object : TransitProjectionListener<RealTimeDepartures> {
-                override fun onData(
-                    value: RealTimeDepartures,
-                    snapshot: TransitFeedSnapshot,
-                ) {
-                    serviceScope.launch {
-                        serviceMutex.withLock {
-                            onDeparturesChanged(value.getDepartures())
-                        }
+        departureCollection = serviceScope.launch {
+            transitRepository.projectedState(
+                RouteDepartureProjection(nextStationPair, applicationContext),
+            ).collectLatest { projectionState ->
+                projectionState.value?.let { departures ->
+                    serviceMutex.withLock {
+                        onDeparturesChanged(departures.getDepartures())
                     }
                 }
-
-                override fun onError(
-                    exception: Exception,
-                    lastSnapshot: TransitFeedSnapshot?,
-                ) {
-                    // The next feed refresh is enough to recover; the current notification remains valid.
-                }
-            },
-        )
+            }
+        }
     }
 
     private fun onDeparturesChanged(departures: List<Departure>) {
@@ -169,7 +157,7 @@ class BoardedDepartureService : Service() {
 
         if (shouldUpdateNotification(boardedDeparture, updatedDeparture)) {
             followedTripRepository.setFollowedDeparture(
-                Departure.merge(boardedDeparture, updatedDeparture, false),
+                Departure.merge(boardedDeparture, updatedDeparture, false, timeSource),
             )
             updateAlarm()
             updateNotification()
@@ -187,7 +175,10 @@ class BoardedDepartureService : Service() {
                         false
                     } else {
                         val departure = followedTripRepository.getFollowedDeparture()
-                        if (shouldStopPolling(departure != null, departure?.hasDeparted() == true)) {
+                        if (shouldStopPolling(
+                                departure != null,
+                                departure?.hasDeparted(timeSource) == true,
+                            )) {
                             shutDown(false)
                             false
                         } else {
@@ -213,7 +204,7 @@ class BoardedDepartureService : Service() {
     internal fun shouldUpdateNotification(
         previous: Departure,
         incoming: Departure,
-    ): Boolean = previous.getMeanSecondsLeft() != incoming.getMeanSecondsLeft()
+    ): Boolean = previous.getMeanSecondsLeft(timeSource) != incoming.getMeanSecondsLeft(timeSource)
         || previous.getUncertaintySeconds() != incoming.getUncertaintySeconds()
 
     @VisibleForTesting
@@ -243,7 +234,7 @@ class BoardedDepartureService : Service() {
         hasShutDown = true
         pollJob?.cancel()
         pollJob = null
-        closeDepartureSubscription()
+        cancelDepartureCollection()
         stopForegroundCompat()
         notificationManager?.cancel(DEPARTURE_NOTIFICATION_ID)
         if (!isBeingDestroyed) {
@@ -251,9 +242,9 @@ class BoardedDepartureService : Service() {
         }
     }
 
-    private fun closeDepartureSubscription() {
-        departureSubscription?.close()
-        departureSubscription = null
+    private fun cancelDepartureCollection() {
+        departureCollection?.cancel()
+        departureCollection = null
         stationPair = null
     }
 
@@ -266,6 +257,7 @@ class BoardedDepartureService : Service() {
             applicationContext,
             departure,
             followedTripRepository.getAlarmScheduler(),
+            timeSource,
         )
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
             || ContextCompat.checkSelfPermission(

@@ -1,9 +1,7 @@
 package com.dougkeen.bart.model
 
-import java.text.SimpleDateFormat
 import java.util.ArrayList
 import java.util.Collections
-import java.util.Date
 
 /** Immutable domain value for one scheduled or realtime departure. */
 data class Departure(
@@ -91,23 +89,23 @@ data class Departure(
     fun getUncertaintySeconds(): Int =
         ((maxEstimate - minEstimate + 1000L) / 2000L).toInt()
 
-    fun getMinSecondsLeft(): Int = getMinSecondsLeft(SystemTimeSource.nowMillis())
-
     fun getMinSecondsLeft(nowMillis: Long): Int =
         ((minEstimate - nowMillis) / 1000L).toInt()
-
-    fun getMaxSecondsLeft(): Int = getMaxSecondsLeft(SystemTimeSource.nowMillis())
 
     fun getMaxSecondsLeft(nowMillis: Long): Int =
         ((maxEstimate - nowMillis) / 1000L).toInt()
 
-    fun getMeanSecondsLeft(): Int = getMeanSecondsLeft(SystemTimeSource.nowMillis())
+    fun getMinSecondsLeft(timeSource: TimeSource): Int =
+        getMinSecondsLeft(timeSource.nowMillis())
+
+    fun getMaxSecondsLeft(timeSource: TimeSource): Int =
+        getMaxSecondsLeft(timeSource.nowMillis())
+
+    fun getMeanSecondsLeft(timeSource: TimeSource): Int =
+        getMeanSecondsLeft(timeSource.nowMillis())
 
     fun getMeanSecondsLeft(nowMillis: Long): Int =
         getMeanSecondsLeft(minEstimate, maxEstimate, nowMillis)
-
-    fun getMeanSecondsLeft(min: Long, max: Long): Int =
-        getMeanSecondsLeft(min, max, SystemTimeSource.nowMillis())
 
     fun getMeanSecondsLeft(min: Long, max: Long, nowMillis: Long): Int =
         ((getMeanEstimate(min, max) - nowMillis) / 1000L).toInt()
@@ -129,20 +127,22 @@ data class Departure(
         return getMeanEstimate() + estimatedTripTime
     }
 
-    fun getEstimatedArrivalMinutesLeft(): Long =
-        getEstimatedArrivalMinutesLeft(SystemTimeSource.nowMillis())
+    fun getEstimatedArrivalMinutesLeft(timeSource: TimeSource): Long =
+        getEstimatedArrivalMinutesLeft(timeSource.nowMillis())
 
     fun getEstimatedArrivalMinutesLeft(nowMillis: Long): Long {
         val millisLeft = getEstimatedArrivalTime() - nowMillis
         return if (millisLeft < 0) -1 else (millisLeft + 29999L) / 60_000L
     }
 
-    fun hasDeparted(): Boolean = hasDeparted(SystemTimeSource.nowMillis())
+    fun hasDeparted(timeSource: TimeSource): Boolean =
+        hasDeparted(timeSource.nowMillis())
 
     fun hasDeparted(nowMillis: Long): Boolean =
         getMeanSecondsLeft(minEstimate, maxEstimate, nowMillis) <= 0
 
-    fun hasExpired(): Boolean = hasExpired(SystemTimeSource.nowMillis())
+    fun hasExpired(timeSource: TimeSource): Boolean =
+        hasExpired(timeSource.nowMillis())
 
     fun hasExpired(nowMillis: Long): Boolean =
         hasAnyArrivalEstimate()
@@ -188,27 +188,27 @@ data class Departure(
         maxEstimate = originalEstimateTime + minutes * 60_000L + 30_000L,
     )
 
-    fun mergeEstimate(departure: Departure): Departure =
-        merge(this, departure, updateTripLegs = true)
+    fun mergeEstimate(departure: Departure, timeSource: TimeSource): Departure =
+        merge(this, departure, updateTripLegs = true, timeSource)
 
-    fun mergeEstimate(departure: Departure, updateTripLegs: Boolean): Departure =
-        merge(this, departure, updateTripLegs)
+    fun mergeEstimate(
+        departure: Departure,
+        updateTripLegs: Boolean,
+        timeSource: TimeSource,
+    ): Departure = merge(this, departure, updateTripLegs, timeSource)
 
     override fun compareTo(other: Departure): Int =
-        getMeanSecondsLeft().compareTo(other.getMeanSecondsLeft())
+        getMeanEstimate().compareTo(other.getMeanEstimate())
 
-    fun getUncertaintyText(): String =
-        if (hasDeparted() || canceled) "" else "(±${getUncertaintySeconds()}s)"
+    fun getUncertaintyText(timeSource: TimeSource): String =
+        if (hasDeparted(timeSource) || canceled) "" else "(±${getUncertaintySeconds()}s)"
 
     override fun toString(): String {
-        val format = SimpleDateFormat.getTimeInstance()
         return buildString {
             append(trainDestination)
             if (requiresTransfer) append(" (w/ xfer)")
             append(", ")
-            append(getDebugCountdownText())
-            append(", ")
-            append(format.format(Date(getMeanEstimate())))
+            append("estimate=").append(getMeanEstimate())
         }
     }
 
@@ -216,16 +216,6 @@ data class Departure(
         destination == null
             || tripLegs.isEmpty()
             || tripLegs.last().destination == destination
-
-    private fun getDebugCountdownText(): String {
-        val secondsLeft = getMeanSecondsLeft()
-        return when {
-            canceled -> "Canceled"
-            hasDeparted() && origin?.longStationLinger == true && beganAsDeparted -> "At station"
-            hasDeparted() -> if (listedInETDs) "Leaving" else "Departed"
-            else -> "${secondsLeft / 60}m, ${secondsLeft % 60}s"
-        }
-    }
 
     companion object {
         private const val MINIMUM_MERGE_OVERLAP_MILLIS = 5000L
@@ -239,7 +229,7 @@ data class Departure(
             previous: Departure,
             incoming: Departure,
             updateTripLegs: Boolean,
-            timeSource: TimeSource = SystemTimeSource,
+            timeSource: TimeSource,
         ): Departure {
             val now = timeSource.nowMillis()
             val tripLegs = if (updateTripLegs && incoming.tripLegs.isNotEmpty()) {
@@ -293,7 +283,7 @@ data class Departure(
         fun replaceFeed(
             previous: List<Departure>,
             incoming: List<Departure>,
-            timeSource: TimeSource = SystemTimeSource,
+            timeSource: TimeSource,
         ): List<Departure> {
             val previousByIdentity = previous.associateBy { it.identity }
             return incoming.map { departure ->

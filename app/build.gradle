@@ -3,6 +3,10 @@ apply plugin: 'com.android.application'
 dependencies {
     testImplementation 'junit:junit:4.13.2'
 
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.3'
     implementation 'org.mobilitydata:gtfs-realtime-bindings:0.0.8'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
@@ -11,7 +15,9 @@ dependencies {
     implementation 'androidx.core:core:1.16.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.lifecycle:lifecycle-runtime:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
@@ -36,7 +42,7 @@ android {
         versionName "2.2.21"
         versionCode 56
 
-        minSdk 21
+        minSdk 31
         targetSdk 36
     }
 

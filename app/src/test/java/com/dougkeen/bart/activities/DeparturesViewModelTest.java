@@ -17,7 +17,7 @@ import java.util.List;
 public class DeparturesViewModelTest {
     @Test
     public void replacementStateDropsDeparturesMissingFromTheLatestFeed() {
-        DeparturesViewModel viewModel = new DeparturesViewModel();
+        DeparturesViewModel viewModel = new DeparturesViewModel(() -> 900_000L);
         Departure first = departure("trip-1", 1_000_000L);
         Departure second = departure("trip-2", 1_060_000L);
 

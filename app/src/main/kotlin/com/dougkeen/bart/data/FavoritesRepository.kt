@@ -2,23 +2,18 @@ package com.dougkeen.bart.data
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import com.dougkeen.bart.model.StationPair
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Collections
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -96,38 +91,6 @@ class FavoritesRepository(context: Context) : AutoCloseable {
                 Log.e(TAG, "Could not write favorite routes", exception)
             }
         }
-    }
-
-    /**
-     * Collects state only while the owner is STARTED. This keeps Java-based
-     * activities lifecycle-aware while the source of truth remains a Flow.
-     */
-    fun observe(owner: LifecycleOwner, observer: FavoritesObserver) {
-        val binding = object : DefaultLifecycleObserver {
-            var collection: Job? = null
-
-            override fun onStart(owner: LifecycleOwner) {
-                collection?.cancel()
-                collection = scope.launch {
-                    uiState.collectLatest { state ->
-                        withContext(Dispatchers.Main.immediate) {
-                            observer.onFavoritesChanged(state)
-                        }
-                    }
-                }
-            }
-
-            override fun onStop(owner: LifecycleOwner) {
-                collection?.cancel()
-                collection = null
-            }
-
-            override fun onDestroy(owner: LifecycleOwner) {
-                collection?.cancel()
-                owner.lifecycle.removeObserver(this)
-            }
-        }
-        owner.lifecycle.addObserver(binding)
     }
 
     private suspend fun load() {

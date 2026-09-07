@@ -3,7 +3,7 @@ package com.dougkeen.bart.presentation;
 import android.content.Context;
 
 import com.dougkeen.bart.model.Departure;
-import com.dougkeen.bart.model.SystemTimeSource;
+import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.R;
 
@@ -72,9 +72,10 @@ public final class DepartureTextFormatter {
     }
 
     public static String estimatedArrivalMinutesLeft(Context context,
-                                                      Departure departure) {
+                                                      Departure departure,
+                                                      TimeSource timeSource) {
         return estimatedArrivalMinutesLeft(context, departure,
-                SystemTimeSource.INSTANCE.nowMillis());
+                timeSource.nowMillis());
     }
 
     public static String estimatedArrivalMinutesLeft(Context context,
@@ -135,8 +136,9 @@ public final class DepartureTextFormatter {
                 .format(departureTime);
     }
 
-    public static String countdown(Context context, Departure departure) {
-        return countdown(context, departure, SystemTimeSource.INSTANCE.nowMillis());
+    public static String countdown(Context context, Departure departure,
+                                   TimeSource timeSource) {
+        return countdown(context, departure, timeSource.nowMillis());
     }
 
     public static String countdown(Context context, Departure departure,

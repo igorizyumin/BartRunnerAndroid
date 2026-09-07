@@ -1,6 +1,5 @@
 package com.dougkeen.bart.data
 
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.StateFlow
 
@@ -9,10 +8,6 @@ class FavoritesViewModel(
     private val repository: FavoritesRepository,
 ) : ViewModel() {
     val uiState: StateFlow<FavoritesUiState> = repository.uiState
-
-    fun observe(owner: LifecycleOwner, observer: FavoritesObserver) {
-        repository.observe(owner, observer)
-    }
 
     fun addFavorite(favorite: com.dougkeen.bart.model.StationPair) {
         repository.addFavorite(favorite)

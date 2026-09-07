@@ -36,10 +36,10 @@ import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.controls.Ticker;
 import com.dougkeen.bart.data.DepartureArrayAdapter;
+import com.dougkeen.bart.data.LifecycleFlowCollector;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.model.SystemTimeSource;
 import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.platform.DepartureParcel;
 import com.dougkeen.bart.platform.StationPairParcel;
@@ -58,7 +58,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private StationPair mStationPair;
 
-    private final TimeSource mTimeSource = SystemTimeSource.INSTANCE;
+    private TimeSource mTimeSource;
 
     private Departure mSelectedDeparture;
 
@@ -98,6 +98,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         final Intent intent = getIntent();
 
         final BartRunnerApplication bartRunnerApplication = (BartRunnerApplication) getApplication();
+        mTimeSource = bartRunnerApplication.getTimeSource();
 
         if (bartRunnerApplication.getAlarmController().isRingtoneRequested()
                 || bartRunnerApplication.getAlarmController().isSounding()) {
@@ -124,9 +125,10 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 outRect.bottom = itemSpacing;
             }
         });
-        mDeparturesAdapter = new DepartureArrayAdapter(this, this);
+        mDeparturesAdapter = new DepartureArrayAdapter(this, this, mTimeSource);
         setListAdapter(mDeparturesAdapter);
-        mDeparturesViewModel = new ViewModelProvider(this)
+        mDeparturesViewModel = new ViewModelProvider(this,
+                new DeparturesViewModelFactory(mTimeSource))
                 .get(DeparturesViewModel.class);
 
         if (savedInstanceState != null
@@ -157,6 +159,13 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             finish();
             return;
         }
+
+        mDeparturesViewModel.setQuery(
+                bartRunnerApplication.getTransitRepository(),
+                getApplicationContext(),
+                mStationPair);
+        LifecycleFlowCollector.collect(this, mDeparturesViewModel.getUiState(),
+                this::renderState);
 
         ActionBar supportActionBar = Assert.notNull(getSupportActionBar());
         supportActionBar.setHomeButtonEnabled(true);
@@ -299,7 +308,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     @Override
     protected void onStop() {
         super.onStop();
-        mDeparturesViewModel.stop();
         mHandler.removeCallbacks(mClearKeepScreenOnRunnable);
         Ticker.getInstance().stopTicking(this);
         WakeLocker.release();
@@ -327,9 +335,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        mDeparturesViewModel.start(
-                ((BartRunnerApplication) getApplication()).getTransitRepository(),
-                getApplicationContext(), mStationPair, this::renderState);
         Ticker.getInstance().startTicking(this);
     }
 

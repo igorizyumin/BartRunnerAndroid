@@ -54,7 +54,8 @@ public class TrainAlarmDialogFragment extends DialogFragment {
 
         final Departure boardedDeparture = application.getFollowedTripRepository()
                 .getFollowedDeparture();
-        final int maxValue = boardedDeparture.getMeanSecondsLeft() / 60;
+        final int maxValue = boardedDeparture.getMeanSecondsLeft(
+                application.getTimeSource()) / 60;
 
         numberPicker.setMinValue(1);
         numberPicker.setMaxValue(maxValue);

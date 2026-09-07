@@ -19,13 +19,10 @@ import androidx.core.content.IntentCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.backend.RouteDepartureProjection;
-import com.dougkeen.bart.backend.TripProgressProjection;
-import com.dougkeen.bart.backend.TransitProjectionListener;
-import com.dougkeen.bart.backend.TransitRepository;
+import com.dougkeen.bart.data.LifecycleFlowCollector;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.Line;
-import com.dougkeen.bart.model.RealTimeDepartures;
+import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
 import com.dougkeen.bart.platform.DepartureParcel;
@@ -37,16 +34,15 @@ import java.util.Date;
 import java.util.List;
 
 /** Shows the live state of a selected, possibly multi-train trip. */
-public class TripInProgressActivity extends AbstractViewActivity implements
-        TransitProjectionListener<RealTimeDepartures> {
+public class TripInProgressActivity extends AbstractViewActivity {
 
     private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1002;
 
     private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
+    private TimeSource mTimeSource;
     private Departure mDeparture;
+    private TripProgressViewModel mTripProgressViewModel;
     private boolean mIsFollowing;
-    private TransitRepository.Subscription mTransitSubscription;
-    private TransitRepository.Subscription mTripProgressSubscription;
 
     private TextView mStatus;
     private TextView mRoute;
@@ -82,8 +78,10 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         }
 
         BartRunnerApplication application = (BartRunnerApplication) getApplication();
+        mTimeSource = application.getTimeSource();
         DepartureParcel departureParcel = IntentCompat.getParcelableExtra(
-                getIntent(), "departure", DepartureParcel.class);
+                getIntent(), BoardedDepartureService.DEPARTURE_EXTRA,
+                DepartureParcel.class);
         Departure requestedDeparture = departureParcel == null
                 ? null : departureParcel.getDeparture();
         if (requestedDeparture != null) {
@@ -100,6 +98,22 @@ public class TripInProgressActivity extends AbstractViewActivity implements
             finish();
             return;
         }
+        mTripProgressViewModel = new androidx.lifecycle.ViewModelProvider(this)
+                .get(TripProgressViewModel.class);
+        mTripProgressViewModel.setDeparture(mDeparture, mTimeSource);
+        LifecycleFlowCollector.collect(this,
+                mTripProgressViewModel.getDepartureState(), departure -> {
+                    if (departure == null) {
+                        return;
+                    }
+                    mDeparture = departure;
+                    if (mIsFollowing) {
+                        application.getFollowedTripRepository()
+                                .setFollowedDeparture(mDeparture);
+                    }
+                    renderTrip();
+                    invalidateOptionsMenu();
+                });
         updateFollowState();
         renderTrip();
     }
@@ -107,49 +121,12 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        if (mDeparture != null && mDeparture.getStationPair() != null) {
-            TransitRepository repository = ((BartRunnerApplication)
-                    getApplication()).getTransitRepository();
-            mTransitSubscription = repository.subscribe(
-                    new RouteDepartureProjection(mDeparture.getStationPair(), this),
-                    this);
-            if (!mDeparture.getTripLegs().isEmpty()) {
-                mTripProgressSubscription = repository.subscribe(
-                        new TripProgressProjection(
-                                this,
-                                mDeparture.getStationPair().getOrigin(),
-                                mDeparture.getStationPair().getDestination(),
-                                mDeparture.getTripLegs()),
-                        new TransitProjectionListener<List<TripLeg>>() {
-                            @Override
-                            public void onData(List<TripLeg> updatedLegs,
-                                               com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-                                mDeparture.setTripLegs(updatedLegs);
-                                renderTrip();
-                                invalidateOptionsMenu();
-                            }
-
-                            @Override
-                            public void onError(Exception exception,
-                                                com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-                            }
-                        });
-            }
-        }
         mHandler.post(mRefreshRunnable);
     }
 
     @Override
     protected void onStop() {
         mHandler.removeCallbacks(mRefreshRunnable);
-        if (mTransitSubscription != null) {
-            mTransitSubscription.close();
-            mTransitSubscription = null;
-        }
-        if (mTripProgressSubscription != null) {
-            mTripProgressSubscription.close();
-            mTripProgressSubscription = null;
-        }
         super.onStop();
     }
 
@@ -178,7 +155,9 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         boolean alarmPending = alarmScheduler != null && alarmScheduler.isPending();
         cancel.setVisible(mIsFollowing && alarmPending);
         set.setVisible(mIsFollowing && !alarmPending
-                && mDeparture.getMeanSecondsLeft() > 60);
+                && mDeparture.getMeanSecondsLeft(
+                mDeparture.getMinEstimate(), mDeparture.getMaxEstimate(),
+                mTimeSource.nowMillis()) > 60);
         delete.setVisible(mIsFollowing);
     }
 
@@ -197,7 +176,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                             TrainAlarmDialogFragment.TAG);
             return true;
         } else if (item.getItemId() == R.id.cancel_alarm_button) {
-            sendServiceCommand("cancelNotifications");
+            sendServiceAction(BoardedDepartureService.ACTION_CANCEL_ALARM);
             return true;
         } else if (item.getItemId() == R.id.share_arrival) {
             Intent share = new Intent(Intent.ACTION_SEND);
@@ -220,7 +199,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                                 @Override
                                 public void onClick(DialogInterface dialog,
                                                      int which) {
-                                    sendServiceCommand("clearDeparture");
+                                    sendServiceAction(BoardedDepartureService.ACTION_CLEAR_DEPARTURE);
                                     finish();
                                 }
                             }).show();
@@ -229,14 +208,9 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         return super.onOptionsItemSelected(item);
     }
 
-    private void sendServiceCommand(String command) {
-        Intent intent = new Intent(this, BoardedDepartureService.class);
-        if ("clearDeparture".equals(command)) {
-            intent.putExtra(com.dougkeen.bart.model.Constants.CLEAR_DEPARTURE,
-                    true);
-        } else {
-            intent.putExtra(command, true);
-        }
+    private void sendServiceAction(String action) {
+        Intent intent = new Intent(this, BoardedDepartureService.class)
+                .setAction(action);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
@@ -254,8 +228,10 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         application.getFollowedTripRepository().setFollowedDeparture(mDeparture);
         requestNotificationPermissionIfNeeded();
 
-        Intent intent = new Intent(this, BoardedDepartureService.class);
-        intent.putExtra("departure", new DepartureParcel(mDeparture));
+        Intent intent = new Intent(this, BoardedDepartureService.class)
+                .setAction(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE);
+        intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
+                new DepartureParcel(mDeparture));
         startBoardedDepartureService(intent);
 
         mIsFollowing = true;
@@ -324,9 +300,10 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         if (mDeparture.isCanceled()) {
             return getString(R.string.trip_canceled);
         }
-        if (!mDeparture.hasDeparted()) {
+        long nowMillis = mTimeSource.nowMillis();
+        if (!mDeparture.hasDeparted(nowMillis)) {
             return getString(R.string.trip_leaves_in,
-                    DepartureTextFormatter.countdown(this, mDeparture));
+                    DepartureTextFormatter.countdown(this, mDeparture, nowMillis));
         }
 
         String connectionStatus = getWaitingConnectionStatus();
@@ -341,14 +318,14 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         }
 
         long arrival = mDeparture.getEstimatedArrivalTime();
-        if (arrival > 0 && arrival <= System.currentTimeMillis()) {
+        if (arrival > 0 && arrival <= nowMillis) {
             return getString(R.string.trip_arrived);
         }
         return getString(R.string.trip_current_train);
     }
 
     private int getFirstActiveLegIndex(List<TripLeg> legs) {
-        long now = System.currentTimeMillis();
+        long now = mTimeSource.nowMillis();
         for (int i = 0; i < legs.size(); i++) {
             if (!hasPassedAllStops(legs.get(i), now)) {
                 return i;
@@ -370,7 +347,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     }
 
     private TripStop getNextStop() {
-        long now = System.currentTimeMillis();
+        long now = mTimeSource.nowMillis();
         List<TripLeg> legs = mDeparture.getTripLegs();
         int firstActiveLeg = getFirstActiveLegIndex(legs);
         for (int i = firstActiveLeg; i < legs.size(); i++) {
@@ -386,7 +363,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     }
 
     private String getWaitingConnectionStatus() {
-        long now = System.currentTimeMillis();
+        long now = mTimeSource.nowMillis();
         List<TripLeg> legs = mDeparture.getTripLegs();
         for (int i = 0; i + 1 < legs.size(); i++) {
             TripLeg arrivingLeg = legs.get(i);
@@ -527,7 +504,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         if (time <= 0) {
             return getString(R.string.trip_eta_unknown);
         }
-        long seconds = (time - System.currentTimeMillis()) / 1000L;
+        long seconds = (time - mTimeSource.nowMillis()) / 1000L;
         if (seconds <= 0) {
             return getString(R.string.trip_stop_passed);
         }
@@ -556,27 +533,4 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         return (int) (value * getResources().getDisplayMetrics().density + .5f);
     }
 
-    @Override
-    public void onData(RealTimeDepartures result,
-                       com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-        final List<Departure> departures = result.getDepartures();
-        for (Departure departure : departures) {
-            if (departure.equals(mDeparture)) {
-                mDeparture.mergeEstimate(departure, true);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        renderTrip();
-                        invalidateOptionsMenu();
-                    }
-                });
-                return;
-            }
-        }
-    }
-
-    @Override
-    public void onError(Exception exception,
-                        com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-    }
 }

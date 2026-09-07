@@ -10,7 +10,6 @@ import androidx.core.app.NotificationCompat;
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.activities.TripInProgressActivity;
 import com.dougkeen.bart.model.Departure;
-import com.dougkeen.bart.model.SystemTimeSource;
 import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.platform.DepartureAlarmScheduler;
 import com.dougkeen.bart.services.BoardedDepartureService;
@@ -20,11 +19,6 @@ import java.util.Locale;
 /** Builds the foreground notification for a followed departure. */
 public final class DepartureNotificationFactory {
     private DepartureNotificationFactory() {
-    }
-
-    public static Notification create(Context context, Departure departure,
-                                      DepartureAlarmScheduler alarmScheduler) {
-        return create(context, departure, alarmScheduler, SystemTimeSource.INSTANCE);
     }
 
     public static Notification create(Context context, Departure departure,

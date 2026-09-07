@@ -1,7 +1,6 @@
 package com.dougkeen.bart;
 
 import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import android.app.Activity;
@@ -9,14 +8,14 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 
 import com.dougkeen.bart.data.FavoritesRepository;
 import com.dougkeen.bart.data.FollowedTripRepository;
 import com.dougkeen.bart.data.AlarmController;
 import com.dougkeen.bart.backend.HttpTransitFeedClient;
 import com.dougkeen.bart.backend.TransitRepository;
+import com.dougkeen.bart.model.SystemTimeSource;
+import com.dougkeen.bart.model.TimeSource;
 
 public class BartRunnerApplication extends Application implements
         Application.ActivityLifecycleCallbacks {
@@ -34,11 +33,10 @@ public class BartRunnerApplication extends Application implements
 
     private TransitRepository transitRepository;
 
+    private final TimeSource timeSource = SystemTimeSource.INSTANCE;
+
     private final ScheduledExecutorService transitScheduler =
             Executors.newSingleThreadScheduledExecutor();
-
-    private final ExecutorService transitProjectionExecutor =
-            Executors.newFixedThreadPool(2);
 
     @Override
     public void onCreate() {
@@ -50,8 +48,6 @@ public class BartRunnerApplication extends Application implements
         transitRepository = new TransitRepository(
                 new HttpTransitFeedClient(),
                 transitScheduler,
-                transitProjectionExecutor,
-                new Handler(Looper.getMainLooper())::post,
                 30_000L);
         registerActivityLifecycleCallbacks(this);
     }
@@ -70,6 +66,10 @@ public class BartRunnerApplication extends Application implements
 
     public AlarmController getAlarmController() {
         return alarmController;
+    }
+
+    public TimeSource getTimeSource() {
+        return timeSource;
     }
 
     public void setActivityTimestamp(long timestamp) {

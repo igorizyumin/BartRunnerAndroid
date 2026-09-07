@@ -27,11 +27,8 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.backend.AlertProjection;
-import com.dougkeen.bart.backend.TransitProjectionListener;
-import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.data.FavoritesArrayAdapter;
-import com.dougkeen.bart.data.FavoritesObserver;
+import com.dougkeen.bart.data.LifecycleFlowCollector;
 import com.dougkeen.bart.data.FavoritesRepository;
 import com.dougkeen.bart.data.FavoritesUiState;
 import com.dougkeen.bart.data.FavoritesViewModel;
@@ -40,6 +37,7 @@ import com.dougkeen.bart.model.Alert;
 import com.dougkeen.bart.model.Alert.AlertList;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.StationPair;
+import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.networktasks.GtfsStaticData;
 import com.dougkeen.bart.platform.StationPairParcel;
 import java.io.IOException;
@@ -52,13 +50,16 @@ import java.util.concurrent.Executors;
 
 
 public class   RoutesListActivity extends AppCompatActivity implements
-        FavoritesArrayAdapter.Listener, FavoritesObserver {
+        FavoritesArrayAdapter.Listener,
+        RoutesTransitViewModel.Listener {
     private static final String NO_DELAYS_REPORTED = "No delays reported";
 
     private static final TimeZone PACIFIC_TIME = TimeZone
             .getTimeZone("America/Los_Angeles");
 
     private static final String TAG = "RoutesListActivity";
+
+    private TimeSource timeSource;
 
     StationPair mCurrentlySelectedStationPair;
 
@@ -74,6 +75,8 @@ public class   RoutesListActivity extends AppCompatActivity implements
 
     private FavoritesViewModel favoritesViewModel;
 
+    private RoutesTransitViewModel routesTransitViewModel;
+
     RecyclerView listView;
 
     TextView alertMessages;
@@ -81,8 +84,6 @@ public class   RoutesListActivity extends AppCompatActivity implements
     CoordinatorLayout coordinatorLayout;
 
     TextView emptyView;
-
-    private TransitRepository.Subscription alertSubscription;
 
     private final ExecutorService staticDataExecutor =
             Executors.newSingleThreadExecutor();
@@ -131,10 +132,12 @@ public class   RoutesListActivity extends AppCompatActivity implements
                 outRect.bottom = itemSpacing;
             }
         });
-        mRoutesAdapter = new FavoritesArrayAdapter(this, new ArrayList<>(), this);
+        mRoutesAdapter = new FavoritesArrayAdapter(
+                this, new ArrayList<>(), this, timeSource);
 
         setListAdapter(mRoutesAdapter);
-        favoritesViewModel.observe(this, this);
+        LifecycleFlowCollector.collect(this, favoritesViewModel.getUiState(),
+                this::onFavoritesChanged);
 
         ItemTouchHelper touchHelper = new ItemTouchHelper(
                 new ItemTouchHelper.SimpleCallback(
@@ -172,7 +175,6 @@ public class   RoutesListActivity extends AppCompatActivity implements
             showAlertMessage(mCurrentAlerts);
         }
 
-        startEtdListeners();
         refreshFares();
         updateEmptyState();
     }
@@ -185,10 +187,15 @@ public class   RoutesListActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
 
         app = (BartRunnerApplication) getApplication();
+        timeSource = app.getTimeSource();
         favoritesRepository = app.getFavoritesRepository();
         favoritesViewModel = new ViewModelProvider(this,
                 new FavoritesViewModelFactory(favoritesRepository))
                 .get(FavoritesViewModel.class);
+        routesTransitViewModel = new ViewModelProvider(this)
+                .get(RoutesTransitViewModel.class);
+        routesTransitViewModel.configure(app.getTransitRepository(),
+                getApplicationContext(), timeSource, this);
         if (savedInstanceState != null) {
             mCurrentAlerts = savedInstanceState.getString("currentAlerts");
         }
@@ -262,7 +269,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                             if (destroyed) {
                                 return;
                             }
-                            long now = System.currentTimeMillis();
+                            long now = timeSource.nowMillis();
                             for (StationPair stationPair : routesNeedingFares) {
                                 String fare = staticData.getFare(
                                         stationPair.getOrigin(),
@@ -288,48 +295,6 @@ public class   RoutesListActivity extends AppCompatActivity implements
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        startEtdListeners();
-        if (alertSubscription == null) {
-            alertSubscription = app.getTransitRepository().subscribe(
-                    new AlertProjection(),
-                    new TransitProjectionListener<AlertList>() {
-                        @Override
-                        public void onData(AlertList alertList,
-                                           com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-                            displayAlerts(alertList);
-                        }
-
-                        @Override
-                        public void onError(Exception exception,
-                                            com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-                            Log.w(TAG, "Could not fetch alerts", exception);
-                        }
-                    });
-        }
-    }
-
-    private void startEtdListeners() {
-        if (mRoutesAdapter != null && !mRoutesAdapter.isEmpty()
-                && !mRoutesAdapter.areEtdListenersActive()) {
-            mRoutesAdapter.setUpEtdListeners();
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (mRoutesAdapter != null && mRoutesAdapter.areEtdListenersActive()) {
-            mRoutesAdapter.clearEtdListeners();
-        }
-        if (alertSubscription != null) {
-            alertSubscription.close();
-            alertSubscription = null;
-        }
-    }
-
-    @Override
     protected void onStop() {
         super.onStop();
     }
@@ -339,19 +304,31 @@ public class   RoutesListActivity extends AppCompatActivity implements
         destroyed = true;
         staticDataExecutor.shutdownNow();
         super.onDestroy();
-        if (mRoutesAdapter != null) {
-            mRoutesAdapter.close();
+    }
+
+    public void onFavoritesChanged(FavoritesUiState state) {
+        mRoutesAdapter.submitList(state.getFavorites());
+        routesTransitViewModel.setRoutes(state.getFavorites());
+        updateEmptyState();
+        if (!state.isLoading()) {
+            refreshFares();
         }
     }
 
     @Override
-    public void onFavoritesChanged(FavoritesUiState state) {
-        mRoutesAdapter.submitList(state.getFavorites());
-        updateEmptyState();
-        startEtdListeners();
-        if (!state.isLoading()) {
-            refreshFares();
-        }
+    public void onFirstDeparturesChanged(
+            java.util.Map<StationPair, com.dougkeen.bart.model.Departure> firstDepartures) {
+        mRoutesAdapter.setFirstDepartures(firstDepartures);
+    }
+
+    @Override
+    public void onAlertsChanged(AlertList alerts) {
+        displayAlerts(alerts);
+    }
+
+    @Override
+    public void onTransitError(Exception exception) {
+        Log.w(TAG, "Could not update route screen transit data", exception);
     }
 
     @Override

@@ -1,98 +1,93 @@
 package com.dougkeen.bart.backend
 
 import com.google.transit.realtime.GtfsRealtime
-import java.util.ArrayList
-import java.util.HashSet
-import java.util.concurrent.Executor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Owns the latest complete transit snapshot and publishes it to active
- * consumers. Network refreshes are independent of the route queries made by
- * those consumers.
- */
-class TransitRepository : AutoCloseable {
-    interface Listener {
-        fun onSnapshot(snapshot: TransitFeedSnapshot)
+data class TransitFeedState(
+    val snapshot: TransitFeedSnapshot? = null,
+    val error: Exception? = null,
+)
 
-        fun onError(exception: Exception, lastSnapshot: TransitFeedSnapshot?)
-    }
+data class TransitProjectionState<T>(
+    val value: T? = null,
+    val error: Exception? = null,
+)
 
-    interface Subscription : AutoCloseable {
-        override fun close()
-    }
-
+/** Owns feed polling and exposes one replaying flow for all transit consumers. */
+class TransitRepository(
+    private val feedClient: TransitFeedClient,
+    private val scheduler: ScheduledExecutorService,
+    private val refreshIntervalMillis: Long,
+) : AutoCloseable {
     private val lock = Any()
-    private val feedClient: TransitFeedClient
-    private val scheduler: ScheduledExecutorService
-    private val projectionExecutor: Executor
-    private val callbackExecutor: Executor
-    private val refreshIntervalMillis: Long
-    private val listeners = HashSet<Listener>()
+    private val _state = MutableStateFlow(TransitFeedState())
 
     private var latestSnapshot: TransitFeedSnapshot? = null
     private var scheduledRefresh: ScheduledFuture<*>? = null
     private var refreshInProgress = false
+    private var flowConsumers = 0
     private var closed = false
 
-    constructor(
-        feedClient: TransitFeedClient,
-        scheduler: ScheduledExecutorService,
-        callbackExecutor: Executor,
-        refreshIntervalMillis: Long
-    ) : this(feedClient, scheduler, callbackExecutor, callbackExecutor, refreshIntervalMillis)
-
-    constructor(
-        feedClient: TransitFeedClient,
-        scheduler: ScheduledExecutorService,
-        projectionExecutor: Executor,
-        callbackExecutor: Executor,
-        refreshIntervalMillis: Long
-    ) {
-        require(refreshIntervalMillis > 0) { "refreshIntervalMillis must be positive" }
-        this.feedClient = feedClient
-        this.scheduler = scheduler
-        this.projectionExecutor = projectionExecutor
-        this.callbackExecutor = callbackExecutor
-        this.refreshIntervalMillis = refreshIntervalMillis
+    init {
+        require(refreshIntervalMillis > 0) {
+            "refreshIntervalMillis must be positive"
+        }
     }
 
-    fun subscribe(listener: Listener): Subscription {
-        requireNotNull(listener) { "listener" }
+    /** Latest complete feed and its most recent refresh error, if any. */
+    val state: StateFlow<TransitFeedState> = _state.asStateFlow()
 
-        val snapshotToReplay: TransitFeedSnapshot?
-        synchronized(lock) {
-            check(!closed) { "Repository is closed" }
-            listeners.add(listener)
-            snapshotToReplay = latestSnapshot
-            ensureRefreshScheduledLocked()
-        }
+    /**
+     * Replays the latest state and holds one polling lease for the collector.
+     * Polling stops when the last collector is cancelled.
+     */
+    fun feed(): Flow<TransitFeedState> = state
+        .onStart { acquireFlowConsumer() }
+        .onCompletion { releaseFlowConsumer() }
 
-        if (snapshotToReplay != null) {
-            dispatchSnapshot(listener, snapshotToReplay)
-        }
-
-        return object : Subscription {
-            private var active = true
-
-            override fun close() {
-                synchronized(lock) {
-                    if (!active) {
-                        return
-                    }
-                    active = false
-                    listeners.remove(listener)
-                    if (listeners.isEmpty() && scheduledRefresh != null) {
-                        scheduledRefresh?.cancel(false)
-                        scheduledRefresh = null
-                    }
+    /** Derives a projection from the shared feed without callback dispatch. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun <T> projectedState(projection: TransitProjection<T>): Flow<TransitProjectionState<T>> =
+        feed()
+            .mapNotNull { feedState ->
+                if (feedState.snapshot == null && feedState.error == null) {
+                    null
+                } else {
+                    feedState
                 }
             }
-        }
-    }
+            .mapLatest { feedState ->
+                feedState.error?.let {
+                    return@mapLatest TransitProjectionState<T>(error = it)
+                }
+                try {
+                    TransitProjectionState(projection.project(feedState.snapshot!!))
+                } catch (exception: Exception) {
+                    TransitProjectionState(error = exception)
+                }
+            }
+            .distinctUntilChanged { previous, current ->
+                if (previous.error != null || current.error != null) {
+                    previous.error?.message == current.error?.message
+                } else {
+                    projection.areEquivalent(previous.value, current.value)
+                }
+            }
+            .flowOn(Dispatchers.Default)
 
     /** Synchronously fetches once. Intended for tests and explicit refresh actions. */
     fun refreshNow() {
@@ -109,11 +104,8 @@ class TransitRepository : AutoCloseable {
             TransitFeedFetchResult.failed(exception)
         }
 
-        val snapshotListeners = ArrayList<Listener>()
-        val errorListeners = ArrayList<Listener>()
-        var snapshotToNotify: TransitFeedSnapshot? = null
-        val refreshErrors = ArrayList<Exception>()
-        val snapshotOnError: TransitFeedSnapshot?
+        val refreshErrors = mutableListOf<Exception>()
+        var stateToPublish: TransitFeedState? = null
         synchronized(lock) {
             refreshInProgress = false
             if (!closed) {
@@ -122,31 +114,28 @@ class TransitRepository : AutoCloseable {
 
                 val mergedSnapshot = mergeSnapshot(fetchResult)
                 if (mergedSnapshot != null &&
-                    (latestSnapshot == null || !mergedSnapshot.hasSameFeedData(latestSnapshot!!))
+                    (latestSnapshot == null ||
+                        !mergedSnapshot.hasSameFeedData(latestSnapshot!!))
                 ) {
                     latestSnapshot = mergedSnapshot
-                    snapshotToNotify = mergedSnapshot
-                    snapshotListeners.addAll(listeners)
+                    stateToPublish = TransitFeedState(snapshot = mergedSnapshot)
                 }
-            }
-            if (!closed && refreshErrors.isNotEmpty()) {
-                errorListeners.addAll(listeners)
-            }
-            snapshotOnError = latestSnapshot
-            if (!closed && listeners.isNotEmpty()) {
-                scheduleNextRefreshLocked()
+                if (refreshErrors.isNotEmpty()) {
+                    stateToPublish = TransitFeedState(
+                        snapshot = latestSnapshot,
+                        error = refreshErrors.first(),
+                    )
+                }
+                if (flowConsumers > 0) {
+                    scheduleNextRefreshLocked()
+                }
             }
         }
 
-        snapshotToNotify?.let { snapshot ->
-            snapshotListeners.forEach { listener -> dispatchSnapshot(listener, snapshot) }
-        }
-        if (refreshErrors.isNotEmpty()) {
-            errorListeners.forEach { listener ->
-                refreshErrors.forEach { error -> dispatchError(listener, error, snapshotOnError) }
-            }
-        }
+        stateToPublish?.let { _state.value = it }
     }
+
+    fun getLatestSnapshot(): TransitFeedSnapshot? = synchronized(lock) { latestSnapshot }
 
     private fun mergeSnapshot(result: TransitFeedFetchResult): TransitFeedSnapshot? {
         result.getCompleteSnapshot()?.let { return it }
@@ -173,79 +162,22 @@ class TransitRepository : AutoCloseable {
         }
     }
 
-    fun getLatestSnapshot(): TransitFeedSnapshot? = synchronized(lock) { latestSnapshot }
+    private fun acquireFlowConsumer() {
+        synchronized(lock) {
+            check(!closed) { "Repository is closed" }
+            flowConsumers++
+            ensureRefreshScheduledLocked()
+        }
+    }
 
-    /**
-     * Subscribes to a query-specific value derived from each changed snapshot.
-     * Projection work is kept off the callback executor so UI delivery remains
-     * lightweight.
-     */
-    fun <T> subscribe(
-        projection: TransitProjection<T>,
-        listener: TransitProjectionListener<T>
-    ): Subscription {
-        requireNotNull(projection) { "projection" }
-        requireNotNull(listener) { "listener" }
-
-        val active = AtomicBoolean(true)
-        val rawSubscription = subscribe(object : Listener {
-            private val projectionLock = Any()
-            private var previousValue: T? = null
-            private var hasPreviousValue = false
-
-            override fun onSnapshot(snapshot: TransitFeedSnapshot) {
-                if (!active.get()) {
-                    return
-                }
-                projectionExecutor.execute {
-                    try {
-                        if (!active.get()) {
-                            return@execute
-                        }
-                        val value: T
-                        synchronized(projectionLock) {
-                            value = projection.project(snapshot)
-                            if (hasPreviousValue && projection.areEquivalent(previousValue, value)) {
-                                return@execute
-                            }
-                            previousValue = value
-                            hasPreviousValue = true
-                        }
-                        callbackExecutor.execute {
-                            if (active.get()) {
-                                listener.onData(value, snapshot)
-                            }
-                        }
-                    } catch (exception: Exception) {
-                        dispatchProjectionError(exception, snapshot)
-                    }
-                }
+    private fun releaseFlowConsumer() {
+        synchronized(lock) {
+            if (flowConsumers > 0) {
+                flowConsumers--
             }
-
-            override fun onError(exception: Exception, lastSnapshot: TransitFeedSnapshot?) {
-                callbackExecutor.execute {
-                    if (active.get()) {
-                        listener.onError(exception, lastSnapshot)
-                    }
-                }
-            }
-
-            private fun dispatchProjectionError(
-                exception: Exception,
-                snapshot: TransitFeedSnapshot
-            ) {
-                callbackExecutor.execute {
-                    if (active.get()) {
-                        listener.onError(exception, snapshot)
-                    }
-                }
-            }
-        })
-        return object : Subscription {
-            override fun close() {
-                if (active.compareAndSet(true, false)) {
-                    rawSubscription.close()
-                }
+            if (flowConsumers == 0) {
+                scheduledRefresh?.cancel(false)
+                scheduledRefresh = null
             }
         }
     }
@@ -255,7 +187,7 @@ class TransitRepository : AutoCloseable {
             scheduledRefresh = scheduler.schedule({
                 synchronized(lock) {
                     scheduledRefresh = null
-                    if (closed || listeners.isEmpty()) {
+                    if (closed || flowConsumers == 0) {
                         return@schedule
                     }
                 }
@@ -269,38 +201,12 @@ class TransitRepository : AutoCloseable {
             scheduledRefresh = scheduler.schedule({
                 synchronized(lock) {
                     scheduledRefresh = null
-                    if (closed || listeners.isEmpty()) {
+                    if (closed || flowConsumers == 0) {
                         return@schedule
                     }
                 }
                 refreshNow()
             }, refreshIntervalMillis, TimeUnit.MILLISECONDS)
-        }
-    }
-
-    private fun dispatchSnapshot(listener: Listener, snapshot: TransitFeedSnapshot) {
-        callbackExecutor.execute {
-            synchronized(lock) {
-                if (closed || !listeners.contains(listener)) {
-                    return@execute
-                }
-            }
-            listener.onSnapshot(snapshot)
-        }
-    }
-
-    private fun dispatchError(
-        listener: Listener,
-        exception: Exception,
-        lastSnapshot: TransitFeedSnapshot?
-    ) {
-        callbackExecutor.execute {
-            synchronized(lock) {
-                if (closed || !listeners.contains(listener)) {
-                    return@execute
-                }
-            }
-            listener.onError(exception, lastSnapshot)
         }
     }
 
@@ -310,7 +216,7 @@ class TransitRepository : AutoCloseable {
                 return
             }
             closed = true
-            listeners.clear()
+            flowConsumers = 0
             scheduledRefresh?.cancel(false)
             scheduledRefresh = null
         }

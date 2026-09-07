@@ -49,16 +49,18 @@ plumbing as soon as its replacement is working.
 
 ### Milestone 3 — use one observation mechanism
 
-- [ ] Replace `TransitRepository.Subscription`, projection listener interfaces,
+- [x] Replace `TransitRepository.Subscription`, projection listener interfaces,
   and manual callback dispatch with a coroutine `Flow`/`StateFlow` API.
-- [ ] Keep feed polling centralized in `TransitRepository`; consumers should
+- [x] Keep feed polling centralized in `TransitRepository`; consumers should
   derive route, alert, and trip-progress state from the shared feed stream.
-- [ ] Remove ViewModel `start()`/`stop()` lifecycle plumbing where
+- [x] Remove ViewModel `start()`/`stop()` lifecycle plumbing where
   `viewModelScope` and lifecycle collection can own the subscription.
-- [ ] Remove the custom favorites lifecycle bridge (`FavoritesObserver` and
+- [x] Remove the custom favorites lifecycle bridge (`FavoritesObserver` and
   `FavoritesRepository.observe`) in favor of direct `StateFlow` collection.
-- [ ] Verify that recreation and stopping a screen do not duplicate
-  subscriptions or leave callbacks, timers, or background work running.
+- [x] Verify that recreation and stopping a screen do not duplicate
+  subscriptions or leave callbacks, timers, or background work running. Flow
+  cancellation is covered at the repository boundary, and the screen
+  recreation tests now compile against the immutable departure model.
 
 ### Milestone 4 — make screen ViewModels the state boundary
 
@@ -67,11 +69,11 @@ plumbing as soon as its replacement is working.
 - [ ] Convert `RoutesListActivity` into a renderer and action dispatcher; move
   fare refresh, alert formatting decisions, and route state coordination out
   of the Activity.
-- [ ] Make departures and trip-progress ViewModels expose immutable UI state
+- [x] Make departures and trip-progress ViewModels expose immutable UI state
   rather than Java listener callbacks and mutable `Departure` instances.
 - [ ] Move alarm, follow-trip, delete-trip, and service-command decisions out
   of Activities and into explicit ViewModel/repository actions.
-- [ ] Keep the XML layouts while these state boundaries are migrated.
+- [x] Keep the XML layouts while these state boundaries are migrated.
 - [ ] Defer Compose until all primary screens use the same state and event
   model; do not introduce Compose as a parallel UI architecture.
 
