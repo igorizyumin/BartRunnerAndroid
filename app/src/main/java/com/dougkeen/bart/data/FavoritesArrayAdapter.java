@@ -26,6 +26,7 @@ import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.StationPair;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,7 @@ public class FavoritesArrayAdapter
     }
 
     private final Activity hostActivity;
-    private final List<StationPair> items;
+    private List<StationPair> items;
     private final Listener listener;
     private final Map<StationPair, EtdListener> etdListeners = new HashMap<>();
     private final TransitRepository transitRepository;
@@ -53,6 +54,13 @@ public class FavoritesArrayAdapter
         transitRepository = ((BartRunnerApplication) hostActivity.getApplication())
                 .getTransitRepository();
         setUpEtdListeners();
+    }
+
+    public void submitList(List<StationPair> newItems) {
+        clearEtdListeners();
+        items = new ArrayList<>(newItems);
+        setUpEtdListeners();
+        notifyDataSetChanged();
     }
 
     public void setUpEtdListeners() {

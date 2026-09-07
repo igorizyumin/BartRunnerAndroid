@@ -6,10 +6,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Objects;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 import android.app.Activity;
@@ -24,14 +22,11 @@ import android.os.Looper;
 import android.os.Parcel;
 import android.util.Log;
 
-import com.dougkeen.bart.data.DatabaseHelper;
-import com.dougkeen.bart.data.FavoritesPersistence;
+import com.dougkeen.bart.data.FavoritesRepository;
 import com.dougkeen.bart.backend.HttpTransitFeedClient;
 import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
-import com.dougkeen.bart.model.Station;
-import com.dougkeen.bart.model.StationPair;
 
 public class BartRunnerApplication extends Application implements
         Application.ActivityLifecycleCallbacks {
@@ -54,10 +49,7 @@ public class BartRunnerApplication extends Application implements
 
     private static Context context;
 
-    private FavoritesPersistence favoritesPersistenceContext;
-
-    private final ExecutorService persistenceExecutor =
-            Executors.newSingleThreadExecutor();
+    private FavoritesRepository favoritesRepository;
 
     private TransitRepository transitRepository;
 
@@ -67,62 +59,12 @@ public class BartRunnerApplication extends Application implements
     private final ExecutorService transitProjectionExecutor =
             Executors.newFixedThreadPool(2);
 
-    private List<StationPair> favorites;
-
-    public void saveFavorites() {
-        if (favorites != null) {
-            final List<StationPair> snapshot = new ArrayList<>(favorites);
-            persistenceExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    favoritesPersistenceContext.persist(snapshot);
-                }
-            });
-        }
-    }
-
-    public List<StationPair> getFavorites() {
-        if (favorites == null) {
-            favorites = favoritesPersistenceContext.restore();
-            if (favorites.isEmpty()) {
-                // Upgrade database, in case favorites are still in there
-                new DatabaseHelper(this).getReadableDatabase().close();
-                favorites = favoritesPersistenceContext.restore();
-            }
-        }
-        return favorites;
-    }
-
-    public void setFavorites(List<StationPair> favorites) {
-        this.favorites = favorites;
-    }
-
-    public StationPair getFavorite(Station origin, Station destination) {
-        for (StationPair favorite : getFavorites()) {
-            if (Objects.equals(origin, favorite.getOrigin())
-                    && Objects.equals(destination, favorite.getDestination())) {
-                return favorite;
-            }
-        }
-        return null;
-    }
-
-    public void addFavorite(StationPair favorite) {
-        getFavorites().add(favorite);
-        saveFavorites();
-    }
-
-    public void removeFavorite(StationPair favorite) {
-        getFavorites().remove(favorite);
-        saveFavorites();
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
         mApplicationPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        favoritesPersistenceContext = new FavoritesPersistence(this);
+        favoritesRepository = new FavoritesRepository(this);
         transitRepository = new TransitRepository(
                 new HttpTransitFeedClient(),
                 transitScheduler,
@@ -138,6 +80,10 @@ public class BartRunnerApplication extends Application implements
 
     public TransitRepository getTransitRepository() {
         return transitRepository;
+    }
+
+    public FavoritesRepository getFavoritesRepository() {
+        return favoritesRepository;
     }
 
     public boolean shouldPlayAlarmRingtone() {

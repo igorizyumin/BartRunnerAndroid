@@ -1,13 +1,10 @@
 package com.dougkeen.bart.model;
 
-import android.database.Cursor;
 import android.os.Parcel;
 import android.os.Parcelable;
 
 import java.util.Objects;
 
-import com.dougkeen.bart.data.CursorUtils;
-import com.dougkeen.bart.data.RoutesColumns;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -22,22 +19,6 @@ public class StationPair implements Parcelable {
 
     public StationPair(Parcel in) {
         readFromParcel(in);
-    }
-
-    public static StationPair createFromCursor(Cursor cursor) {
-        StationPair pair = new StationPair(
-                Station.getByAbbreviation(CursorUtils.getString(cursor,
-                        RoutesColumns.FROM_STATION)),
-                Station.getByAbbreviation(CursorUtils.getString(cursor,
-                        RoutesColumns.TO_STATION)));
-        pair.fare = CursorUtils.getString(cursor, RoutesColumns.FARE);
-        pair.fareLastUpdated = CursorUtils.getLong(cursor,
-                RoutesColumns.FARE_LAST_UPDATED);
-        pair.averageTripLength = CursorUtils.getInteger(cursor,
-                RoutesColumns.AVERAGE_TRIP_LENGTH);
-        pair.averageTripSampleCount = CursorUtils.getInteger(cursor,
-                RoutesColumns.AVERAGE_TRIP_SAMPLE_COUNT);
-        return pair;
     }
 
     private Station origin;

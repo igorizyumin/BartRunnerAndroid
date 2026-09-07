@@ -23,6 +23,7 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
@@ -30,6 +31,11 @@ import com.dougkeen.bart.backend.AlertProjection;
 import com.dougkeen.bart.backend.TransitProjectionListener;
 import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.data.FavoritesArrayAdapter;
+import com.dougkeen.bart.data.FavoritesObserver;
+import com.dougkeen.bart.data.FavoritesRepository;
+import com.dougkeen.bart.data.FavoritesUiState;
+import com.dougkeen.bart.data.FavoritesViewModel;
+import com.dougkeen.bart.data.FavoritesViewModelFactory;
 import com.dougkeen.bart.model.Alert;
 import com.dougkeen.bart.model.Alert.AlertList;
 import com.dougkeen.bart.model.Constants;
@@ -45,7 +51,7 @@ import java.util.concurrent.Executors;
 
 
 public class   RoutesListActivity extends AppCompatActivity implements
-        FavoritesArrayAdapter.Listener {
+        FavoritesArrayAdapter.Listener, FavoritesObserver {
     private static final String NO_DELAYS_REPORTED = "No delays reported";
 
     private static final TimeZone PACIFIC_TIME = TimeZone
@@ -62,6 +68,10 @@ public class   RoutesListActivity extends AppCompatActivity implements
     private FavoritesArrayAdapter mRoutesAdapter;
 
     BartRunnerApplication app;
+
+    private FavoritesRepository favoritesRepository;
+
+    private FavoritesViewModel favoritesViewModel;
 
     RecyclerView listView;
 
@@ -120,9 +130,10 @@ public class   RoutesListActivity extends AppCompatActivity implements
                 outRect.bottom = itemSpacing;
             }
         });
-        mRoutesAdapter = new FavoritesArrayAdapter(this, app.getFavorites(), this);
+        mRoutesAdapter = new FavoritesArrayAdapter(this, new ArrayList<>(), this);
 
         setListAdapter(mRoutesAdapter);
+        favoritesViewModel.observe(this, this);
 
         ItemTouchHelper touchHelper = new ItemTouchHelper(
                 new ItemTouchHelper.SimpleCallback(
@@ -137,8 +148,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                         if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
                             return false;
                         }
-                        mRoutesAdapter.move(from, to);
-                        app.saveFavorites();
+                        favoritesViewModel.moveFavorite(from, to);
                         return true;
                     }
 
@@ -150,8 +160,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                             return;
                         }
                         StationPair stationPair = mRoutesAdapter.getItem(position);
-                        mRoutesAdapter.remove(stationPair);
-                        app.saveFavorites();
+                        favoritesViewModel.removeFavorite(stationPair);
                         showRouteDeletedSnackbar(position, stationPair);
                         updateEmptyState();
                     }
@@ -175,6 +184,10 @@ public class   RoutesListActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
 
         app = (BartRunnerApplication) getApplication();
+        favoritesRepository = app.getFavoritesRepository();
+        favoritesViewModel = new ViewModelProvider(this,
+                new FavoritesViewModelFactory(favoritesRepository))
+                .get(FavoritesViewModel.class);
         if (savedInstanceState != null) {
             mCurrentAlerts = savedInstanceState.getString("currentAlerts");
         }
@@ -199,9 +212,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
     }
 
     void addFavorite(StationPair pair) {
-        mRoutesAdapter.add(pair);
-        app.saveFavorites();
-        updateEmptyState();
+        favoritesViewModel.addFavorite(pair);
     }
 
     private void updateEmptyState() {
@@ -259,6 +270,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                                     stationPair.setFareLastUpdated(now);
                                 }
                             }
+                            favoritesViewModel.persistCurrentState();
                             getListAdapter().notifyDataSetChanged();
                         }
                     });
@@ -320,8 +332,6 @@ public class   RoutesListActivity extends AppCompatActivity implements
     @Override
     protected void onStop() {
         super.onStop();
-        app.saveFavorites();
-
     }
 
     @Override
@@ -331,6 +341,16 @@ public class   RoutesListActivity extends AppCompatActivity implements
         super.onDestroy();
         if (mRoutesAdapter != null) {
             mRoutesAdapter.close();
+        }
+    }
+
+    @Override
+    public void onFavoritesChanged(FavoritesUiState state) {
+        mRoutesAdapter.submitList(state.getFavorites());
+        updateEmptyState();
+        startEtdListeners();
+        if (!state.isLoading()) {
+            refreshFares();
         }
     }
 
@@ -431,9 +451,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                 .setAction(R.string.undo, new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mRoutesAdapter.insert(stationPair, which);
-                        app.saveFavorites();
-                        updateEmptyState();
+                        favoritesViewModel.insertFavorite(stationPair, which);
                     }
                 })
                 .show();
@@ -470,10 +488,8 @@ public class   RoutesListActivity extends AppCompatActivity implements
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog,
                                                 int which) {
-                                getListAdapter().remove(
+                                favoritesViewModel.removeFavorite(
                                         mCurrentlySelectedStationPair);
-                                app.saveFavorites();
-                                updateEmptyState();
                                 mCurrentlySelectedStationPair = null;
                                 mActionMode.finish();
                                 dialog.dismiss();
