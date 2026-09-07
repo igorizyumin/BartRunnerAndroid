@@ -193,7 +193,7 @@ public class Route {
                     && Integer.compare(lineDestinationIndex, originIndex)
                     == direction
                     && Integer.compare(lineDestinationIndex, transferIndex)
-                    == direction;
+                    * direction >= 0;
         } else {
             return originIndex >= 0 && routeDestinationIndex >= 0
                     && lineDestinationIndex >= 0

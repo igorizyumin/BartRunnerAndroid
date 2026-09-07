@@ -26,7 +26,7 @@ This backlog turns the architecture audit into incremental, verifiable work.
 - [x] Remove the legacy hardcoded topology/stop resolver; missing catalog data is now a hard failure.
 - [x] Parse static GTFS transfer edges into the immutable catalog.
 - [x] Use static transfer edges for route-specific transfer eligibility.
-- [ ] Apply GTFS minimum transfer times during departure pairing.
+- [x] Apply GTFS minimum transfer times during departure pairing.
 - [ ] Keep app-specific station identity, display aliases, routing exceptions, transfer preferences, and timing tolerances outside GTFS.
 - [x] Add fixture-based GTFS parser tests and structural feed-drift validation.
 - [x] Validate the catalog against BART-specific station/route invariants before making it authoritative.

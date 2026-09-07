@@ -7,6 +7,7 @@ import com.dougkeen.bart.model.Route;
 import com.dougkeen.bart.model.Station;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
+import com.dougkeen.bart.routing.TransferConnectionValidator;
 import com.google.transit.realtime.GtfsRealtime;
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
 
@@ -317,9 +318,9 @@ public class GtfsRealtimeContentHandler {
             Station legDestination = i < transfers.size()
                     ? transfers.get(i) : tripDestination;
             if (i > 0) {
-                long earliestDeparture = result.get(i - 1).getArrivalTime();
+                TripLeg arrivingLeg = result.get(i - 1);
                 currentTrip = findConnectingTrip(lines.get(i), legOrigin,
-                        legDestination, earliestDeparture, allTrips);
+                        legDestination, arrivingLeg, allTrips);
                 if (currentTrip == null) {
                     break;
                 }
@@ -353,7 +354,7 @@ public class GtfsRealtimeContentHandler {
 
     private TripSnapshot findConnectingTrip(Line line, Station origin,
                                             Station destination,
-                                            long earliestDeparture,
+                                            TripLeg arrivingLeg,
                                             List<TripSnapshot> allTrips) {
         TripSnapshot best = null;
         for (TripSnapshot trip : allTrips) {
@@ -361,7 +362,9 @@ public class GtfsRealtimeContentHandler {
                 continue;
             }
             StopTimePoint departure = trip.pointAt(origin);
-            if (departure == null || departure.departureTime < earliestDeparture) {
+            if (departure == null || !TransferConnectionValidator.canConnect(
+                    arrivingLeg.getArrivalTime(), departure.departureTime,
+                    origin, arrivingLeg.getLine(), line, bartGtfsNetwork)) {
                 continue;
             }
             if (best == null || departure.departureTime

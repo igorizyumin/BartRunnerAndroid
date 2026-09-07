@@ -238,8 +238,7 @@ public final class TripPlanner {
                                                 BartGtfsNetwork network) {
         Route route = makeCatalogTransferRoute(origin, destination, lines,
                 transfers, network);
-        if (route != null && isValidTransferPath(route)
-                && usesPreferredTransferStations(route)) {
+        if (route != null && isValidTransferPath(route)) {
             routes.add(route);
         }
     }

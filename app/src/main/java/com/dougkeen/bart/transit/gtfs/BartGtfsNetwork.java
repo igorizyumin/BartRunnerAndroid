@@ -67,16 +67,21 @@ public final class BartGtfsNetwork {
     public static final class TransferRule {
         private final Station fromStation;
         private final Station toStation;
+        private final String fromRouteId;
+        private final String toRouteId;
         private final Line fromLine;
         private final Line toLine;
         private final int transferType;
         private final Integer minimumTransferSeconds;
 
         private TransferRule(Station fromStation, Station toStation,
+                             String fromRouteId, String toRouteId,
                              Line fromLine, Line toLine, int transferType,
                              Integer minimumTransferSeconds) {
             this.fromStation = fromStation;
             this.toStation = toStation;
+            this.fromRouteId = fromRouteId;
+            this.toRouteId = toRouteId;
             this.fromLine = fromLine;
             this.toLine = toLine;
             this.transferType = transferType;
@@ -89,6 +94,14 @@ public final class BartGtfsNetwork {
 
         public Station getToStation() {
             return toStation;
+        }
+
+        public String getFromRouteId() {
+            return fromRouteId;
+        }
+
+        public String getToRouteId() {
+            return toRouteId;
         }
 
         public Line getFromLine() {
@@ -269,8 +282,10 @@ public final class BartGtfsNetwork {
         for (TransferRule rule : transferRules) {
             if (rule.getFromStation() != station
                     || rule.getToStation() != station
-                    || !lineMatches(rule.getFromLine(), fromLine)
-                    || !lineMatches(rule.getToLine(), toLine)) {
+                    || !lineMatches(rule.getFromRouteId(), rule.getFromLine(),
+                    fromLine)
+                    || !lineMatches(rule.getToRouteId(), rule.getToLine(),
+                    toLine)) {
                 continue;
             }
             matchedRule = true;
@@ -279,6 +294,34 @@ public final class BartGtfsNetwork {
             }
         }
         return matchedRule;
+    }
+
+    /**
+     * Returns the smallest matching feed minimum because platform IDs are
+     * intentionally abstracted to one app station identity.
+     */
+    public int minimumTransferSeconds(Station station, Line fromLine,
+                                      Line toLine) {
+        if (!canTransfer(station, fromLine, toLine)) {
+            return -1;
+        }
+        int minimum = Integer.MAX_VALUE;
+        for (TransferRule rule : transferRules) {
+            if (rule.getFromStation() != station
+                    || rule.getToStation() != station
+                    || !lineMatches(rule.getFromRouteId(), rule.getFromLine(),
+                    fromLine)
+                    || !lineMatches(rule.getToRouteId(), rule.getToLine(),
+                    toLine)
+                    || rule.isForbidden()) {
+                continue;
+            }
+            Integer seconds = rule.getMinimumTransferSeconds();
+            if (seconds != null && seconds >= 0) {
+                minimum = Math.min(minimum, seconds);
+            }
+        }
+        return minimum == Integer.MAX_VALUE ? 0 : minimum;
     }
 
     public List<String> validationErrors() {
@@ -309,8 +352,11 @@ public final class BartGtfsNetwork {
                 || "OAKL".equalsIgnoreCase(stop.getZoneId());
     }
 
-    private static boolean lineMatches(Line ruleLine, Line requestedLine) {
-        return ruleLine == null || ruleLine == requestedLine;
+    private static boolean lineMatches(String ruleRouteId, Line ruleLine,
+                                       Line requestedLine) {
+        return ruleRouteId == null
+                ? ruleLine == null || ruleLine == requestedLine
+                : ruleLine == requestedLine;
     }
 
     private static List<TransferRule> transferRules(
@@ -324,6 +370,7 @@ public final class BartGtfsNetwork {
                 continue;
             }
             result.add(new TransferRule(fromStation, toStation,
+                    transfer.getFromRouteId(), transfer.getToRouteId(),
                     linesByRouteId.get(transfer.getFromRouteId()),
                     linesByRouteId.get(transfer.getToRouteId()),
                     transfer.getTransferType(),
