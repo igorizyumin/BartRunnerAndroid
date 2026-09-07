@@ -489,7 +489,11 @@ public enum Station {
                                                     List<Line> lines,
                                                     List<Station> transfers,
                                                     int transferIndex) {
-        if (samePair(first, second, Line.BLUE, Line.YELLOW)) {
+        // East-bay service to the airport uses Balboa Park for the transfer
+        // onto the San Francisco trunk.  Allowing every shared station lets a
+        // partial live-feed destination such as Glen Park be mistaken for the
+        // transfer point.
+        if (isEastBayToSanFranciscoTrunk(first, second)) {
             return Station.BALB;
         }
         if (samePair(first, second, Line.BLUE, Line.ORANGE)) {
@@ -522,6 +526,21 @@ public enum Station {
             return Station.MCAR;
         }
         return null;
+    }
+
+    private static boolean isEastBayToSanFranciscoTrunk(Line first,
+                                                         Line second) {
+        boolean eastBayLine = first == Line.BLUE || first == Line.GREEN;
+        boolean sanFranciscoTrunk = second == Line.RED
+                || second == Line.YELLOW
+                || second == Line.YELLOW_LATE_NIGHT;
+        boolean reversedEastBayLine = second == Line.BLUE
+                || second == Line.GREEN;
+        boolean reversedSanFranciscoTrunk = first == Line.RED
+                || first == Line.YELLOW
+                || first == Line.YELLOW_LATE_NIGHT;
+        return (eastBayLine && sanFranciscoTrunk)
+                || (reversedEastBayLine && reversedSanFranciscoTrunk);
     }
 
     private static boolean samePair(Line left, Line right, Line expectedLeft,

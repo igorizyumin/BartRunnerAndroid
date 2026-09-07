@@ -17,7 +17,8 @@ public abstract class AbstractViewActivity extends AppCompatActivity {
         long lastActivity = application.getActivityTimestamp();
         long currentTime = System.currentTimeMillis();
         long timeDifference = currentTime - lastActivity;
-        if (TimeUnit.MILLISECONDS.toHours(timeDifference) >= MAXIMUM_IDLE_HOURS) {
+        if (lastActivity > 0
+                && TimeUnit.MILLISECONDS.toHours(timeDifference) >= MAXIMUM_IDLE_HOURS) {
             finish();
         }
     }

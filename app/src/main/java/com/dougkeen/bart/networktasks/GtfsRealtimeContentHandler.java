@@ -221,7 +221,7 @@ public class GtfsRealtimeContentHandler {
     private void addTripUpdate(RealTimeDepartures departures,
                                TripSnapshot trip,
                                List<TripSnapshot> allTrips) {
-        if (!ignoreDirection && !origin.ignoreRoutingDirection
+        if (destination != null && !ignoreDirection && !origin.ignoreRoutingDirection
                 && !isDirectionApplicable(trip.direction)) {
             return;
         }
@@ -345,6 +345,15 @@ public class GtfsRealtimeContentHandler {
 
     private List<TripLeg> buildTripLegs(Route route, TripSnapshot firstTrip,
                                         List<TripSnapshot> allTrips) {
+        // A station-only lookup has no requested passenger destination, but
+        // the selected train still gives us the endpoint to display. Treat it
+        // as a single-leg trip, just like a lookup made directly to that
+        // endpoint.
+        Station tripDestination = destination == null
+                ? firstTrip.trainDestination : destination;
+        if (tripDestination == null) {
+            return Collections.emptyList();
+        }
         List<Line> lines = route.getLines();
         if (lines.isEmpty()) {
             return Collections.emptyList();
@@ -355,7 +364,7 @@ public class GtfsRealtimeContentHandler {
         Station legOrigin = origin;
         for (int i = 0; i < lines.size(); i++) {
             Station legDestination = i < transfers.size()
-                    ? transfers.get(i) : destination;
+                    ? transfers.get(i) : tripDestination;
             if (i > 0) {
                 long earliestDeparture = result.get(i - 1).getArrivalTime();
                 currentTrip = findConnectingTrip(lines.get(i), legOrigin,

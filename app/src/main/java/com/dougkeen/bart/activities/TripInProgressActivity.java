@@ -1,5 +1,6 @@
 package com.dougkeen.bart.activities;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -17,6 +18,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.IntentCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
@@ -28,7 +30,6 @@ import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.bart.services.EtdService;
 import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
 import com.dougkeen.bart.services.EtdService.EtdServiceListener;
-import com.dougkeen.bart.services.EtdService_;
 import com.dougkeen.bart.networktasks.GetTripProgressTask;
 
 import java.util.Date;
@@ -38,8 +39,11 @@ import java.util.List;
 public class TripInProgressActivity extends AbstractViewActivity implements
         EtdServiceListener {
 
-    private final Handler mHandler = new Handler();
+    private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1002;
+
+    private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     private Departure mDeparture;
+    private boolean mIsFollowing;
     private EtdService mEtdService;
     private boolean mBound;
     private GetTripProgressTask mProgressTask;
@@ -47,6 +51,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     private TextView mStatus;
     private TextView mRoute;
     private TextView mArrival;
+    private View mFollowTripButton;
     private LinearLayout mTimeline;
 
     private final ServiceConnection mConnection = new ServiceConnection() {
@@ -95,26 +100,39 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         mStatus = (TextView) findViewById(R.id.tripStatus);
         mRoute = (TextView) findViewById(R.id.tripRoute);
         mArrival = (TextView) findViewById(R.id.tripArrival);
+        mFollowTripButton = findViewById(R.id.followTripButton);
         mTimeline = (LinearLayout) findViewById(R.id.tripTimeline);
 
+        mFollowTripButton.setOnClickListener(view -> followTrip());
+
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(R.string.trip_in_progress);
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        mDeparture = ((BartRunnerApplication) getApplication())
-                .getBoardedDeparture();
+        BartRunnerApplication application = (BartRunnerApplication) getApplication();
+        Departure requestedDeparture = IntentCompat.getParcelableExtra(
+                getIntent(), "departure", Departure.class);
+        if (requestedDeparture != null) {
+            mDeparture = requestedDeparture;
+            Departure followedDeparture = application.getBoardedDeparture();
+            mIsFollowing = followedDeparture != null
+                    && followedDeparture.equals(requestedDeparture);
+        } else {
+            mDeparture = application.getBoardedDeparture();
+            mIsFollowing = mDeparture != null;
+        }
         if (mDeparture == null) {
             finish();
             return;
         }
+        updateFollowState();
         renderTrip();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        bindService(EtdService_.intent(this).get(), mConnection,
+        bindService(new Intent(this, EtdService.class), mConnection,
                 Context.BIND_AUTO_CREATE);
         mHandler.post(mRefreshRunnable);
         mHandler.post(mProgressRefreshRunnable);
@@ -157,9 +175,11 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         }
         MenuItem cancel = menu.findItem(R.id.cancel_alarm_button);
         MenuItem set = menu.findItem(R.id.set_alarm_button);
-        cancel.setVisible(mDeparture.isAlarmPending());
-        set.setVisible(!mDeparture.isAlarmPending()
+        MenuItem delete = menu.findItem(R.id.delete);
+        cancel.setVisible(mIsFollowing && mDeparture.isAlarmPending());
+        set.setVisible(mIsFollowing && !mDeparture.isAlarmPending()
                 && mDeparture.getMeanSecondsLeft() > 60);
+        delete.setVisible(mIsFollowing);
     }
 
     @Override
@@ -220,6 +240,50 @@ public class TripInProgressActivity extends AbstractViewActivity implements
             startForegroundService(intent);
         } else {
             startService(intent);
+        }
+    }
+
+    private void followTrip() {
+        if (mDeparture == null || mIsFollowing) {
+            return;
+        }
+
+        final BartRunnerApplication application =
+                (BartRunnerApplication) getApplication();
+        application.setBoardedDeparture(mDeparture);
+        requestNotificationPermissionIfNeeded();
+
+        Intent intent = new Intent(this, BoardedDepartureService.class);
+        intent.putExtra("departure", mDeparture);
+        startBoardedDepartureService(intent);
+
+        mIsFollowing = true;
+        updateFollowState();
+        invalidateOptionsMenu();
+    }
+
+    private void startBoardedDepartureService(Intent intent) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    POST_NOTIFICATIONS_REQUEST_CODE);
+        }
+    }
+
+    private void updateFollowState() {
+        mFollowTripButton.setVisibility(mIsFollowing ? View.GONE : View.VISIBLE);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(mIsFollowing
+                    ? R.string.trip_in_progress : R.string.train_schedule);
         }
     }
 

@@ -5,15 +5,11 @@ import androidx.appcompat.widget.LinearLayoutCompat;
 import android.util.AttributeSet;
 import android.widget.Checkable;
 
-import com.dougkeen.bart.R;
-
-/**
- * A {@link android.widget.LinearLayout} that implements {@link Checkable} and changes
- * its background color when checked.
- */
+/** A layout that exposes its checked state to a state-list background. */
 public class CheckableLinearLayout extends LinearLayoutCompat implements Checkable {
 
     private boolean mChecked;
+    private static final int[] CHECKED_STATE = {android.R.attr.state_checked};
 
     public CheckableLinearLayout(Context context) {
         super(context);
@@ -35,12 +31,20 @@ public class CheckableLinearLayout extends LinearLayoutCompat implements Checkab
     @Override
     public void setChecked(boolean checked) {
         mChecked = checked;
-        int colorRes = isChecked() ? R.color.blue_selection : android.R.color.transparent;
-        setBackgroundResource(colorRes);
+        refreshDrawableState();
     }
 
     @Override
     public void toggle() {
         setChecked(!isChecked());
+    }
+
+    @Override
+    protected int[] onCreateDrawableState(int extraSpace) {
+        int[] drawableState = super.onCreateDrawableState(extraSpace + 1);
+        if (mChecked) {
+            mergeDrawableStates(drawableState, CHECKED_STATE);
+        }
+        return drawableState;
     }
 }

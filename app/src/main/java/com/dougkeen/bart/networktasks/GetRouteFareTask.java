@@ -12,7 +12,7 @@ public abstract class GetRouteFareTask extends
     @Override
     protected String doInBackground(Params... paramsArray) {
         Params params = paramsArray[0];
-        if (isCancelled()) {
+        if (isCancelled() || params.origin == null || params.destination == null) {
             return null;
         }
         try {

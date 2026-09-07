@@ -1,7 +1,5 @@
 package com.dougkeen.bart.controls;
 
-import org.apache.commons.lang3.StringUtils;
-
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
@@ -44,7 +42,11 @@ public class TimedTextSwitcher extends TextSwitcher implements Ticker.TickSubscr
 
     public void setTextProvider(TextProvider textProvider) {
         mTextProvider = textProvider;
-        Ticker.getInstance().addSubscriber(this, getContext());
+        if (textProvider != null) {
+            Ticker.getInstance().addSubscriber(this, getContext());
+        } else {
+            Ticker.getInstance().removeSubscriber(this);
+        }
     }
 
     private CharSequence mLastText;
@@ -57,9 +59,12 @@ public class TimedTextSwitcher extends TextSwitcher implements Ticker.TickSubscr
 
     @Override
     public void onTick(long tickNumber) {
+        if (mTextProvider == null) {
+            return;
+        }
         String text = mTextProvider.getText(tickNumber);
-        if (StringUtils.isNotBlank(text)
-                && !StringUtils.equalsIgnoreCase(text, mLastText)) {
+        if (text != null && !text.trim().isEmpty()
+                && (mLastText == null || !text.equalsIgnoreCase(mLastText.toString()))) {
             mLastText = text;
             setText(text);
         }

@@ -7,6 +7,9 @@
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
+    android:background="@drawable/route_item_background"
+    android:elevation="1dp"
+    android:minHeight="76dp"
     >
 
     <!-- This layout is used when the height is >= 480 dp, eg usually in portrait mode. -->
@@ -22,8 +25,8 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="5dp"
-        android:layout_marginRight="5dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
         android:layout_weight="1"
         android:orientation="vertical"
         >
@@ -32,7 +35,7 @@
             android:id="@+id/destinationText"
             style="@style/DepartureDestinationText"
             android:ellipsize="marquee"
-            android:singleLine="true"
+            android:maxLines="1"
             tools:text="Richmond"
             />
 
@@ -60,13 +63,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         >
-
-        <ImageView
-            android:id="@+id/bikeIcon"
-            android:contentDescription="@string/bike_icon_description"
-            style="@style/TrainInfoIcon"
-            tools:src="@drawable/bike"
-            />
 
         <ImageView
             android:id="@+id/xferIcon"

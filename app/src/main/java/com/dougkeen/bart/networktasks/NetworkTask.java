@@ -15,7 +15,10 @@ public abstract class NetworkTask<Params, Progress, Result> {
 
     public enum Status { PENDING, RUNNING, FINISHED }
 
-    private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
+    // Keep background work bounded. A cached pool could create one thread per
+    // favorite route during a refresh burst, increasing allocation pressure.
+    private static final ExecutorService EXECUTOR =
+            Executors.newFixedThreadPool(4);
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
 
     private volatile Status status = Status.PENDING;

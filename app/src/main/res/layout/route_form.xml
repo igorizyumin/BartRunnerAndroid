@@ -52,7 +52,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/destination"
+            android:text="@string/destination_optional"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 

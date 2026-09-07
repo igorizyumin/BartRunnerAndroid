@@ -22,21 +22,25 @@ import android.widget.Toast;
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.model.Station;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public abstract class AbstractRouteSelectionFragment extends DialogFragment {
 
     private static final String KEY_LAST_SELECTED_DESTINATION = "lastSelectedDestination";
     private static final String KEY_LAST_SELECTED_ORIGIN = "lastSelectedOrigin";
     protected String mTitle;
+    private final int mTitleResource;
 
-    public AbstractRouteSelectionFragment(String title) {
+    public AbstractRouteSelectionFragment(int titleResource) {
         super();
-        mTitle = title;
+        mTitleResource = titleResource;
     }
 
     @Override
     public void setArguments(Bundle args) {
         super.setArguments(args);
-        if (args.containsKey("title"))
+        if (args != null && args.containsKey("title"))
             mTitle = args.getString("title");
     }
 
@@ -72,9 +76,16 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
         originSpinner.setAdapter(originSpinnerAdapter);
         originSpinner.setSelection(lastSelectedOriginPosition);
 
-        ArrayAdapter<Station> destinationSpinnerAdapter = new ArrayAdapter<>(
+        List<Station> stations = Station.getStationList();
+        List<String> destinationNames = new ArrayList<>();
+        for (Station station : stations) {
+            destinationNames.add(station.name);
+        }
+        destinationNames.add(activity.getString(R.string.any_destination));
+
+        ArrayAdapter<String> destinationSpinnerAdapter = new ArrayAdapter<>(
                 activity, android.R.layout.simple_spinner_dropdown_item,
-                Station.getStationList());
+                destinationNames);
         destinationSpinnerAdapter
                 .setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
@@ -88,16 +99,25 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
             @Override
             public void onClick(View view) {
                 int destinationSelection = destinationSpinner.getSelectedItemPosition();
+                if (destinationSelection >= Station.getStationList().size()) {
+                    return;
+                }
                 destinationSpinner.setSelection(originSpinner.getSelectedItemPosition());
                 originSpinner.setSelection(destinationSelection);
             }
         });
+
+        ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> handleOkClick());
     }
 
     @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         final FragmentActivity activity = getActivity();
+        if (mTitle == null) {
+            mTitle = activity.getString(mTitleResource);
+        }
 
         @SuppressLint("InflateParams")
         final View dialogView = activity.getLayoutInflater()
@@ -107,14 +127,7 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
                 .setTitle(mTitle)
                 .setCancelable(true)
                 .setView(dialogView)
-                .setPositiveButton(R.string.ok,
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog,
-                                                int which) {
-                                handleOkClick();
-                            }
-                        })
+                .setPositiveButton(R.string.ok, null)
                 .setNegativeButton(R.string.cancel,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog,
@@ -132,7 +145,11 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
                 .findViewById(R.id.destination_spinner);
 
         Station origin = (Station) originSpinner.getSelectedItem();
-        Station destination = (Station) destinationSpinner.getSelectedItem();
+        List<Station> stations = Station.getStationList();
+        Station destination = destinationSpinner.getSelectedItemPosition()
+                < stations.size()
+                ? stations.get(destinationSpinner.getSelectedItemPosition())
+                : null;
         // TODO(fuegofro) - convert these toasts to error messages on the dialog.
         if (origin == null) {
             Toast.makeText(dialog.getContext(),
@@ -140,13 +157,7 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
                     Toast.LENGTH_LONG).show();
             return;
         }
-        if (destination == null) {
-            Toast.makeText(dialog.getContext(),
-                    com.dougkeen.bart.R.string.error_null_destination,
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (origin.equals(destination)) {
+        if (destination != null && origin.equals(destination)) {
             Toast.makeText(
                     dialog.getContext(),
                     com.dougkeen.bart.R.string.error_matching_origin_and_destination,
@@ -163,6 +174,7 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
         prefsEditor.apply();
 
         onOkButtonClick(origin, destination);
+        dismiss();
     }
 
     abstract protected void onOkButtonClick(Station origin, Station destination);

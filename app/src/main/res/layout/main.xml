@@ -12,39 +12,33 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <com.mobeta.android.dslv.DragSortListView
-            android:id="@android:id/list"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:divider="@android:color/transparent"
-            android:dividerHeight="8dp"
-            android:paddingStart="12dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="8dp"
-            app:collapsed_height="1dp"
-            app:drag_enabled="true"
-            app:drag_handle_id="@id/dragHandle"
-            app:drag_scroll_start="0.33"
-            app:drag_start_mode="onDown"
-            app:float_alpha="0.6"
-            app:remove_enabled="true"
-            app:remove_mode="flingRemove"
-            app:slide_shuffle_speed="0.3" />
+            android:layout_weight="1">
 
-        <TextView
-            android:id="@android:id/empty"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:padding="32dp"
-            android:text="@string/empty_favorites_list_message"
-            android:textColor="@color/text_secondary"
-            android:textSize="16sp"
-            android:visibility="gone" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/favoritesList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:overScrollMode="ifContentScrolls"
+                android:paddingStart="12dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@android:id/empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:padding="32dp"
+                android:text="@string/empty_favorites_list_message"
+                android:textColor="@color/text_secondary"
+                android:textSize="16sp"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/alertMessages"

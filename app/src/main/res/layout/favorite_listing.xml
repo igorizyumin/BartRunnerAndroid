@@ -34,7 +34,7 @@
     <com.dougkeen.bart.controls.TimedTextSwitcher
         android:id="@+id/uncertainty"
         style="@style/DepartureUncertaintyText"
-        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
         android:layout_below="@id/countdownText"
         bart:tickInterval="1" />
 

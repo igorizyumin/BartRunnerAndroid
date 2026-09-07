@@ -5,6 +5,7 @@ import java.util.WeakHashMap;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.Looper;
 
 public class Ticker {
     public interface TickSubscriber {
@@ -32,7 +33,7 @@ public class Ticker {
 
         public TickerEngine(Ticker publisher) {
             this.publisher = publisher;
-            this.mHandler = new Handler();
+            this.mHandler = new Handler(Looper.getMainLooper());
         }
 
         @Override
@@ -61,8 +62,9 @@ public class Ticker {
             long endTimeNanos = System.nanoTime();
 
             if (stillHasListeners && !mPendingRequest) {
-                mHandler.postDelayed(this, TICK_INTERVAL_MILLIS
-                        - ((endTimeNanos - startTimeNanos) / 1000000));
+                long workMillis = (endTimeNanos - startTimeNanos) / 1000000;
+                mHandler.postDelayed(this, Math.max(100L,
+                        TICK_INTERVAL_MILLIS - workMillis));
                 mPendingRequest = true;
                 mTickCount++;
             } else {
@@ -92,6 +94,13 @@ public class Ticker {
             mSubscribers.put(subscriber, null);
             startTicking(host);
         }
+    }
+
+    public void removeSubscriber(TickSubscriber subscriber) {
+        if (subscriber == null) {
+            return;
+        }
+        mSubscribers.remove(subscriber);
     }
 
     private Ticker() {

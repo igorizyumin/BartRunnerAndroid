@@ -2,7 +2,7 @@ package com.dougkeen.bart.data;
 
 public enum RoutesColumns {
     _ID("_id", "INTEGER", false), FROM_STATION("FROM_STATION", "TEXT", false), TO_STATION(
-            "TO_STATION", "TEXT", false), FARE("FARE", "TEXT", true), FARE_LAST_UPDATED(
+            "TO_STATION", "TEXT", true), FARE("FARE", "TEXT", true), FARE_LAST_UPDATED(
             "FARE_LAST_UPDATED", "INTEGER", true), AVERAGE_TRIP_SAMPLE_COUNT(
             "AVE_TRIP_SAMPLE_COUNT", "INTEGER", true), AVERAGE_TRIP_LENGTH(
             "AVE_TRIP_LENGTH", "INTEGER", true);

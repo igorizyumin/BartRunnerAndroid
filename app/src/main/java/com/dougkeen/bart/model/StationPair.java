@@ -1,10 +1,10 @@
 package com.dougkeen.bart.model;
 
-import org.apache.commons.lang3.ObjectUtils;
-
 import android.database.Cursor;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import java.util.Objects;
 
 import com.dougkeen.bart.data.CursorUtils;
 import com.dougkeen.bart.data.RoutesColumns;
@@ -56,6 +56,10 @@ public class StationPair implements Parcelable {
         return destination;
     }
 
+    public boolean isStationOnly() {
+        return origin != null && destination == null;
+    }
+
     public String getFare() {
         return fare;
     }
@@ -89,8 +93,9 @@ public class StationPair implements Parcelable {
     }
 
     public boolean isBetweenStations(Station station1, Station station2) {
-        return (origin.equals(station1) && destination.equals(station2))
-                || (origin.equals(station2) && destination.equals(station1));
+        return origin != null && destination != null
+                && ((origin.equals(station1) && destination.equals(station2))
+                || (origin.equals(station2) && destination.equals(station1)));
     }
 
     @Override
@@ -106,9 +111,8 @@ public class StationPair implements Parcelable {
     public boolean fareEquals(StationPair other) {
         if (other == null)
             return false;
-        return ObjectUtils.equals(getFare(), other.getFare())
-                && ObjectUtils.equals(getFareLastUpdated(),
-                other.getFareLastUpdated());
+        return Objects.equals(getFare(), other.getFare())
+                && getFareLastUpdated() == other.getFareLastUpdated();
     }
 
     @Override
@@ -137,8 +141,8 @@ public class StationPair implements Parcelable {
     }
 
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(origin.abbreviation);
-        dest.writeString(destination.abbreviation);
+        dest.writeString(origin == null ? null : origin.abbreviation);
+        dest.writeString(destination == null ? null : destination.abbreviation);
     }
 
     private void readFromParcel(Parcel in) {

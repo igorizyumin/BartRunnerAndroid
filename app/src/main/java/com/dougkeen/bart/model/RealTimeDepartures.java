@@ -155,7 +155,9 @@ public class RealTimeDepartures {
             return null;
         for (Route route : routes) {
             if (route.trainDestinationIsApplicable(destination, departure.getLine())
-                    && (route.getDestination().includedInLimitedService || !departure.isLimited())) {
+                    && (route.getDestination() == null
+                    || route.getDestination().includedInLimitedService
+                    || !departure.isLimited())) {
                 return route;
             }
         }
@@ -172,6 +174,10 @@ public class RealTimeDepartures {
     }
 
     public void finalizeDeparturesList() {
+        if (destination == null) {
+            sortDepartures();
+            return;
+        }
         boolean hasDirectRoute = false;
         for (Departure departure : getDepartures()) {
             if (!departure.getRequiresTransfer()) {

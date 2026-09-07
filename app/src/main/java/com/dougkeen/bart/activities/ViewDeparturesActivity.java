@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Rect;
 import android.content.ServiceConnection;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -23,6 +24,10 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
+import androidx.core.content.IntentCompat;
+import androidx.core.os.BundleCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import android.text.format.DateFormat;
 import android.text.util.Linkify;
 import android.util.Log;
@@ -31,8 +36,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.AdapterView;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,12 +51,11 @@ import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.bart.services.EtdService;
 import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
 import com.dougkeen.bart.services.EtdService.EtdServiceListener;
-import com.dougkeen.bart.services.EtdService_;
 import com.dougkeen.util.Assert;
 import com.dougkeen.util.WakeLocker;
 
 public class ViewDeparturesActivity extends AbstractViewActivity implements
-        EtdServiceListener {
+        EtdServiceListener, DepartureArrayAdapter.Listener {
 
     private StationPair mStationPair;
 
@@ -63,12 +65,13 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private TextView mEmptyView;
     private ProgressBar mProgress;
+    private RecyclerView mListView;
 
     private ActionMode mActionMode;
 
     private EtdService mEtdService;
 
-    private Handler mHandler = new Handler();
+    private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
 
     private boolean mBound = false;
 
@@ -84,26 +87,42 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
         final BartRunnerApplication bartRunnerApplication = (BartRunnerApplication) getApplication();
 
+        if (bartRunnerApplication.shouldPlayAlarmRingtone()
+                || bartRunnerApplication.isAlarmSounding()) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+                setShowWhenLocked(true);
+                setTurnScreenOn(true);
+            }
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+
         mEmptyView = (TextView) findViewById(android.R.id.empty);
         mEmptyView.setText(R.string.departure_wait_message);
 
         mProgress = (ProgressBar) findViewById(android.R.id.progress);
 
-        mDeparturesAdapter = new DepartureArrayAdapter(this);
-
+        mListView = findViewById(R.id.departuresList);
+        mListView.setLayoutManager(new LinearLayoutManager(this));
+        mListView.setHasFixedSize(false);
+        final int itemSpacing = getResources().getDimensionPixelSize(R.dimen.list_item_spacing);
+        mListView.addItemDecoration(new RecyclerView.ItemDecoration() {
+            @Override
+            public void getItemOffsets(Rect outRect, View view, RecyclerView parent,
+                                       RecyclerView.State state) {
+                outRect.bottom = itemSpacing;
+            }
+        });
+        mDeparturesAdapter = new DepartureArrayAdapter(this, this);
         setListAdapter(mDeparturesAdapter);
-        final ListView listView = getListView();
-        listView.setEmptyView(findViewById(android.R.id.empty));
-        listView.setOnItemClickListener(mListItemClickListener);
-        listView.setOnItemLongClickListener(mListItemLongClickListener);
 
         if (savedInstanceState != null
                 && savedInstanceState.containsKey("stationPair")) {
-            mStationPair = savedInstanceState.getParcelable("stationPair");
+            mStationPair = BundleCompat.getParcelable(savedInstanceState,
+                    "stationPair", StationPair.class);
             setListTitle();
         } else {
-            mStationPair = intent.getExtras().getParcelable(
-                    Constants.STATION_PAIR_EXTRA);
+            mStationPair = IntentCompat.getParcelableExtra(intent,
+                    Constants.STATION_PAIR_EXTRA, StationPair.class);
             setListTitle();
             if (mBound && mEtdService != null)
                 mEtdService
@@ -119,13 +138,20 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 mDeparturesAdapter.notifyDataSetChanged();
             }
             if (savedInstanceState.containsKey("selectedDeparture")) {
-                setSelectedDeparture((Departure) savedInstanceState
-                        .getParcelable("selectedDeparture"));
+                setSelectedDeparture(BundleCompat.getParcelable(savedInstanceState,
+                        "selectedDeparture", Departure.class));
             }
             if (savedInstanceState.getBoolean("hasDepartureActionMode")
                     && mSelectedDeparture != null) {
                 startDepartureActionMode();
             }
+        }
+
+        updateEmptyState(mDeparturesAdapter.getCount() == 0);
+
+        if (mStationPair == null) {
+            finish();
+            return;
         }
 
         ActionBar supportActionBar = Assert.notNull(getSupportActionBar());
@@ -235,15 +261,26 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     private void setListTitle() {
         String listTitle;
         if (mStationPair == null || mStationPair.getOrigin() == null || mStationPair.getDestination() == null) {
-            listTitle = "";
+            listTitle = mStationPair != null && mStationPair.getOrigin() != null
+                    ? getString(R.string.arrivals_at_station,
+                    mStationPair.getOrigin().name) : "";
         } else {
             listTitle = mStationPair.getOrigin().name + " to " + mStationPair.getDestination().name;
         }
         ((TextView) findViewById(R.id.listTitle)).setText(listTitle);
     }
 
-    private ListView getListView() {
-        return (ListView) findViewById(android.R.id.list);
+    private RecyclerView getListView() {
+        return mListView;
+    }
+
+    private void updateEmptyState(boolean show) {
+        if (mEmptyView != null) {
+            mEmptyView.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        if (mListView != null) {
+            mListView.setVisibility(show ? View.GONE : View.VISIBLE);
+        }
     }
 
     private final ServiceConnection mConnection = new ServiceConnection() {
@@ -264,44 +301,20 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
     };
 
-    private boolean mWasLongClick = false;
-
-    private final AdapterView.OnItemClickListener mListItemClickListener = new AdapterView.OnItemClickListener() {
-        @Override
-        public void onItemClick(AdapterView<?> adapterView, View view,
-                                int position, long id) {
-            if (mWasLongClick) {
-                mWasLongClick = false;
-                return;
-            }
-
-            if (mActionMode != null) {
-                /*
-                 * If action mode is displayed, cancel out of that
-                 */
-                mActionMode.finish();
-                getListView().clearChoices();
-            } else {
-                /*
-                 * Otherwise select the clicked departure as the one the user
-                 * wants to board
-                 */
-                setBoardedDeparture(
-                        getListAdapter().getItem(position), true);
-            }
+    @Override
+    public void onDepartureClicked(Departure departure) {
+        if (mActionMode != null) {
+            mActionMode.finish();
+        } else {
+            openTripSchedule(departure);
         }
-    };
+    }
 
-    private final AdapterView.OnItemLongClickListener mListItemLongClickListener = new AdapterView.OnItemLongClickListener() {
-        @Override
-        public boolean onItemLongClick(AdapterView<?> adapterView, View view,
-                                       int position, long id) {
-            mWasLongClick = true;
-            setSelectedDeparture(getListAdapter().getItem(position));
-            startDepartureActionMode();
-            return false;
-        }
-    };
+    @Override
+    public void onDepartureLongClicked(Departure departure) {
+        setSelectedDeparture(departure);
+        startDepartureActionMode();
+    }
 
     protected DepartureArrayAdapter getListAdapter() {
         return mDeparturesAdapter;
@@ -317,8 +330,10 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         super.onStop();
         if (mEtdService != null)
             mEtdService.unregisterListener(this);
-        if (mBound)
+        if (mBound) {
             unbindService(mConnection);
+            mBound = false;
+        }
         Ticker.getInstance().stopTicking(this);
         WakeLocker.release();
     }
@@ -328,8 +343,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         super.onSaveInstanceState(outState);
         if (mStationPair != null) {
             /*
-             * If origin or destination are null, this thing was never
-             * initialized in the first place, so there's really nothing to save
+             * A station-only lookup has a null destination and is still a
+             * valid state that must survive activity recreation.
              */
             Departure[] departures = new Departure[mDeparturesAdapter
                     .getCount()];
@@ -347,7 +362,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        bindService(EtdService_.intent(this).get(), mConnection,
+        bindService(new Intent(this, EtdService.class), mConnection,
                 Context.BIND_AUTO_CREATE);
         Ticker.getInstance().startTicking(this);
     }
@@ -375,17 +390,36 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.route_menu, menu);
+        MenuItem bartSiteItem = menu.findItem(R.id.view_on_bart_site_button);
+        if (bartSiteItem != null) {
+            bartSiteItem.setVisible(mStationPair != null
+                    && mStationPair.getDestination() != null);
+        }
         return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem bartSiteItem = menu.findItem(R.id.view_on_bart_site_button);
+        if (bartSiteItem != null) {
+            bartSiteItem.setVisible(mStationPair != null
+                    && mStationPair.getDestination() != null);
+        }
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == android.R.id.home) {
-            RoutesListActivity_.intent(this)
-                    .flags(Intent.FLAG_ACTIVITY_CLEAR_TOP).start();
+            Intent routesIntent = new Intent(this, RoutesListActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(routesIntent);
             return true;
         } else if (itemId == R.id.view_on_bart_site_button) {
+            if (mStationPair.getDestination() == null) {
+                return true;
+            }
             startActivity(new Intent(
                     Intent.ACTION_VIEW,
                     Uri.parse("https://m.bart.gov/schedules/qp_results.aspx?type=departure&date=today&time="
@@ -406,8 +440,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private void setBoardedDeparture(Departure selectedDeparture,
                                      boolean openTripScreen) {
+        prepareDepartureForTrip(selectedDeparture);
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
-        selectedDeparture.setPassengerDestination(mStationPair.getDestination());
         application.setBoardedDeparture(selectedDeparture);
         requestNotificationPermissionIfNeeded();
 
@@ -424,6 +458,19 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         if (openTripScreen) {
             startActivity(new Intent(this, TripInProgressActivity.class));
         }
+    }
+
+    private void openTripSchedule(Departure departure) {
+        prepareDepartureForTrip(departure);
+        Intent intent = new Intent(this, TripInProgressActivity.class);
+        intent.putExtra("departure", departure);
+        startActivity(intent);
+    }
+
+    private void prepareDepartureForTrip(Departure departure) {
+        departure.setPassengerDestination(mStationPair.getDestination() != null
+                ? mStationPair.getDestination()
+                : departure.getTrainDestination());
     }
 
     private void requestNotificationPermissionIfNeeded() {
@@ -490,9 +537,11 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 if (departures.isEmpty()) {
                     final TextView textView = mEmptyView;
                     textView.setText(R.string.no_data_message);
+                    updateEmptyState(true);
                     mProgress.setVisibility(View.GONE);
                     Linkify.addLinks(textView, Linkify.WEB_URLS);
                 } else {
+                    updateEmptyState(false);
                     // TODO: Figure out why Ticker occasionally stops
                     Ticker.getInstance().startTicking(
                             ViewDeparturesActivity.this);
@@ -544,6 +593,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             @Override
             public void run() {
                 mEmptyView.setText(errorMessage);
+                updateEmptyState(true);
             }
         });
     }

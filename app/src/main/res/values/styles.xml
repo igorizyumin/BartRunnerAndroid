@@ -21,10 +21,10 @@
     </style>
 
     <style name="ButtonBar">
-        <item name="android:layout_width">fill_parent</item>
+        <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:paddingLeft">16dp</item>
-        <item name="android:paddingRight">16dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
         <item name="android:paddingTop">8dp</item>
         <item name="android:paddingBottom">12dp</item>
     </style>
@@ -34,7 +34,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">20sp</item>
         <item name="android:ellipsize">end</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 
     <style name="MediumText">
@@ -42,7 +42,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">16sp</item>
         <item name="android:ellipsize">end</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 
     <style name="SmallText">
@@ -50,7 +50,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">12sp</item>
         <item name="android:ellipsize">end</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 
     <style name="FavoriteListingTextView">
@@ -59,7 +59,7 @@
         <item name="android:textSize">18sp</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:ellipsize">end</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 
     <style name="FareTextView">
@@ -68,7 +68,7 @@
         <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:ellipsize">end</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 
     <style name="DepartureDestinationText">
@@ -77,7 +77,7 @@
         <item name="android:textSize">20sp</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
         <item name="android:layout_marginStart">3dp</item>
     </style>
 
@@ -86,7 +86,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
         <item name="android:layout_marginStart">3dp</item>
     </style>
 
@@ -95,7 +95,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">20sp</item>
         <item name="android:textColor">@color/text_primary</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 
     <style name="DepartureUncertaintyText">
@@ -103,7 +103,7 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">13sp</item>
         <item name="android:textColor">@color/text_secondary</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
         <item name="android:gravity">end</item>
     </style>
 
@@ -111,7 +111,7 @@
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">12sp</item>
-        <item name="android:singleLine">true</item>
+        <item name="android:maxLines">1</item>
         <item name="android:gravity">center</item>
     </style>
 

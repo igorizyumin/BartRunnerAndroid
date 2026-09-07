@@ -19,6 +19,7 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,8 +77,22 @@ public abstract class GetRealTimeDeparturesTask extends
         // Always expect one param
         StationPair params = paramsArray[0];
 
-        mRoutes = params.getOrigin().getDirectRoutesForDestination(
-                params.getDestination());
+        if (params.getDestination() == null) {
+            mRoutes = new ArrayList<Route>();
+            for (com.dougkeen.bart.model.Line line
+                    : com.dougkeen.bart.model.Line.getLinesForStation(
+                    params.getOrigin())) {
+                Route route = new Route();
+                route.setOrigin(params.getOrigin());
+                route.setDestination(null);
+                route.setDirectLine(line);
+                route.setTransfer(false);
+                mRoutes.add(route);
+            }
+        } else {
+            mRoutes = params.getOrigin().getDirectRoutesForDestination(
+                    params.getDestination());
+        }
 
         boolean hasDirectLine = false;
         for (Route route : mRoutes) {
@@ -87,8 +102,9 @@ public abstract class GetRealTimeDeparturesTask extends
             }
         }
 
-        if (mRoutes.isEmpty()
-                || (params.getOrigin().transferFriendly && !hasDirectLine)) {
+        if ((params.getDestination() != null && mRoutes.isEmpty())
+                || (params.getDestination() != null
+                && params.getOrigin().transferFriendly && !hasDirectLine)) {
             mRoutes.addAll(params.getOrigin().getPreferredTransferRoutes(
                     params.getDestination()));
         }

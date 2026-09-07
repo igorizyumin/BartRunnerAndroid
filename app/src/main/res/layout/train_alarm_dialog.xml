@@ -19,7 +19,6 @@
         android:gravity="center_vertical"
         android:maxLines="3"
         android:paddingLeft="10sp"
-        android:singleLine="false"
         android:text="@string/minutes_before_departure" />
 
 </LinearLayout>

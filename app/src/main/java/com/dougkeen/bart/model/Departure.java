@@ -16,12 +16,11 @@ import android.util.Log;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.activities.ViewDeparturesActivity;
+import com.dougkeen.bart.activities.TripInProgressActivity;
 import com.dougkeen.bart.receivers.AlarmBroadcastReceiver;
 import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.util.Observable;
 
-import org.apache.commons.lang3.time.DateFormatUtils;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -290,11 +289,28 @@ public class Departure implements Parcelable, Comparable<Departure> {
     }
 
     public String getTrainLengthText() {
+        if (isBlank(trainLength)) {
+            return "";
+        }
         return trainLength + " cars";
     }
 
     public String getTrainLengthAndPlatform() {
-        return trainLength + " cars, platform " + getPlatform();
+        StringBuilder result = new StringBuilder();
+        if (!isBlank(trainLength)) {
+            result.append(trainLength).append(" cars");
+        }
+        if (!isBlank(platform)) {
+            if (result.length() > 0) {
+                result.append(", ");
+            }
+            result.append("platform ").append(platform);
+        }
+        return result.toString();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     public boolean getRequiresTransfer() {
@@ -769,7 +785,8 @@ public class Departure implements Parcelable, Comparable<Departure> {
             }
         }
 
-        Log.v(Constants.TAG, "Scheduling alarm for " + DateFormatUtils.format(alarmTime, "h:mm:ss"));
+        Log.v(Constants.TAG, "Scheduling alarm for "
+                + android.text.format.DateFormat.format("h:mm:ss", alarmTime));
     }
 
     public void cancelAlarm(Context context, AlarmManager alarmManager) {
@@ -785,12 +802,12 @@ public class Departure implements Parcelable, Comparable<Departure> {
     private PendingIntent getNotificationIntent(Context context) {
         if (notificationIntent == null) {
             Intent targetIntent = new Intent(context,
-                    ViewDeparturesActivity.class);
-            targetIntent.putExtra(Constants.STATION_PAIR_EXTRA,
-                    getStationPair());
-            targetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    TripInProgressActivity.class);
+            targetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             notificationIntent = PendingIntent.getActivity(context, 0,
-                    targetIntent, PendingIntent.FLAG_IMMUTABLE);
+                    targetIntent, PendingIntent.FLAG_IMMUTABLE
+                            | PendingIntent.FLAG_UPDATE_CURRENT);
         }
         return notificationIntent;
     }

@@ -2,6 +2,7 @@ package com.dougkeen.bart.activities;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.Bundle;
 import androidx.fragment.app.DialogFragment;
 import androidx.appcompat.app.AlertDialog;
@@ -15,10 +16,11 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.ListAdapter;
 import android.widget.TextView;
+
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
@@ -31,25 +33,12 @@ import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.networktasks.GetRouteFareTask;
 import com.dougkeen.bart.networktasks.GetServiceAlertsTask;
-import com.mobeta.android.dslv.DragSortListView;
-
-import org.androidannotations.annotations.AfterViews;
-import org.androidannotations.annotations.App;
-import org.androidannotations.annotations.Background;
-import org.androidannotations.annotations.Click;
-import org.androidannotations.annotations.EActivity;
-import org.androidannotations.annotations.InstanceState;
-import org.androidannotations.annotations.ItemClick;
-import org.androidannotations.annotations.ItemLongClick;
-import org.androidannotations.annotations.UiThread;
-import org.androidannotations.annotations.ViewById;
-
 import java.util.Calendar;
 import java.util.TimeZone;
 
 
-@EActivity(R.layout.main)
-public class RoutesListActivity extends AppCompatActivity implements TickSubscriber {
+public class   RoutesListActivity extends AppCompatActivity implements TickSubscriber,
+        FavoritesArrayAdapter.Listener {
     private static final String NO_DELAYS_REPORTED = "No delays reported";
 
     private static final TimeZone PACIFIC_TIME = TimeZone
@@ -57,32 +46,24 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
     private static final String TAG = "RoutesListActivity";
 
-    @InstanceState
     StationPair mCurrentlySelectedStationPair;
 
-    @InstanceState
     String mCurrentAlerts;
 
     private ActionMode mActionMode;
 
     private FavoritesArrayAdapter mRoutesAdapter;
 
-    @App
     BartRunnerApplication app;
 
-    @ViewById(android.R.id.list)
-    DragSortListView listView;
+    RecyclerView listView;
 
-    @ViewById(R.id.quickLookupButton)
-    Button quickLookupButton;
-
-    @ViewById(R.id.alertMessages)
     TextView alertMessages;
 
-    @ViewById(R.id.coordinatorLayout)
     CoordinatorLayout coordinatorLayout;
 
-    @Click(R.id.quickLookupButton)
+    TextView emptyView;
+
     void quickLookupButtonClick() {
         DialogFragment dialog = new QuickRouteDialogFragment();
         try {
@@ -93,16 +74,16 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
         }
     }
 
-    @ItemClick(android.R.id.list)
-    void listItemClicked(StationPair item) {
+    @Override
+    public void onFavoriteClicked(StationPair item) {
         Intent intent = new Intent(RoutesListActivity.this,
                 ViewDeparturesActivity.class);
         intent.putExtra(Constants.STATION_PAIR_EXTRA, item);
         startActivity(intent);
     }
 
-    @ItemLongClick(android.R.id.list)
-    void listItemLongClick(StationPair item) {
+    @Override
+    public void onFavoriteLongClicked(StationPair item) {
         if (mActionMode != null) {
             mActionMode.finish();
         }
@@ -112,44 +93,56 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
         startContextualActionMode();
     }
 
-    private DragSortListView.DropListener onDrop = new DragSortListView.DropListener() {
-        @Override
-        public void drop(int from, int to) {
-            if (from == to)
-                return;
-
-            StationPair item = mRoutesAdapter.getItem(from);
-
-            mRoutesAdapter.move(item, to);
-            mRoutesAdapter.notifyDataSetChanged();
-            app.saveFavorites();
-        }
-    };
-
-    private DragSortListView.RemoveListener onRemove = new DragSortListView.RemoveListener() {
-        @Override
-        public void remove(final int which) {
-            final StationPair stationPair = mRoutesAdapter.getItem(which);
-            mRoutesAdapter.remove(stationPair);
-            mRoutesAdapter.notifyDataSetChanged();
-            app.saveFavorites();
-            showRouteDeletedSnackbar(which, stationPair);
-        }
-    };
-
-    @AfterViews
     void afterViews() {
         setTitle(R.string.favorite_routes);
 
-        mRoutesAdapter = new FavoritesArrayAdapter(this,
-                R.layout.favorite_listing, app.getFavorites());
+        listView.setLayoutManager(new LinearLayoutManager(this));
+        listView.setHasFixedSize(false);
+        final int itemSpacing = getResources().getDimensionPixelSize(R.dimen.list_item_spacing);
+        listView.addItemDecoration(new RecyclerView.ItemDecoration() {
+            @Override
+            public void getItemOffsets(Rect outRect, View view, RecyclerView parent,
+                                       RecyclerView.State state) {
+                outRect.bottom = itemSpacing;
+            }
+        });
+        mRoutesAdapter = new FavoritesArrayAdapter(this, app.getFavorites(), this);
 
         setListAdapter(mRoutesAdapter);
 
-        listView.setEmptyView(findViewById(android.R.id.empty));
+        ItemTouchHelper touchHelper = new ItemTouchHelper(
+                new ItemTouchHelper.SimpleCallback(
+                        ItemTouchHelper.UP | ItemTouchHelper.DOWN,
+                        ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+                    @Override
+                    public boolean onMove(RecyclerView recyclerView,
+                                           RecyclerView.ViewHolder viewHolder,
+                                           RecyclerView.ViewHolder target) {
+                        int from = viewHolder.getBindingAdapterPosition();
+                        int to = target.getBindingAdapterPosition();
+                        if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
+                            return false;
+                        }
+                        mRoutesAdapter.move(from, to);
+                        app.saveFavorites();
+                        return true;
+                    }
 
-        listView.setDropListener(onDrop);
-        listView.setRemoveListener(onRemove);
+                    @Override
+                    public void onSwiped(RecyclerView.ViewHolder viewHolder,
+                        int direction) {
+                        int position = viewHolder.getBindingAdapterPosition();
+                        if (position == RecyclerView.NO_POSITION) {
+                            return;
+                        }
+                        StationPair stationPair = mRoutesAdapter.getItem(position);
+                        mRoutesAdapter.remove(stationPair);
+                        app.saveFavorites();
+                        showRouteDeletedSnackbar(position, stationPair);
+                        updateEmptyState();
+                    }
+                });
+        touchHelper.attachToRecyclerView(listView);
 
         if (mCurrentAlerts != null) {
             showAlertMessage(mCurrentAlerts);
@@ -157,6 +150,7 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
         startEtdListeners();
         refreshFares();
+        updateEmptyState();
     }
 
     /**
@@ -166,17 +160,20 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        app = (BartRunnerApplication) getApplication();
         if (savedInstanceState != null) {
-            if (savedInstanceState.getBoolean("hasActionMode")) {
-                startContextualActionMode();
-            }
+            mCurrentAlerts = savedInstanceState.getString("currentAlerts");
         }
+        setContentView(R.layout.main);
+        listView = findViewById(R.id.favoritesList);
+        emptyView = findViewById(android.R.id.empty);
+        alertMessages = findViewById(R.id.alertMessages);
+        coordinatorLayout = findViewById(R.id.coordinatorLayout);
+        findViewById(R.id.quickLookupButton).setOnClickListener(
+                view -> quickLookupButtonClick());
+        afterViews();
 
         Ticker.getInstance().addSubscriber(this, getApplicationContext());
-    }
-
-    private AdapterView<ListAdapter> getListView() {
-        return listView;
     }
 
     protected FavoritesArrayAdapter getListAdapter() {
@@ -185,17 +182,30 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
     protected void setListAdapter(FavoritesArrayAdapter adapter) {
         mRoutesAdapter = adapter;
-        getListView().setAdapter(mRoutesAdapter);
+        listView.setAdapter(mRoutesAdapter);
     }
 
     void addFavorite(StationPair pair) {
         mRoutesAdapter.add(pair);
         app.saveFavorites();
+        updateEmptyState();
+    }
+
+    private void updateEmptyState() {
+        if (emptyView == null || mRoutesAdapter == null) {
+            return;
+        }
+        emptyView.setVisibility(mRoutesAdapter.isEmpty() ? View.VISIBLE : View.GONE);
+        listView.setVisibility(mRoutesAdapter.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     private void refreshFares() {
         for (int i = getListAdapter().getCount() - 1; i >= 0; i--) {
             final StationPair stationPair = getListAdapter().getItem(i);
+
+            if (stationPair.getDestination() == null) {
+                continue;
+            }
 
             Calendar now = Calendar.getInstance();
             Calendar lastUpdate = Calendar.getInstance();
@@ -228,7 +238,7 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        outState.putBoolean("hasActionMode", mActionMode != null);
+        outState.putString("currentAlerts", mCurrentAlerts);
         super.onSaveInstanceState(outState);
     }
 
@@ -314,7 +324,6 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
         }
     }
 
-    @Background
     void fetchAlerts() {
         Log.d(TAG, "Fetching alerts");
         new GetServiceAlertsTask() {
@@ -349,13 +358,11 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
         }.execute();
     }
 
-    @UiThread
     void hideAlertMessage() {
         mCurrentAlerts = null;
         alertMessages.setVisibility(View.GONE);
     }
 
-    @UiThread
     void showAlertMessage(String messageText) {
         if (messageText == null) {
             hideAlertMessage();
@@ -375,8 +382,13 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
     private void startContextualActionMode() {
         mActionMode = startSupportActionMode(new RouteActionMode());
         mActionMode.setTitle(mCurrentlySelectedStationPair.getOrigin().name);
-        mActionMode.setSubtitle("to "
-                + mCurrentlySelectedStationPair.getDestination().name);
+        if (mCurrentlySelectedStationPair.getDestination() != null) {
+            mActionMode.setSubtitle("to "
+                    + mCurrentlySelectedStationPair.getDestination().name);
+        } else {
+            mActionMode.setSubtitle(getString(R.string.arrivals_at_station,
+                    mCurrentlySelectedStationPair.getOrigin().name));
+        }
     }
 
     private void showRouteDeletedSnackbar(final int which, final StationPair stationPair) {
@@ -385,7 +397,8 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
                     @Override
                     public void onClick(View view) {
                         mRoutesAdapter.insert(stationPair, which);
-                        mRoutesAdapter.notifyDataSetChanged();
+                        app.saveFavorites();
+                        updateEmptyState();
                     }
                 })
                 .show();
@@ -424,6 +437,8 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
                                                 int which) {
                                 getListAdapter().remove(
                                         mCurrentlySelectedStationPair);
+                                app.saveFavorites();
+                                updateEmptyState();
                                 mCurrentlySelectedStationPair = null;
                                 mActionMode.finish();
                                 dialog.dismiss();

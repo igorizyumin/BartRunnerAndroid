@@ -13,7 +13,8 @@ public abstract class GetScheduleInformationTask extends
     @Override
     protected ScheduleInformation doInBackground(StationPair... paramsArray) {
         StationPair params = paramsArray[0];
-        if (isCancelled()) {
+        if (isCancelled() || params.getOrigin() == null
+                || params.getDestination() == null) {
             return null;
         }
         try {

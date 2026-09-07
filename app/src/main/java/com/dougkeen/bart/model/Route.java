@@ -134,6 +134,12 @@ public class Route {
     public boolean trainDestinationIsApplicable(Station lineDestination,
                                                 Line viaLine) {
         int originIndex = viaLine.stations.indexOf(origin);
+        if (destination == null) {
+            return originIndex >= 0 && lineDestination != null
+                    && viaLine.equals(directLine)
+                    && viaLine.stations.indexOf(lineDestination) >= 0
+                    && lineDestination != origin;
+        }
         int routeDestinationIndex = viaLine.stations.indexOf(destination);
         int lineDestinationIndex = viaLine.stations
                 .indexOf(lineDestination);

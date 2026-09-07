@@ -1,8 +1,7 @@
 package com.dougkeen.util;
 
 import java.util.WeakHashMap;
-
-import org.apache.commons.lang3.ObjectUtils;
+import java.util.Objects;
 
 public class Observable<T> {
     private T value;
@@ -22,7 +21,7 @@ public class Observable<T> {
     }
 
     public void setValue(T value) {
-        if (!ObjectUtils.equals(this.value, value)) {
+        if (!Objects.equals(this.value, value)) {
             this.value = value;
             notifyOfChange(value);
         }

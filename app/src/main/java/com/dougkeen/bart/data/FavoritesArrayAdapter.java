@@ -1,229 +1,286 @@
 package com.dougkeen.bart.data;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.StringUtils;
-
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
-import android.widget.ArrayAdapter;
-import android.widget.RelativeLayout;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.ViewSwitcher.ViewFactory;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.controls.CountdownTextView;
 import com.dougkeen.bart.controls.TimedTextSwitcher;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.model.TextProvider;
 import com.dougkeen.bart.services.EtdService;
 import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
 import com.dougkeen.bart.services.EtdService.EtdServiceListener;
-import com.dougkeen.bart.services.EtdService_;
 
-public class FavoritesArrayAdapter extends ArrayAdapter<StationPair> {
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-    private boolean mBound = false;
+/** RecyclerView adapter for favorite routes and their live departure summary. */
+public class FavoritesArrayAdapter
+        extends RecyclerView.Adapter<FavoritesArrayAdapter.ViewHolder> {
 
-    private EtdService mEtdService;
+    public interface Listener {
+        void onFavoriteClicked(StationPair pair);
 
-    private Activity mHostActivity;
+        void onFavoriteLongClicked(StationPair pair);
+    }
 
-    private Map<StationPair, EtdListener> mEtdListeners = new HashMap<StationPair, EtdListener>();
+    private final Activity hostActivity;
+    private final List<StationPair> items;
+    private final Listener listener;
+    private final Map<StationPair, EtdListener> etdListeners = new HashMap<>();
+    private EtdService etdService;
+    private boolean bound;
 
-    private final ServiceConnection mConnection = new ServiceConnection() {
+    private final ServiceConnection connection = new ServiceConnection() {
         @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mEtdService = null;
-            mBound = false;
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            etdService = ((EtdServiceBinder) service).getService();
+            bound = true;
+            setUpEtdListeners();
         }
 
         @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            mEtdService = ((EtdServiceBinder) service).getService();
-            mBound = true;
-            if (!isEmpty()) {
-                setUpEtdListeners();
-            }
+        public void onServiceDisconnected(ComponentName name) {
+            etdService = null;
+            bound = false;
+            etdListeners.clear();
         }
     };
 
+    public FavoritesArrayAdapter(Activity hostActivity, List<StationPair> items,
+                                 Listener listener) {
+        this.hostActivity = hostActivity;
+        this.items = items;
+        this.listener = listener;
+        hostActivity.bindService(new Intent(hostActivity, EtdService.class),
+                connection, Context.BIND_AUTO_CREATE);
+    }
+
     public void setUpEtdListeners() {
-        if (mBound && mEtdService != null) {
-            for (int i = getCount() - 1; i >= 0; i--) {
-                final StationPair item = getItem(i);
-                mEtdListeners.put(item, new EtdListener(item, mEtdService));
-            }
+        if (!bound || etdService == null) {
+            return;
+        }
+        clearEtdListeners();
+        for (StationPair item : items) {
+            etdListeners.put(item, new EtdListener(item, etdService));
         }
     }
 
     public void clearEtdListeners() {
-        if (mBound && mEtdService != null) {
-            for (EtdListener listener : mEtdListeners.values()) {
-                listener.close(mEtdService);
+        if (etdService != null) {
+            for (EtdListener listener : etdListeners.values()) {
+                listener.close(etdService);
             }
-            mEtdListeners.clear();
         }
+        etdListeners.clear();
     }
 
     public boolean areEtdListenersActive() {
-        return !mEtdListeners.isEmpty();
-    }
-
-    public FavoritesArrayAdapter(Context context, int textViewResourceId,
-                                 List<StationPair> objects) {
-        super(context, textViewResourceId, objects);
-        mHostActivity = (Activity) context;
-        mHostActivity.bindService(EtdService_.intent(mHostActivity).get(),
-                mConnection, Context.BIND_AUTO_CREATE);
+        return !etdListeners.isEmpty();
     }
 
     public void close() {
-        if (mBound) {
-            mHostActivity.unbindService(mConnection);
-        }
-    }
-
-    @Override
-    public void add(StationPair object) {
-        super.add(object);
-        if (mEtdService != null && mBound) {
-            mEtdListeners.put(object, new EtdListener(object, mEtdService));
-        }
-    }
-
-    @Override
-    public void remove(StationPair object) {
-        super.remove(object);
-        if (mEtdListeners.containsKey(object) && mEtdService != null & mBound) {
-            mEtdListeners.get(object).close(mEtdService);
-            mEtdListeners.remove(object);
-        }
-    }
-
-    public void move(StationPair object, int to) {
-        super.remove(object);
-        super.insert(object, to);
-    }
-
-    @Override
-    public void clear() {
-        super.clear();
         clearEtdListeners();
+        if (bound) {
+            hostActivity.unbindService(connection);
+            bound = false;
+            etdService = null;
+        }
+    }
+
+    public StationPair getItem(int position) {
+        return items.get(position);
+    }
+
+    public int getCount() {
+        return items.size();
+    }
+
+    public boolean isEmpty() {
+        return items.isEmpty();
+    }
+
+    public void add(StationPair item) {
+        items.add(item);
+        if (bound && etdService != null) {
+            etdListeners.put(item, new EtdListener(item, etdService));
+        }
+        notifyItemInserted(items.size() - 1);
+    }
+
+    public void remove(StationPair item) {
+        int index = items.indexOf(item);
+        if (index < 0) {
+            return;
+        }
+        EtdListener etdListener = etdListeners.remove(item);
+        if (etdListener != null && etdService != null) {
+            etdListener.close(etdService);
+        }
+        items.remove(index);
+        notifyItemRemoved(index);
+    }
+
+    public void move(int from, int to) {
+        if (from == to || from < 0 || to < 0 || from >= items.size()
+                || to >= items.size()) {
+            return;
+        }
+        StationPair item = items.remove(from);
+        items.add(to, item);
+        notifyItemMoved(from, to);
+    }
+
+    public void insert(StationPair item, int index) {
+        int safeIndex = Math.max(0, Math.min(index, items.size()));
+        items.add(safeIndex, item);
+        if (bound && etdService != null) {
+            etdListeners.put(item, new EtdListener(item, etdService));
+        }
+        notifyItemInserted(safeIndex);
+    }
+
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext()).inflate(
+                R.layout.favorite_listing, parent, false);
+        return new ViewHolder(view);
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        View view;
-        if (convertView != null && convertView instanceof RelativeLayout) {
-            view = convertView;
-        } else {
-            LayoutInflater inflater = LayoutInflater.from(getContext());
-            view = inflater.inflate(R.layout.favorite_listing, parent, false);
-        }
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        holder.bind(getItem(position));
+    }
 
-        final StationPair pair = getItem(position);
+    @Override
+    public int getItemCount() {
+        return items.size();
+    }
 
-        final EtdListener etdListener = mEtdListeners.get(pair);
+    public final class ViewHolder extends RecyclerView.ViewHolder {
+        private final TimedTextSwitcher uncertainty;
+        private final CountdownTextView countdown;
+        private final TextView origin;
+        private final TextView destination;
 
-        final TimedTextSwitcher uncertaintyTextSwitcher = (TimedTextSwitcher) view
-                .findViewById(R.id.uncertainty);
-        initTextSwitcher(uncertaintyTextSwitcher);
-
-        if (etdListener == null || etdListener.getFirstDeparture() == null) {
-            uncertaintyTextSwitcher.setCurrentText(pair.getFare());
-        } else {
-            CountdownTextView countdownTextView = (CountdownTextView) view
-                    .findViewById(R.id.countdownText);
-            countdownTextView.setText(etdListener.getFirstDeparture()
-                    .getCountdownText());
-            countdownTextView.setTextProvider(new TextProvider() {
-                @Override
-                public String getText(long tickNumber) {
-                    return etdListener.getFirstDeparture().getCountdownText();
+        ViewHolder(@NonNull View itemView) {
+            super(itemView);
+            uncertainty = itemView.findViewById(R.id.uncertainty);
+            countdown = itemView.findViewById(R.id.countdownText);
+            origin = itemView.findViewById(R.id.originText);
+            destination = itemView.findViewById(R.id.destinationText);
+            itemView.setOnClickListener(view -> {
+                int position = getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    listener.onFavoriteClicked(getItem(position));
                 }
             });
+            itemView.setOnLongClickListener(view -> {
+                int position = getBindingAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    listener.onFavoriteLongClicked(getItem(position));
+                    return true;
+                }
+                return false;
+            });
+        }
 
-            final String uncertaintyText = etdListener.getFirstDeparture()
-                    .getUncertaintyText();
-            if (!StringUtils.isBlank(uncertaintyText)) {
-                uncertaintyTextSwitcher.setCurrentText(uncertaintyText);
+        void bind(StationPair pair) {
+            origin.setText(pair.getOrigin().name);
+            View to = itemView.findViewById(R.id.to);
+            if (pair.getDestination() == null) {
+                to.setVisibility(View.GONE);
+                destination.setVisibility(View.GONE);
             } else {
-                uncertaintyTextSwitcher.setCurrentText(pair.getFare());
+                to.setVisibility(View.VISIBLE);
+                destination.setVisibility(View.VISIBLE);
+                destination.setText(pair.getDestination().name);
             }
-            uncertaintyTextSwitcher.setTextProvider(new TextProvider() {
-                @Override
-                public String getText(long tickNumber) {
-                    final String arrive = etdListener.getFirstDeparture()
-                            .getEstimatedArrivalTimeText(getContext(), true);
-                    int mod = StringUtils.isNotBlank(arrive) ? 8 : 6;
-                    if (tickNumber % mod <= 1) {
-                        return pair.getFare();
-                    } else if (tickNumber % mod <= 3) {
-                        return "Dep "
-                                + etdListener.getFirstDeparture()
-                                .getEstimatedDepartureTimeText(
-                                        getContext(), true);
-                    } else if (mod == 8 && tickNumber % mod <= 5) {
-                        return "Arr " + arrive;
-                    } else {
-                        return etdListener.getFirstDeparture()
-                                .getUncertaintyText();
-                    }
+            initTextSwitcher(uncertainty);
+
+            EtdListener etdListener = etdListeners.get(pair);
+            Departure firstDeparture = etdListener == null
+                    ? null : etdListener.getFirstDeparture();
+            if (firstDeparture == null) {
+                countdown.setText("");
+                uncertainty.setCurrentText(pair.getFare());
+                countdown.setTextProvider(null);
+                uncertainty.setTextProvider(null);
+                return;
+            }
+
+            countdown.setText(firstDeparture.getCountdownText());
+            countdown.setTextProvider(tick -> {
+                Departure departure = etdListener.getFirstDeparture();
+                return departure == null ? "" : departure.getCountdownText();
+            });
+
+            String uncertaintyText = firstDeparture.getUncertaintyText();
+            uncertainty.setCurrentText(isBlank(uncertaintyText)
+                    ? pair.getFare() : uncertaintyText);
+            uncertainty.setTextProvider(tick -> {
+                Departure departure = etdListener.getFirstDeparture();
+                if (departure == null) {
+                    return pair.getFare();
                 }
+                String arrival = departure.getEstimatedArrivalTimeText(
+                        hostActivity, true);
+                int mod = isBlank(arrival) ? 6 : 8;
+                if (tick % mod <= 1) {
+                    return pair.getFare();
+                } else if (tick % mod <= 3) {
+                    return "Dep " + departure.getEstimatedDepartureTimeText(
+                            hostActivity, true);
+                } else if (mod == 8 && tick % mod <= 5) {
+                    return "Arr " + arrival;
+                }
+                return departure.getUncertaintyText();
             });
         }
-
-        ((TextView) view.findViewById(R.id.originText)).setText(pair
-                .getOrigin().name);
-        ((TextView) view.findViewById(R.id.destinationText)).setText(pair
-                .getDestination().name);
-
-        return view;
     }
 
     private void initTextSwitcher(TextSwitcher textSwitcher) {
         if (textSwitcher.getInAnimation() == null) {
-            textSwitcher.setFactory(new ViewFactory() {
-                public View makeView() {
-                    return LayoutInflater.from(getContext()).inflate(
-                            R.layout.uncertainty_textview, null);
-                }
-            });
-
+            textSwitcher.setFactory((ViewFactory) () -> LayoutInflater.from(hostActivity)
+                    .inflate(R.layout.uncertainty_textview, null));
             textSwitcher.setInAnimation(AnimationUtils.loadAnimation(
-                    getContext(), android.R.anim.slide_in_left));
+                    hostActivity, android.R.anim.slide_in_left));
             textSwitcher.setOutAnimation(AnimationUtils.loadAnimation(
-                    getContext(), android.R.anim.slide_out_right));
+                    hostActivity, android.R.anim.slide_out_right));
         }
     }
 
-    private class EtdListener implements EtdServiceListener {
+    private static boolean isBlank(String text) {
+        return text == null || text.trim().isEmpty();
+    }
 
-        private final StationPair mStationPair;
-
+    private final class EtdListener implements EtdServiceListener {
+        private final StationPair stationPair;
         private Departure firstDeparture;
 
-        protected EtdListener(StationPair mStationPair, EtdService etdService) {
-            super();
-            this.mStationPair = mStationPair;
+        EtdListener(StationPair stationPair, EtdService etdService) {
+            this.stationPair = stationPair;
             etdService.registerListener(this, true);
         }
 
-        protected void close(EtdService etdService) {
+        void close(EtdService etdService) {
             etdService.unregisterListener(this);
         }
 
@@ -233,32 +290,25 @@ public class FavoritesArrayAdapter extends ArrayAdapter<StationPair> {
                 if (!departure.hasDeparted()) {
                     if (!departure.equals(firstDeparture)) {
                         firstDeparture = departure;
-                        FavoritesArrayAdapter.this.notifyDataSetChanged();
+                        int position = items.indexOf(stationPair);
+                        if (position >= 0) {
+                            notifyItemChanged(position);
+                        }
                     }
                     return;
                 }
             }
+            firstDeparture = null;
+            int position = items.indexOf(stationPair);
+            if (position >= 0) {
+                notifyItemChanged(position);
+            }
         }
 
-        @Override
-        public void onError(String errorMessage) {
-        }
-
-        @Override
-        public void onRequestStarted() {
-        }
-
-        @Override
-        public void onRequestEnded() {
-        }
-
-        @Override
-        public StationPair getStationPair() {
-            return mStationPair;
-        }
-
-        public Departure getFirstDeparture() {
-            return firstDeparture;
-        }
+        @Override public void onError(String errorMessage) { }
+        @Override public void onRequestStarted() { }
+        @Override public void onRequestEnded() { }
+        @Override public StationPair getStationPair() { return stationPair; }
+        Departure getFirstDeparture() { return firstDeparture; }
     }
 }

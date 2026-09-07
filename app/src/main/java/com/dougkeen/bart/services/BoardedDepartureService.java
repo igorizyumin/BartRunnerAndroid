@@ -20,6 +20,7 @@ import android.os.Looper;
 import android.os.Message;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.IntentCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
@@ -82,11 +83,11 @@ public class BoardedDepartureService extends Service implements
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             mEtdService = ((EtdServiceBinder) service).getService();
+            mBound = true;
             if (getStationPair() != null) {
                 mEtdService.registerListener(BoardedDepartureService.this,
                         false);
             }
-            mBound = true;
         }
     };
 
@@ -99,11 +100,11 @@ public class BoardedDepartureService extends Service implements
         mServiceLooper = thread.getLooper();
         mServiceHandler = new ServiceHandler(mServiceLooper, this);
 
-        bindService(EtdService_.intent(this).get(), mConnection,
+        bindService(new Intent(this, EtdService.class), mConnection,
                 Context.BIND_AUTO_CREATE);
         mNotificationManager = NotificationManagerCompat.from(this);
         mAlarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        mHandler = new Handler();
+        mHandler = new Handler(Looper.getMainLooper());
 
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(
@@ -139,6 +140,7 @@ public class BoardedDepartureService extends Service implements
         shutDown(true);
         if (mBound)
             unbindService(mConnection);
+        mBound = false;
         mServiceLooper.quitSafely();
         super.onDestroy();
     }
@@ -150,7 +152,8 @@ public class BoardedDepartureService extends Service implements
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
         final Departure boardedDeparture;
         if (intent.hasExtra("departure")) {
-            boardedDeparture = intent.getExtras().getParcelable("departure");
+            boardedDeparture = IntentCompat.getParcelableExtra(intent, "departure",
+                    Departure.class);
         } else {
             boardedDeparture = application.getBoardedDeparture();
         }

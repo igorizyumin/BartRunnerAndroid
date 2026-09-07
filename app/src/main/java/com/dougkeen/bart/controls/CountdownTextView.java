@@ -39,7 +39,11 @@ public class CountdownTextView extends AppCompatTextView implements
 
     public void setTextProvider(TextProvider provider) {
         mTextProvider = provider;
-        Ticker.getInstance().addSubscriber(this, getContext());
+        if (provider != null) {
+            Ticker.getInstance().addSubscriber(this, getContext());
+        } else {
+            Ticker.getInstance().removeSubscriber(this);
+        }
     }
 
     @Override
@@ -53,7 +57,9 @@ public class CountdownTextView extends AppCompatTextView implements
 
     @Override
     public void onTick(long tickNumber) {
-        setText(mTextProvider.getText(tickNumber));
+        if (mTextProvider != null) {
+            setText(mTextProvider.getText(tickNumber));
+        }
     }
 
 }

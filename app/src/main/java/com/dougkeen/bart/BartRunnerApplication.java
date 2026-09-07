@@ -4,10 +4,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Objects;
 import java.util.List;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.ObjectUtils;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -26,13 +28,6 @@ import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.Station;
 import com.dougkeen.bart.model.StationPair;
 
-import org.androidannotations.annotations.Bean;
-import org.androidannotations.annotations.EApplication;
-
-import io.sentry.Sentry;
-import io.sentry.android.AndroidSentryClientFactory;
-
-@EApplication
 public class BartRunnerApplication extends Application implements
         Application.ActivityLifecycleCallbacks {
 
@@ -54,14 +49,22 @@ public class BartRunnerApplication extends Application implements
 
     private static Context context;
 
-    @Bean
-    FavoritesPersistence favoritesPersistenceContext;
+    private FavoritesPersistence favoritesPersistenceContext;
+
+    private final ExecutorService persistenceExecutor =
+            Executors.newSingleThreadExecutor();
 
     private List<StationPair> favorites;
 
     public void saveFavorites() {
         if (favorites != null) {
-            favoritesPersistenceContext.persist(favorites);
+            final List<StationPair> snapshot = new ArrayList<>(favorites);
+            persistenceExecutor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    favoritesPersistenceContext.persist(snapshot);
+                }
+            });
         }
     }
 
@@ -83,8 +86,8 @@ public class BartRunnerApplication extends Application implements
 
     public StationPair getFavorite(Station origin, Station destination) {
         for (StationPair favorite : getFavorites()) {
-            if (origin.equals(favorite.getOrigin())
-                    && destination.equals(favorite.getDestination())) {
+            if (Objects.equals(origin, favorite.getOrigin())
+                    && Objects.equals(destination, favorite.getDestination())) {
                 return favorite;
             }
         }
@@ -106,9 +109,8 @@ public class BartRunnerApplication extends Application implements
         super.onCreate();
         context = getApplicationContext();
         mApplicationPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        favoritesPersistenceContext = new FavoritesPersistence(this);
         registerActivityLifecycleCallbacks(this);
-
-        Sentry.init("https://cb2a611cee27437c95ee725e1f373137@sentry.io/1325487", new AndroidSentryClientFactory(context));
     }
 
     public static Context getAppContext() {
@@ -135,7 +137,13 @@ public class BartRunnerApplication extends Application implements
                 InputStream inputStream = null;
                 try {
                     inputStream = new FileInputStream(cachedDepartureFile);
-                    final byte[] byteArray = IOUtils.toByteArray(inputStream);
+                    final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        bytes.write(buffer, 0, bytesRead);
+                    }
+                    final byte[] byteArray = bytes.toByteArray();
                     final Parcel parcel = Parcel.obtain();
                     parcel.unmarshall(byteArray, 0, byteArray.length);
                     parcel.setDataPosition(0);
@@ -167,7 +175,7 @@ public class BartRunnerApplication extends Application implements
                                 anotherException);
                     }
                 } finally {
-                    IOUtils.closeQuietly(inputStream);
+                    closeQuietly(inputStream);
                 }
             }
         }
@@ -178,8 +186,8 @@ public class BartRunnerApplication extends Application implements
     }
 
     public void setBoardedDeparture(Departure boardedDeparture) {
-        if (!ObjectUtils.equals(boardedDeparture, mBoardedDeparture)
-                || ObjectUtils.compare(mBoardedDeparture, boardedDeparture) != 0) {
+        if (!Objects.equals(boardedDeparture, mBoardedDeparture)
+                || compareDepartures(mBoardedDeparture, boardedDeparture) != 0) {
             if (this.mBoardedDeparture != null) {
                 this.mBoardedDeparture.getAlarmLeadTimeMinutesObservable()
                         .unregisterAllObservers();
@@ -218,7 +226,7 @@ public class BartRunnerApplication extends Application implements
                             "Couldn't write last boarded departure cache file",
                             e);
                 } finally {
-                    IOUtils.closeQuietly(fileOutputStream);
+                    closeQuietly(fileOutputStream);
                 }
             }
         }
@@ -226,6 +234,30 @@ public class BartRunnerApplication extends Application implements
 
     public boolean isAlarmSounding() {
         return mAlarmSounding;
+    }
+
+    private static int compareDepartures(Departure first, Departure second) {
+        if (first == second) {
+            return 0;
+        }
+        if (first == null) {
+            return -1;
+        }
+        if (second == null) {
+            return 1;
+        }
+        return first.compareTo(second);
+    }
+
+    private static void closeQuietly(java.io.Closeable closeable) {
+        if (closeable == null) {
+            return;
+        }
+        try {
+            closeable.close();
+        } catch (java.io.IOException ignored) {
+            // Best-effort cleanup for the application cache.
+        }
     }
 
     public void setAlarmSounding(boolean alarmSounding) {

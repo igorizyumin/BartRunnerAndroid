@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 
 import com.dougkeen.bart.BartRunnerApplication;
@@ -21,17 +22,15 @@ import com.dougkeen.bart.networktasks.GetRealTimeDeparturesTask;
 import com.dougkeen.bart.networktasks.GetScheduleInformationTask;
 import com.dougkeen.bart.networktasks.NetworkTask;
 
-import org.androidannotations.annotations.EService;
-import org.apache.commons.lang3.math.NumberUtils;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-@EService
 public class EtdService extends Service {
 
     private static final long DEPARTURE_LOOKUP_CACHE_MILLIS = 15000L;
@@ -39,6 +38,10 @@ public class EtdService extends Service {
     private IBinder mBinder;
 
     private Map<StationPair, EtdServiceEngine> mServiceEngineMap;
+
+    /** Serializes model processing so network callbacks never do heavy work on the UI thread. */
+    private final ExecutorService mProcessingExecutor =
+            Executors.newSingleThreadExecutor();
 
     public EtdService() {
         super();
@@ -83,6 +86,12 @@ public class EtdService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return mBinder;
+    }
+
+    @Override
+    public void onDestroy() {
+        mProcessingExecutor.shutdownNow();
+        super.onDestroy();
     }
 
     public interface EtdServiceListener {
@@ -132,14 +141,16 @@ public class EtdService extends Service {
         public EtdServiceEngine(final StationPair route) {
             mStationPair = route;
             mListeners = new HashMap<EtdService.EtdServiceListener, Boolean>();
-            mRunnableQueue = new Handler();
+            mRunnableQueue = new Handler(Looper.getMainLooper());
             mLatestDepartures = new ArrayList<Departure>();
         }
 
         protected void registerListener(EtdServiceListener listener,
                                         boolean limitToFirstNonDeparted) {
             mListeners.put(listener, true);
-            if (!limitToFirstNonDeparted) {
+            // A station-only lookup must retain both directions in the shared
+            // cache, even while it is being used by the route-list preview.
+            if (!limitToFirstNonDeparted || mStationPair.isStationOnly()) {
                 mLimitToFirstNonDeparted = false;
             }
             mStarted = true;
@@ -151,8 +162,12 @@ public class EtdService extends Service {
                 fetchLatestDepartures();
             }
             // Replay ETD or error event
-            if (!mLatestDepartures.isEmpty()) {
-                listener.onETDChanged(mLatestDepartures);
+            List<Departure> currentDepartures;
+            synchronized (mLatestDepartures) {
+                currentDepartures = new ArrayList<>(mLatestDepartures);
+            }
+            if (!currentDepartures.isEmpty()) {
+                listener.onETDChanged(currentDepartures);
             } else if (mLatestDepartureError != null) {
                 listener.onError(mLatestDepartureError);
             }
@@ -171,32 +186,63 @@ public class EtdService extends Service {
                         NetworkTask.Status.RUNNING)) {
                     mGetScheduleInformationTask.cancel(true);
                 }
+                mRunnableQueue.removeCallbacksAndMessages(null);
+                mPendingEtdRequest = false;
                 mStarted = false;
             }
         }
 
         private void notifyListenersOfETDChange() {
-            for (EtdServiceListener listener : mListeners.keySet()) {
-                listener.onETDChanged(mLatestDepartures);
+            final List<Departure> snapshot;
+            synchronized (mLatestDepartures) {
+                snapshot = new ArrayList<>(mLatestDepartures);
             }
+            mRunnableQueue.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (EtdServiceListener listener :
+                            new ArrayList<>(mListeners.keySet())) {
+                        listener.onETDChanged(snapshot);
+                    }
+                }
+            });
         }
 
         private void notifyListenersOfError(String errorMessage) {
-            for (EtdServiceListener listener : mListeners.keySet()) {
-                listener.onError(errorMessage);
-            }
+            final String message = errorMessage;
+            mRunnableQueue.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (EtdServiceListener listener :
+                            new ArrayList<>(mListeners.keySet())) {
+                        listener.onError(message);
+                    }
+                }
+            });
         }
 
         private void notifyListenersOfRequestStart() {
-            for (EtdServiceListener listener : mListeners.keySet()) {
-                listener.onRequestStarted();
-            }
+            mRunnableQueue.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (EtdServiceListener listener :
+                            new ArrayList<>(mListeners.keySet())) {
+                        listener.onRequestStarted();
+                    }
+                }
+            });
         }
 
         private void notifyListenersOfRequestEnd() {
-            for (EtdServiceListener listener : mListeners.keySet()) {
-                listener.onRequestEnded();
-            }
+            mRunnableQueue.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (EtdServiceListener listener :
+                            new ArrayList<>(mListeners.keySet())) {
+                        listener.onRequestEnded();
+                    }
+                }
+            });
         }
 
         private void fetchLatestDepartures() {
@@ -212,13 +258,18 @@ public class EtdService extends Service {
                     mIgnoreDepartureDirection) {
                 @Override
                 public void onResult(RealTimeDepartures result) {
-                    mLatestDepartureError = null;
-                    mLatestDepartureLookupTime = System.currentTimeMillis();
-                    Log.v(Constants.TAG, "Processing departure lookup result");
-                    processLatestDepartures(result);
-                    Log.v(Constants.TAG, "Done processing departure lookup result");
-                    notifyListenersOfRequestEnd();
-                    mPendingEtdRequest = false;
+                    mProcessingExecutor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            mLatestDepartureError = null;
+                            mLatestDepartureLookupTime = System.currentTimeMillis();
+                            Log.v(Constants.TAG, "Processing departure lookup result");
+                            processLatestDepartures(result);
+                            Log.v(Constants.TAG, "Done processing departure lookup result");
+                            notifyListenersOfRequestEnd();
+                            mPendingEtdRequest = false;
+                        }
+                    });
                 }
 
                 @Override
@@ -244,6 +295,9 @@ public class EtdService extends Service {
         }
 
         private void fetchLatestSchedule() {
+            if (!mStarted) {
+                return;
+            }
             if (mGetScheduleInformationTask != null
                     && mGetScheduleInformationTask.getStatus().equals(
                     NetworkTask.Status.RUNNING)) {
@@ -254,10 +308,15 @@ public class EtdService extends Service {
             GetScheduleInformationTask task = new GetScheduleInformationTask() {
                 @Override
                 public void onResult(ScheduleInformation result) {
-                    Log.v(Constants.TAG, "Processing schedule lookup result");
-                    mLatestScheduleInfo = result;
-                    applyScheduleInformation(result);
-                    Log.v(Constants.TAG, "Done processing schedule lookup result");
+                    mProcessingExecutor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.v(Constants.TAG, "Processing schedule lookup result");
+                            mLatestScheduleInfo = result;
+                            applyScheduleInformation(result);
+                            Log.v(Constants.TAG, "Done processing schedule lookup result");
+                        }
+                    });
                 }
 
                 @Override
@@ -275,6 +334,12 @@ public class EtdService extends Service {
         }
 
         protected void applyScheduleInformation(ScheduleInformation result) {
+            synchronized (mLatestDepartures) {
+                applyScheduleInformationInternal(result);
+            }
+        }
+
+        private void applyScheduleInformationInternal(ScheduleInformation result) {
             int localAverageLength = mLatestScheduleInfo.getAverageTripLength();
 
             int departuresCount = mLatestDepartures.size();
@@ -316,10 +381,10 @@ public class EtdService extends Service {
                             - departure.getMeanEstimate());
                     final long millisUntilTripDeparture = trip
                             .getDepartureTime() - System.currentTimeMillis();
-                    final int equalityTolerance = (departure.getOrigin() != null) ? NumberUtils
-                            .max(departure.getOrigin().departureEqualityTolerance,
-                                    ScheduleItem.SCHEDULE_ITEM_DEPARTURE_EQUALS_TOLERANCE,
-                                    smallestDepartureInterval)
+                    final int equalityTolerance = departure.getOrigin() != null
+                            ? Math.max(departure.getOrigin().departureEqualityTolerance,
+                            Math.max(ScheduleItem.SCHEDULE_ITEM_DEPARTURE_EQUALS_TOLERANCE,
+                                    smallestDepartureInterval))
                             : ScheduleItem.SCHEDULE_ITEM_DEPARTURE_EQUALS_TOLERANCE;
                     if (departure.getOrigin() != null
                             && departure.getOrigin().longStationLinger
@@ -399,6 +464,12 @@ public class EtdService extends Service {
         }
 
         private void processLatestDepartures(RealTimeDepartures result) {
+            synchronized (mLatestDepartures) {
+                processLatestDeparturesInternal(result);
+            }
+        }
+
+        private void processLatestDeparturesInternal(RealTimeDepartures result) {
             if (result.getDepartures().isEmpty()) {
                 result.includeTransferRoutes();
             }
@@ -426,7 +497,8 @@ public class EtdService extends Service {
             if (result.getDepartures().isEmpty()) {
                 result.includeDoubleTransferRoutes();
             }
-            if (result.getDepartures().isEmpty()
+            if (mStationPair.getDestination() != null
+                    && result.getDepartures().isEmpty()
                     && mStationPair.isBetweenStations(Station.MLBR,
                     Station.SFIA)) {
                 /*
@@ -585,35 +657,54 @@ public class EtdService extends Service {
         }
 
         private void requestScheduleIfNecessary() {
-            // Bail if there's nothing to match schedules to
-            if (mLatestDepartures.isEmpty()) {
+            if (mStationPair.getDestination() == null) {
                 return;
             }
+            mRunnableQueue.post(new Runnable() {
+                @Override
+                public void run() {
+                    boolean applyCachedSchedule = false;
+                    ScheduleInformation cachedSchedule = null;
+                    synchronized (mLatestDepartures) {
+                        if (mLatestDepartures.isEmpty()) {
+                            return;
+                        }
 
-            // Fetch if we don't have anything at all
-            if (mLatestScheduleInfo == null) {
-                fetchLatestSchedule();
-                return;
-            }
+                        // Fetch if we don't have anything at all
+                        if (mLatestScheduleInfo == null) {
+                            fetchLatestSchedule();
+                            return;
+                        }
 
-            /*
-             * Otherwise, check if the latest departure doesn't have schedule
-             * info... if not, fetch
-             */
-            Departure lastDeparture = mLatestDepartures.get(mLatestDepartures
-                    .size() - 1);
-            if (mLatestScheduleInfo.getLatestDepartureTime() < lastDeparture
-                    .getMeanEstimate()) {
-                fetchLatestSchedule();
-                return;
-            } else if (!lastDeparture.hasAnyArrivalEstimate()) {
-                applyScheduleInformation(mLatestScheduleInfo);
-            }
+                        Departure lastDeparture = mLatestDepartures.get(
+                                mLatestDepartures.size() - 1);
+                        if (mLatestScheduleInfo.getLatestDepartureTime()
+                                < lastDeparture.getMeanEstimate()) {
+                            fetchLatestSchedule();
+                        } else if (!lastDeparture.hasAnyArrivalEstimate()) {
+                            applyCachedSchedule = true;
+                            cachedSchedule = mLatestScheduleInfo;
+                        }
+                    }
+                    if (applyCachedSchedule) {
+                        final ScheduleInformation schedule = cachedSchedule;
+                        mProcessingExecutor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                applyScheduleInformation(schedule);
+                            }
+                        });
+                    }
+                }
+            });
         }
 
         private long mNextFetchClockTime = 0;
 
         private void scheduleDepartureFetch(int millisUntilExecute) {
+            if (!mStarted) {
+                return;
+            }
             mPendingEtdRequest = true;
             long now = System.currentTimeMillis();
             long requestedFetchTime = now + millisUntilExecute;
@@ -634,6 +725,9 @@ public class EtdService extends Service {
         }
 
         private void scheduleScheduleInfoFetch(int millisUntilExecute) {
+            if (!mStarted) {
+                return;
+            }
             mRunnableQueue.postDelayed(new Runnable() {
                 public void run() {
                     fetchLatestSchedule();
