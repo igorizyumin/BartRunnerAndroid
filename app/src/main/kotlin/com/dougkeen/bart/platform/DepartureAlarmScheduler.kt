@@ -56,7 +56,7 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
 
     val secondsUntilAlarm: Int
         get() = DepartureAlarmPolicy.secondsUntilAlarm(
-            departure.meanEstimate, leadTimeMinutes, System.currentTimeMillis())
+            departure.getMeanEstimate(), leadTimeMinutes, System.currentTimeMillis())
 
     fun setUp(leadTimeMinutes: Int) {
         require(leadTimeMinutes >= 0) {
@@ -105,7 +105,7 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
     }
 
     private fun alarmClockTime(): Long = DepartureAlarmPolicy.alarmTime(
-        departure.meanEstimate, leadTimeMinutes)
+        departure.getMeanEstimate(), leadTimeMinutes)
 
     private fun schedule() {
         val manager = alarmManager
@@ -160,14 +160,14 @@ class DepartureAlarmScheduler(context: Context, private val departure: Departure
 
     private fun buildStateKey(departure: Departure): String = buildString {
         append("alarm.")
-        appendStation(this, departure.origin)
-        appendStation(this, departure.trainDestination)
-        appendStation(this, departure.passengerDestination)
-        append('|').append(departure.line)
-        append('|').append(departure.direction)
-        append('|').append(departure.platform)
-        append('|').append(departure.minEstimate)
-        append('|').append(departure.maxEstimate)
+        appendStation(this, departure.getOrigin())
+        appendStation(this, departure.getTrainDestination())
+        appendStation(this, departure.getPassengerDestination())
+        append('|').append(departure.getLine())
+        append('|').append(departure.getDirection())
+        append('|').append(departure.getPlatform())
+        append('|').append(departure.getMinEstimate())
+        append('|').append(departure.getMaxEstimate())
     }
 
     private fun appendStation(builder: StringBuilder, station: Station?) {

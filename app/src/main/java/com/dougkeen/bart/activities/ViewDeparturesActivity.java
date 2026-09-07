@@ -253,9 +253,9 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         if (mStationPair == null || mStationPair.getOrigin() == null || mStationPair.getDestination() == null) {
             listTitle = mStationPair != null && mStationPair.getOrigin() != null
                     ? getString(R.string.arrivals_at_station,
-                    mStationPair.getOrigin().name) : "";
+                    mStationPair.getOrigin().getName()) : "";
         } else {
-            listTitle = mStationPair.getOrigin().name + " to " + mStationPair.getDestination().name;
+            listTitle = mStationPair.getOrigin().getName() + " to " + mStationPair.getDestination().getName();
         }
         ((TextView) findViewById(R.id.listTitle)).setText(listTitle);
     }

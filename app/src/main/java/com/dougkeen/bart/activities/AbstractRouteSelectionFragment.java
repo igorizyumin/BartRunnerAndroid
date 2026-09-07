@@ -79,7 +79,7 @@ public abstract class AbstractRouteSelectionFragment extends DialogFragment {
         List<Station> stations = Station.getStationList();
         List<String> destinationNames = new ArrayList<>();
         for (Station station : stations) {
-            destinationNames.add(station.name);
+            destinationNames.add(station.getName());
         }
         destinationNames.add(activity.getString(R.string.any_destination));
 

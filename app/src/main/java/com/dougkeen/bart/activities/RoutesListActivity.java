@@ -436,13 +436,13 @@ public class   RoutesListActivity extends AppCompatActivity implements
 
     private void startContextualActionMode() {
         mActionMode = startSupportActionMode(new RouteActionMode());
-        mActionMode.setTitle(mCurrentlySelectedStationPair.getOrigin().name);
+        mActionMode.setTitle(mCurrentlySelectedStationPair.getOrigin().getName());
         if (mCurrentlySelectedStationPair.getDestination() != null) {
             mActionMode.setSubtitle("to "
-                    + mCurrentlySelectedStationPair.getDestination().name);
+                    + mCurrentlySelectedStationPair.getDestination().getName());
         } else {
             mActionMode.setSubtitle(getString(R.string.arrivals_at_station,
-                    mCurrentlySelectedStationPair.getOrigin().name));
+                    mCurrentlySelectedStationPair.getOrigin().getName()));
         }
     }
 

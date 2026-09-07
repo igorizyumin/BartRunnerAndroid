@@ -210,7 +210,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
             share.putExtra(Intent.EXTRA_SUBJECT, "My BART trip");
             share.putExtra(Intent.EXTRA_TEXT, getString(
                     R.string.arrival_message,
-                    mDeparture.getStationPair().getDestination().name,
+                    mDeparture.getStationPair().getDestination().getName(),
                     DepartureTextFormatter.estimatedArrivalTime(
                             this, mDeparture, false)));
             startActivity(Intent.createChooser(share,
@@ -297,11 +297,11 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         if (mDeparture == null || mDeparture.getStationPair() == null) {
             return;
         }
-        mRoute.setText(mDeparture.getStationPair().getOrigin().name + " → "
-                + mDeparture.getStationPair().getDestination().name);
+        mRoute.setText(mDeparture.getStationPair().getOrigin().getName() + " → "
+                + mDeparture.getStationPair().getDestination().getName());
         mStatus.setText(getTripStatus());
         mArrival.setText(getString(R.string.trip_final_arrival,
-                mDeparture.getStationPair().getDestination().name,
+                mDeparture.getStationPair().getDestination().getName(),
                 DepartureTextFormatter.estimatedArrivalTime(
                         this, mDeparture, false)));
 
@@ -337,7 +337,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
 
         TripStop nextStop = getNextStop();
         if (nextStop != null) {
-            return getString(R.string.trip_next_stop, nextStop.getStation().name,
+            return getString(R.string.trip_next_stop, nextStop.getStation().getName(),
                     formatEta(nextStop.getArrivalTime()));
         }
 
@@ -412,8 +412,8 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         heading.setText(prefix + " · " + lineName);
 
         TextView route = addText(null, false);
-        route.setText(leg.getOrigin().name + " → "
-                + leg.getDestination().name);
+        route.setText(leg.getOrigin().getName() + " → "
+                + leg.getDestination().getName());
         route.setTextColor(getResources().getColor(R.color.text_secondary));
 
         if (leg.getStops().isEmpty()) {
@@ -428,7 +428,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
             row.setPadding(dp(8), dp(7), dp(8), dp(7));
 
             TextView station = new TextView(this);
-            station.setText(stop.getStation().name);
+            station.setText(stop.getStation().getName());
             station.setTextColor(getResources().getColor(R.color.text_primary));
             station.setTextSize(16);
             row.addView(station, new LinearLayout.LayoutParams(0,
@@ -451,7 +451,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     private void addConnection(TripLeg arrivingLeg, TripLeg nextLeg) {
         TextView connection = addText(null, true);
         connection.setText(getString(R.string.trip_transfer_at,
-                arrivingLeg.getDestination().name));
+                arrivingLeg.getDestination().getName()));
         connection.setTextColor(getResources().getColor(R.color.brand_primary));
 
         TextView details = addText(null, false);

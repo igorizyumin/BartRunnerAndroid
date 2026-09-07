@@ -185,7 +185,7 @@ public class FavoritesArrayAdapter
         }
 
         void bind(StationPair pair) {
-            origin.setText(pair.getOrigin().name);
+            origin.setText(pair.getOrigin().getName());
             View to = itemView.findViewById(R.id.to);
             if (pair.getDestination() == null) {
                 to.setVisibility(View.GONE);
@@ -193,7 +193,7 @@ public class FavoritesArrayAdapter
             } else {
                 to.setVisibility(View.VISIBLE);
                 destination.setVisibility(View.VISIBLE);
-                destination.setText(pair.getDestination().name);
+                destination.setText(pair.getDestination().getName());
             }
             initTextSwitcher(uncertainty);
 

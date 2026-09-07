@@ -141,7 +141,7 @@ object TripPlanner {
     ): List<Route> {
         val routes = mutableListOf<Route>()
         for (line in network.linesForStation(origin)) {
-            val bestPatterns = LinkedHashMap<String, BartGtfsNetwork.StationPattern>()
+            val bestPatterns = LinkedHashMap<String?, BartGtfsNetwork.StationPattern>()
             for (pattern in network.routePatternsForLine(line)) {
                 val stations = pattern.stations
                 val candidateOriginIndex = stations.indexOf(origin)
