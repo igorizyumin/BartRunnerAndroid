@@ -63,14 +63,9 @@ public class TransitProjectionTest {
     public void tripProgressProjectionUpdatesExistingLegFromSameFeed()
             throws Exception {
         TransitFeedSnapshot snapshot = snapshotWithTripUpdate();
-        TripLeg existingLeg = new TripLeg();
-        existingLeg.setLine(Line.RED);
-        existingLeg.setOrigin(Station.MONT);
-        existingLeg.setDestination(Station.RICH);
-        existingLeg.setTrainDestination(Station.RICH);
-        existingLeg.setTripId("red-1");
-        existingLeg.setDepartureTime(0L);
-        existingLeg.setArrivalTime(0L);
+        TripLeg existingLeg = new TripLeg(Line.RED, Station.MONT, Station.RICH,
+                Station.RICH, "red-1", 0L, 0L,
+                Collections.emptyList());
 
         TripProgressProjection projection = new TripProgressProjection(
                 Station.MONT, Station.RICH,

@@ -16,6 +16,9 @@ import com.dougkeen.bart.transit.gtfs.GtfsNetworkCatalog;
 import org.junit.Test;
 
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -176,6 +179,44 @@ public class TripPlannerTest {
                 .isEmpty());
         assertTrue(TripPlanner.transferRoutes(Station.SFIA, Station.MLBR, network)
                 .isEmpty());
+    }
+
+    @Test
+    public void routeCopiesAndProtectsTopologyCollections() {
+        List<Station> directSequence = new ArrayList<>(Arrays.asList(
+                Station.MONT, Station.EMBR, Station.RICH));
+        Route direct = Route.direct(Station.MONT, Station.RICH, Line.RED, "n",
+                directSequence);
+        directSequence.clear();
+
+        assertEquals(3, direct.getStationSequence(Line.RED).size());
+        assertThrows(UnsupportedOperationException.class,
+                () -> direct.getLines().add(Line.BLUE));
+        assertThrows(UnsupportedOperationException.class,
+                () -> direct.getStationSequence(Line.RED).add(Station.DUBL));
+
+        List<Line> lines = new ArrayList<>(Arrays.asList(Line.BLUE, Line.ORANGE));
+        List<Station> transfers = new ArrayList<>(
+                Collections.singletonList(Station.BAYF));
+        Map<Line, List<Station>> sequences = new HashMap<>();
+        sequences.put(Line.BLUE, new ArrayList<>(Arrays.asList(
+                Station.MONT, Station.BAYF, Station.DUBL)));
+        sequences.put(Line.ORANGE, new ArrayList<>(Arrays.asList(
+                Station.BAYF, Station.RICH)));
+        Route transfer = Route.transfer(Station.MONT, Station.RICH, lines,
+                transfers, "n", sequences);
+        lines.clear();
+        transfers.clear();
+        sequences.get(Line.BLUE).clear();
+
+        assertEquals(Arrays.asList(Line.BLUE, Line.ORANGE), transfer.getLines());
+        assertEquals(Collections.singletonList(Station.BAYF),
+                transfer.getTransferStations());
+        assertThrows(UnsupportedOperationException.class,
+                () -> transfer.getTransferLines().add(Line.GREEN));
+        assertThrows(UnsupportedOperationException.class,
+                () -> transfer.getTransferStations().add(Station.MCAR));
+        assertEquals(3, transfer.getStationSequence(Line.BLUE).size());
     }
 
     @Test

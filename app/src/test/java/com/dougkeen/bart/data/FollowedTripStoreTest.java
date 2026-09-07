@@ -75,13 +75,9 @@ public class FollowedTripStoreTest {
         departure.setMinEstimate(4_000_000_000L);
         departure.setMaxEstimate(4_000_060_000L);
 
-        com.dougkeen.bart.model.TripLeg leg =
-                new com.dougkeen.bart.model.TripLeg();
-        leg.setLine(Line.RED);
-        leg.setOrigin(Station.MONT);
-        leg.setDestination(Station.RICH);
-        leg.setTrainDestination(Station.RICH);
-        leg.setTripId("trip-1");
+        com.dougkeen.bart.model.TripLeg leg = new com.dougkeen.bart.model.TripLeg(
+                Line.RED, Station.MONT, Station.RICH, Station.RICH, "trip-1",
+                0L, 0L, java.util.Collections.emptyList());
         departure.setTripLegs(java.util.Collections.singletonList(leg));
         return departure;
     }

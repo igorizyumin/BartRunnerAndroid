@@ -107,13 +107,7 @@ public final class TripPlanner {
             if (bestPattern == null) {
                 continue;
             }
-            Route route = new Route();
-            route.setOrigin(origin);
-            route.setDestination(null);
-            route.setDirectLine(line);
-            route.setTransfer(false);
-            route.setStationSequence(line, bestPattern);
-            routes.add(route);
+            routes.add(Route.stationOnly(origin, line, bestPattern));
         }
         return routes;
     }
@@ -141,14 +135,8 @@ public final class TripPlanner {
                 }
             }
             for (BartGtfsNetwork.StationPattern pattern : bestPatterns.values()) {
-                Route route = new Route();
-                route.setOrigin(origin);
-                route.setDestination(destination);
-                route.setDirectLine(line);
-                route.setDirection(pattern.getDirection());
-                route.setTransfer(false);
-                route.setStationSequence(line, pattern.getStations());
-                routes.add(route);
+                routes.add(Route.direct(origin, destination, line,
+                        pattern.getDirection(), pattern.getStations()));
             }
         }
         return routes;
@@ -248,14 +236,9 @@ public final class TripPlanner {
                                                   List<Line> lines,
                                                   List<Station> transfers,
                                                   BartGtfsNetwork network) {
-        Route route = new Route();
-        route.setOrigin(origin);
-        route.setDestination(destination);
-        route.setLines(lines);
-        route.setDirectLine(lines.get(0));
-        route.setTransferStations(transfers);
-        route.setTransfer(true);
-        route.setTransferLines(lines.subList(1, lines.size()));
+        Map<Line, List<Station>> stationSequences =
+                new LinkedHashMap<Line, List<Station>>();
+        String direction = null;
         for (int i = 0; i < lines.size(); i++) {
             Station segmentOrigin = i == 0 ? origin : transfers.get(i - 1);
             Station segmentDestination = i == lines.size() - 1
@@ -266,12 +249,13 @@ public final class TripPlanner {
             if (segment == null) {
                 return null;
             }
-            route.setStationSequence(lines.get(i), segment.getStations());
+            stationSequences.put(lines.get(i), segment.getStations());
             if (i == 0) {
-                route.setDirection(segment.getDirection());
+                direction = segment.getDirection();
             }
         }
-        return route;
+        return Route.transfer(origin, destination, lines, transfers, direction,
+                stationSequences);
     }
 
     private static List<Line> catalogUsableLines(BartGtfsNetwork network) {

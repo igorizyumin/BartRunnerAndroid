@@ -142,22 +142,16 @@ public final class FollowedTripRecord {
         }
 
         TripLeg toTripLeg() {
-            TripLeg leg = new TripLeg();
-            leg.setLine(line == null ? null : Line.valueOf(line));
-            leg.setOrigin(station(origin));
-            leg.setDestination(station(destination));
-            leg.setTrainDestination(station(trainDestination));
-            leg.setTripId(tripId);
-            leg.setDepartureTime(departureTime);
-            leg.setArrivalTime(arrivalTime);
             List<TripStop> tripStops = new ArrayList<>();
             if (stops != null) {
                 for (TripStopRecord stop : stops) {
                     tripStops.add(stop.toTripStop());
                 }
             }
-            leg.setStops(tripStops);
-            return leg;
+            return new TripLeg(line == null ? null : Line.valueOf(line),
+                    station(origin), station(destination),
+                    station(trainDestination), tripId, departureTime,
+                    arrivalTime, tripStops);
         }
     }
 

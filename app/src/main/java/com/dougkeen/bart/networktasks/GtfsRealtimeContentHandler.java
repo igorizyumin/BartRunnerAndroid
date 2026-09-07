@@ -141,19 +141,12 @@ public class GtfsRealtimeContentHandler {
     }
 
     private TripLeg updateTripLeg(TripLeg existing, TripSnapshot trip) {
-        TripLeg updated = new TripLeg();
-        updated.setLine(lineForDestination(trip.line, trip.trainDestination));
-        updated.setOrigin(existing.getOrigin());
-        updated.setDestination(existing.getDestination());
-        updated.setTrainDestination(trip.trainDestination);
-        updated.setTripId(existing.getTripId());
-
         StopTimePoint origin = trip.pointAt(existing.getOrigin());
         StopTimePoint destination = trip.pointAt(existing.getDestination());
-        updated.setDepartureTime(origin == null ? existing.getDepartureTime()
-                : origin.departureTime);
-        updated.setArrivalTime(destination == null
-                ? existing.getArrivalTime() : destination.arrivalTime);
+        long departureTime = origin == null ? existing.getDepartureTime()
+                : origin.departureTime;
+        long arrivalTime = destination == null
+                ? existing.getArrivalTime() : destination.arrivalTime;
 
         List<TripStop> stops = new ArrayList<TripStop>();
         for (TripStop existingStop : existing.getStops()) {
@@ -163,8 +156,10 @@ public class GtfsRealtimeContentHandler {
                     : new TripStop(existingStop.getStation(), stop.arrivalTime,
                             stop.departureTime));
         }
-        updated.setStops(stops);
-        return updated;
+        return new TripLeg(lineForDestination(trip.line, trip.trainDestination),
+                existing.getOrigin(), existing.getDestination(),
+                trip.trainDestination, existing.getTripId(), departureTime,
+                arrivalTime, stops);
     }
 
     private void addTripUpdate(RealTimeDepartures departures,
@@ -330,22 +325,17 @@ public class GtfsRealtimeContentHandler {
             if (departure == null) {
                 break;
             }
-            TripLeg leg = new TripLeg();
-            leg.setLine(lineForDestination(currentTrip.line,
-                    currentTrip.trainDestination));
-            leg.setOrigin(legOrigin);
-            leg.setDestination(legDestination);
-            leg.setTrainDestination(currentTrip.trainDestination);
-            leg.setTripId(currentTrip.tripId);
-            leg.setDepartureTime(departure.departureTime);
-            leg.setArrivalTime(arrival == null ? 0L : arrival.arrivalTime);
             List<TripStop> stops = new ArrayList<TripStop>();
             for (StopTimePoint point : currentTrip.pointsBetween(legOrigin,
                     legDestination)) {
                 stops.add(new TripStop(point.station, point.arrivalTime,
                         point.departureTime));
             }
-            leg.setStops(stops);
+            TripLeg leg = new TripLeg(lineForDestination(currentTrip.line,
+                    currentTrip.trainDestination), legOrigin, legDestination,
+                    currentTrip.trainDestination, currentTrip.tripId,
+                    departure.departureTime, arrival == null ? 0L
+                    : arrival.arrivalTime, stops);
             result.add(leg);
             legOrigin = legDestination;
         }
@@ -436,8 +426,7 @@ public class GtfsRealtimeContentHandler {
     private String directionForLine(Line line, String routeId) {
         for (Route route : routes) {
             if (line.equals(route.getDirectLine())
-                    || (route.getTransferLines() != null
-                    && route.getTransferLines().contains(line))) {
+                    || route.getTransferLines().contains(line)) {
                 return route.getDirection();
             }
         }

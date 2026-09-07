@@ -25,15 +25,14 @@ public final class TripLegParcel implements Parcelable {
         if (in.readInt() != FORMAT_MAGIC || in.readInt() != FORMAT_VERSION) {
             throw new IllegalArgumentException("Unsupported trip leg parcel format");
         }
-        TripLeg restored = new TripLeg();
         int lineOrdinal = in.readInt();
-        restored.setLine(lineOrdinal < 0 ? null : Line.values()[lineOrdinal]);
-        restored.setOrigin(readStation(in));
-        restored.setDestination(readStation(in));
-        restored.setTrainDestination(readStation(in));
-        restored.setTripId(in.readString());
-        restored.setDepartureTime(in.readLong());
-        restored.setArrivalTime(in.readLong());
+        Line line = lineOrdinal < 0 ? null : Line.values()[lineOrdinal];
+        Station origin = readStation(in);
+        Station destination = readStation(in);
+        Station trainDestination = readStation(in);
+        String tripId = in.readString();
+        long departureTime = in.readLong();
+        long arrivalTime = in.readLong();
         ArrayList<TripStopParcel> stopParcels = in.createTypedArrayList(
                 TripStopParcel.CREATOR);
         List<TripStop> stops = new ArrayList<>();
@@ -42,8 +41,8 @@ public final class TripLegParcel implements Parcelable {
                 stops.add(stopParcel.getTripStop());
             }
         }
-        restored.setStops(stops);
-        leg = restored;
+        leg = new TripLeg(line, origin, destination, trainDestination, tripId,
+                departureTime, arrivalTime, stops);
     }
 
     public TripLeg getTripLeg() {

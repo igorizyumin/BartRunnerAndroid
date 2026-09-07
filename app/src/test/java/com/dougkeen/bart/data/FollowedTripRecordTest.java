@@ -37,16 +37,10 @@ public class FollowedTripRecordTest {
         original.setArrivalTimeOverride(1_800_000L);
         original.setEstimatedTripTime(600);
 
-        TripLeg leg = new TripLeg();
-        leg.setLine(Line.RED);
-        leg.setOrigin(Station.MONT);
-        leg.setDestination(Station.RICH);
-        leg.setTrainDestination(Station.RICH);
-        leg.setTripId("red-1");
-        leg.setDepartureTime(1_000_000L);
-        leg.setArrivalTime(1_500_000L);
-        leg.setStops(java.util.Collections.singletonList(
-                new TripStop(Station.EMBR, 1_200_000L, 1_210_000L)));
+        TripLeg leg = new TripLeg(Line.RED, Station.MONT, Station.RICH,
+                Station.RICH, "red-1", 1_000_000L, 1_500_000L,
+                java.util.Collections.singletonList(
+                        new TripStop(Station.EMBR, 1_200_000L, 1_210_000L)));
         original.setTripLegs(java.util.Collections.singletonList(leg));
 
         ObjectMapper mapper = new ObjectMapper();
