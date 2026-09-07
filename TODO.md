@@ -35,7 +35,7 @@ This backlog turns the architecture audit into incremental, verifiable work.
 - [x] Remove the static application-context accessor and inject dependencies at boundaries.
 - [x] Move trip planning into platform-independent Kotlin.
 - [x] Move the core transit models, GTFS adapter, routing, feed values, and pure projections into Kotlin.
-- [ ] Move the transit repository and realtime/static feed adapters into Kotlin.
+- [x] Move the transit repository, realtime feed adapters, and static GTFS loader into Kotlin.
 - [x] Replace durable `Parcel.marshall()` storage with a versioned persistence format.
 - [ ] Replace manual adapter merging with `ListAdapter`/`DiffUtil`.
 
