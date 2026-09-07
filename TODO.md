@@ -33,7 +33,8 @@ This backlog turns the architecture audit into incremental, verifiable work.
 - [x] Validate the catalog against BART-specific station/route invariants before making it authoritative.
 - [x] Check in an official GTFS snapshot and validate daytime/nighttime cross-line routing against it.
 - [x] Remove the static application-context accessor and inject dependencies at boundaries.
-- [ ] Move the transit core into platform-independent Kotlin.
+- [x] Move trip planning into platform-independent Kotlin.
+- [ ] Move the remaining transit core into platform-independent Kotlin.
 - [x] Replace durable `Parcel.marshall()` storage with a versioned persistence format.
 - [ ] Replace manual adapter merging with `ListAdapter`/`DiffUtil`.
 

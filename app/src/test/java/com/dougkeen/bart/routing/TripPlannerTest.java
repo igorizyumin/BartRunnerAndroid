@@ -225,6 +225,19 @@ public class TripPlannerTest {
                 () -> TripPlanner.routesFor(Station.MONT, Station.RICH, null));
     }
 
+    @Test
+    public void plannerResultsAreImmutable() {
+        List<Route> directRoutes = TripPlanner.routesFor(Station.MONT,
+                Station.RICH, TEST_NETWORK);
+        assertThrows(UnsupportedOperationException.class,
+                () -> directRoutes.clear());
+
+        List<Route> transferRoutes = TripPlanner.transferRoutes(Station.DUBL,
+                Station.ANTC, TEST_NETWORK);
+        assertThrows(UnsupportedOperationException.class,
+                () -> transferRoutes.add(transferRoutes.get(0)));
+    }
+
     private static boolean containsDirectLine(List<Route> routes, Line line) {
         for (Route route : routes) {
             if (!route.hasTransfer() && route.getDirectLine() == line) {
