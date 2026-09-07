@@ -28,6 +28,7 @@ import com.dougkeen.bart.model.Line;
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
+import com.dougkeen.bart.presentation.DepartureTextFormatter;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
 import java.util.Date;
@@ -202,7 +203,8 @@ public class TripInProgressActivity extends AbstractViewActivity implements
             share.putExtra(Intent.EXTRA_TEXT, getString(
                     R.string.arrival_message,
                     mDeparture.getStationPair().getDestination().name,
-                    mDeparture.getEstimatedArrivalTimeText(this, false)));
+                    DepartureTextFormatter.estimatedArrivalTime(
+                            this, mDeparture, false)));
             startActivity(Intent.createChooser(share,
                     getString(R.string.share_arrival_time)));
             return true;
@@ -292,7 +294,8 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         mStatus.setText(getTripStatus());
         mArrival.setText(getString(R.string.trip_final_arrival,
                 mDeparture.getStationPair().getDestination().name,
-                mDeparture.getEstimatedArrivalTimeText(this, false)));
+                DepartureTextFormatter.estimatedArrivalTime(
+                        this, mDeparture, false)));
 
         mTimeline.removeAllViews();
         List<TripLeg> legs = mDeparture.getTripLegs();
@@ -316,7 +319,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         }
         if (!mDeparture.hasDeparted()) {
             return getString(R.string.trip_leaves_in,
-                    mDeparture.getCountdownText());
+                    DepartureTextFormatter.countdown(this, mDeparture));
         }
 
         String connectionStatus = getWaitingConnectionStatus();

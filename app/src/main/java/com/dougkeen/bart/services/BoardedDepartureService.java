@@ -29,6 +29,7 @@ import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
+import com.dougkeen.bart.presentation.DepartureNotificationFactory;
 import com.dougkeen.util.Observer;
 
 import java.lang.ref.WeakReference;
@@ -292,7 +293,8 @@ public class BoardedDepartureService extends Service implements
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
                 .getFollowedTripRepository().getFollowedDeparture();
         if (boardedDeparture != null) {
-            Notification notification = boardedDeparture.createNotification(getApplicationContext());
+            Notification notification = DepartureNotificationFactory.create(
+                    getApplicationContext(), boardedDeparture);
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
                     || ContextCompat.checkSelfPermission(this,
                     Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {

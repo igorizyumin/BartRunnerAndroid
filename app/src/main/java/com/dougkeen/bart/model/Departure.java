@@ -1,7 +1,6 @@
 package com.dougkeen.bart.model;
 
 import android.app.AlarmManager;
-import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -10,32 +9,22 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import androidx.annotation.ColorInt;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationCompat.Builder;
 import android.util.Log;
 
-import com.dougkeen.bart.BartRunnerApplication;
-import com.dougkeen.bart.R;
-import com.dougkeen.bart.activities.TripInProgressActivity;
 import com.dougkeen.bart.receivers.AlarmBroadcastReceiver;
-import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.util.Observable;
 
 
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class Departure implements Parcelable, Comparable<Departure> {
     private static final int MINIMUM_MERGE_OVERLAP_MILLIS = 5000;
     private static final int EXPIRE_MINUTES_AFTER_ARRIVAL = 1;
-
-    private static final DateFormat TIME_FORMAT = new SimpleDateFormat("h:mm", Locale.getDefault());
 
     public Departure() {
         super();
@@ -154,58 +143,6 @@ public class Departure implements Parcelable, Comparable<Departure> {
 
     public boolean hasTransfers() {
         return tripLegs.size() > 1;
-    }
-
-    public String getTransferDetailsText(Context context) {
-        if (tripLegs.size() < 2) {
-            return "";
-        }
-        DateFormat format = android.text.format.DateFormat
-                .getTimeFormat(context);
-        StringBuilder details = new StringBuilder();
-        for (int i = 0; i < tripLegs.size(); i++) {
-            TripLeg leg = tripLegs.get(i);
-            if (i > 0) {
-                details.append("\n");
-            }
-            details.append(leg.getLine() == null ? "Train"
-                    : leg.getLine().name());
-            details.append(" ");
-            if (leg.getDepartureTime() > 0) {
-                details.append(format.format(new Date(leg.getDepartureTime())));
-            } else {
-                details.append("--");
-            }
-            if (leg.getOrigin() != null && leg.getDestination() != null) {
-                details.append(" ").append(leg.getOrigin().shortName)
-                        .append(" → ").append(leg.getDestination().shortName);
-            }
-            if (leg.getArrivalTime() > 0) {
-                details.append(" (arr ")
-                        .append(format.format(new Date(leg.getArrivalTime())))
-                        .append(")");
-            }
-            if (i + 1 < tripLegs.size()
-                    && leg.getArrivalTime() > 0
-                    && tripLegs.get(i + 1).getDepartureTime() > 0) {
-                long margin = tripLegs.get(i + 1).getDepartureTime()
-                        - leg.getArrivalTime();
-                long safeMargin = Math.max(0L, margin);
-                long marginMinutes = safeMargin / 60000L;
-                long marginSeconds = (safeMargin % 60000L) / 1000L;
-                details.append(" • ");
-                if (marginMinutes > 0) {
-                    details.append(marginMinutes).append(" min");
-                    if (marginSeconds > 0) {
-                        details.append(" ").append(marginSeconds).append(" sec");
-                    }
-                } else {
-                    details.append(marginSeconds).append(" sec");
-                }
-                details.append(" connection");
-            }
-        }
-        return details.toString();
     }
 
     public StationPair getStationPair() {
@@ -440,65 +377,12 @@ public class Departure implements Parcelable, Comparable<Departure> {
         }
     }
 
-    public String getEstimatedArrivalMinutesLeftText(Context context) {
-        if (!hasAnyArrivalEstimate()) {
-            return "Estimated arrival unknown";
-        }
-        long minutesLeft = getEstimatedArrivalMinutesLeft();
-        if (this.isCanceled()) {
-            return "";
-        } else if (minutesLeft < 0) {
-            return "Arrived at destination";
-        } else if (minutesLeft == 0) {
-            return "Arrives ~" + getEstimatedArrivalTimeText(context, false)
-                    + " (<1 min)";
-        } else if (minutesLeft == 1) {
-            return "Arrives ~" + getEstimatedArrivalTimeText(context, false)
-                    + " (1 min)";
-        } else {
-            return "Arrives ~" + getEstimatedArrivalTimeText(context, false)
-                    + " (" + minutesLeft + " mins)";
-        }
-    }
-
-    public String getEstimatedArrivalTimeText(Context context) {
-        return getEstimatedArrivalTimeText(context, false);
-    }
-
-    public String getEstimatedArrivalTimeText(Context context, boolean compact) {
-        if (getEstimatedTripTime() > 0 || arrivalTimeOverride > 0) {
-            final Date arrivalTime = new Date(getEstimatedArrivalTime());
-            if (compact) {
-                return TIME_FORMAT.format(arrivalTime);
-            } else {
-                return android.text.format.DateFormat.getTimeFormat(context)
-                        .format(arrivalTime);
-            }
-        } else {
-            return "";
-        }
-    }
-
-    public String getEstimatedDepartureTimeText(Context context) {
-        return getEstimatedDepartureTimeText(context, false);
-    }
-
-    public String getEstimatedDepartureTimeText(Context context, boolean compact) {
-        if (getMeanEstimate() > 0) {
-            final Date departureTime = new Date(getMeanEstimate());
-            if (compact) {
-                return TIME_FORMAT.format(departureTime);
-            } else {
-                return android.text.format.DateFormat.getTimeFormat(context)
-                        .format(departureTime);
-            }
-        } else {
-            return "";
-        }
-    }
-
     public boolean hasDeparted() {
         return getMeanSecondsLeft() <= 0;
+    }
+
+    public boolean beganAsDeparted() {
+        return beganAsDeparted;
     }
 
     public void calculateEstimates(long originalEstimateTime) {
@@ -658,30 +542,6 @@ public class Departure implements Parcelable, Comparable<Departure> {
         }
     }
 
-    public String getCountdownText() {
-        StringBuilder builder = new StringBuilder();
-        int secondsLeft = getMeanSecondsLeft();
-        if (isCanceled()) {
-            return "Canceled";
-        } else if (hasDeparted()) {
-            if (origin != null && origin.longStationLinger && beganAsDeparted) {
-                builder.append("At station");
-            } else if (isListedInETDs()) {
-                builder.append(BartRunnerApplication.getAppContext().getString(
-                        R.string.leaving));
-            } else {
-                builder.append(BartRunnerApplication.getAppContext().getString(
-                        R.string.departed));
-            }
-        } else {
-            builder.append(secondsLeft / 60);
-            builder.append("m, ");
-            builder.append(secondsLeft % 60);
-            builder.append("s");
-        }
-        return builder.toString();
-    }
-
     public String getUncertaintyText() {
         if (hasDeparted() || isCanceled()) {
             return "";
@@ -797,73 +657,6 @@ public class Departure implements Parcelable, Comparable<Departure> {
         Log.d(Constants.TAG, "Alarm cancelled");
     }
 
-    private PendingIntent notificationIntent;
-
-    private PendingIntent getNotificationIntent(Context context) {
-        if (notificationIntent == null) {
-            Intent targetIntent = new Intent(context,
-                    TripInProgressActivity.class);
-            targetIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            notificationIntent = PendingIntent.getActivity(context, 0,
-                    targetIntent, PendingIntent.FLAG_IMMUTABLE
-                            | PendingIntent.FLAG_UPDATE_CURRENT);
-        }
-        return notificationIntent;
-    }
-
-    private PendingIntent deleteNotificationIntent;
-
-    private PendingIntent getDeleteNotificationIntent(Context context) {
-        if (deleteNotificationIntent == null) {
-            Intent targetIntent = new Intent(context,
-                    BoardedDepartureService.class);
-            targetIntent.putExtra(Constants.CLEAR_DEPARTURE, true);
-            deleteNotificationIntent = PendingIntent.getService(context, 0,
-                    targetIntent, PendingIntent.FLAG_IMMUTABLE);
-        }
-        return deleteNotificationIntent;
-    }
-
-    public Notification createNotification(Context context) {
-        final int halfMinutes = (getMeanSecondsLeft() + 15) / 30;
-        float minutes = halfMinutes / 2f;
-        final String minutesText = (minutes < 1) ? "Less than one minute"
-                : (String.format(Locale.US, "~%.1f minute", minutes) + ((minutes != 1.0) ? "s"
-                : ""));
-        final String directionText = getOrigin().shortName + " to " + getPassengerDestination().shortName;
-
-        final Intent cancelAlarmIntent = new Intent(context,
-                BoardedDepartureService.class);
-        cancelAlarmIntent.putExtra("cancelNotifications", true);
-        String title = getOrigin().shortName + " to " + getPassengerDestination().shortName;
-
-        final String channelId = context.getString(R.string.notification_channel_id);
-        Builder notificationBuilder = new NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle(minutesText + " until departure")
-                .setContentIntent(getNotificationIntent(context))
-                .setDeleteIntent(getDeleteNotificationIntent(context));
-
-        if (getMeanSecondsLeft() > 0) {
-            notificationBuilder.setWhen(System.currentTimeMillis() + getMeanSecondsLeft() * 1000)
-                    .setUsesChronometer(true);
-        }
-
-        notificationBuilder.setContentText(directionText);
-        if (isAlarmPending()) {
-            PendingIntent pendingIntent = PendingIntent.getService(
-                    context, 0, cancelAlarmIntent, PendingIntent.FLAG_IMMUTABLE);
-            String subText = "Alarm " + getAlarmLeadTimeMinutes() + " minutes before departure";
-
-            notificationBuilder
-                    .addAction(R.drawable.ic_action_cancel_alarm, "Cancel alarm", pendingIntent)
-                    .setSubText(subText);
-        }
-
-        return notificationBuilder.build();
-    }
-
     @Override
     public String toString() {
         java.text.DateFormat format = SimpleDateFormat.getTimeInstance();
@@ -873,10 +666,23 @@ public class Departure implements Parcelable, Comparable<Departure> {
             builder.append(" (w/ xfer)");
         }
         builder.append(", ");
-        builder.append(getCountdownText());
+        builder.append(getDebugCountdownText());
         builder.append(", ");
         builder.append(format.format(new Date(getMeanEstimate())));
         return builder.toString();
+    }
+
+    private String getDebugCountdownText() {
+        int secondsLeft = getMeanSecondsLeft();
+        if (isCanceled()) {
+            return "Canceled";
+        } else if (hasDeparted()) {
+            if (origin != null && origin.longStationLinger && beganAsDeparted) {
+                return "At station";
+            }
+            return isListedInETDs() ? "Leaving" : "Departed";
+        }
+        return (secondsLeft / 60) + "m, " + (secondsLeft % 60) + "s";
     }
 
     public int describeContents() {

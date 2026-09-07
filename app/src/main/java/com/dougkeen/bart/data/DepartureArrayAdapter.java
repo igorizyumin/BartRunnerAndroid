@@ -18,6 +18,7 @@ import com.dougkeen.bart.R;
 import com.dougkeen.bart.controls.CountdownTextView;
 import com.dougkeen.bart.controls.TimedTextSwitcher;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.presentation.DepartureTextFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,8 +119,10 @@ public class DepartureArrayAdapter
                     : paintFlags & ~Paint.STRIKE_THRU_TEXT_FLAG);
 
             String arrivesPrefix = context.getString(R.string.arrives_at_destination);
-            String estimatedArrival = departure.getEstimatedArrivalTimeText(context, false);
-            String transferDetails = departure.getTransferDetailsText(context);
+            String estimatedArrival = DepartureTextFormatter.estimatedArrivalTime(
+                    context, departure, false);
+            String transferDetails = DepartureTextFormatter.transferDetails(
+                    context, departure);
 
             TextView estimatedArrivalView = itemView.findViewById(R.id.estimatedArrival);
             if (estimatedArrivalView != null) {
@@ -151,7 +154,8 @@ public class DepartureArrayAdapter
                     if (!isBlank(transferDetails)) {
                         return transferDetails;
                     }
-                    String arrival = departure.getEstimatedArrivalTimeText(context, false);
+                    String arrival = DepartureTextFormatter.estimatedArrivalTime(
+                            context, departure, false);
                     return isBlank(arrival) ? "" : arrivesPrefix + arrival;
                 });
             }
@@ -159,21 +163,24 @@ public class DepartureArrayAdapter
             itemView.findViewById(R.id.destinationColorBar)
                     .setBackgroundColor(departure.getTrainDestinationColor());
             CountdownTextView countdown = itemView.findViewById(R.id.countdown);
-            countdown.setText(departure.getCountdownText());
-            countdown.setTextProvider(tick -> departure.getCountdownText());
+            countdown.setText(DepartureTextFormatter.countdown(context, departure));
+            countdown.setTextProvider(tick -> DepartureTextFormatter.countdown(
+                    context, departure));
 
             TextView departureTime = itemView.findViewById(R.id.departureTime);
             if (departureTime != null) {
                 ((TextView) itemView.findViewById(R.id.uncertainty))
                         .setText(departure.getUncertaintyText());
                 departureTime.setText(departure.isCanceled() ? ""
-                        : "Dep " + departure.getEstimatedDepartureTimeText(context, true));
+                        : "Dep " + DepartureTextFormatter.estimatedDepartureTime(
+                                context, departure, true));
             } else {
                 TimedTextSwitcher uncertainty = itemView.findViewById(R.id.uncertainty);
                 initTextSwitcher(uncertainty, R.layout.uncertainty_textview);
                 uncertainty.setTextProvider(tick -> tick % 4 == 0
                         ? departure.getUncertaintyText()
-                        : departure.getEstimatedDepartureTimeText(context, false));
+                        : DepartureTextFormatter.estimatedDepartureTime(
+                                context, departure, false));
             }
 
             itemView.findViewById(R.id.xferIcon).setVisibility(

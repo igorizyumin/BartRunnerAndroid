@@ -24,6 +24,7 @@ import com.dougkeen.bart.controls.TimedTextSwitcher;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.StationPair;
+import com.dougkeen.bart.presentation.DepartureTextFormatter;
 
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -207,10 +208,11 @@ public class FavoritesArrayAdapter
                 return;
             }
 
-            countdown.setText(firstDeparture.getCountdownText());
+            countdown.setText(DepartureTextFormatter.countdown(hostActivity, firstDeparture));
             countdown.setTextProvider(tick -> {
                 Departure departure = etdListener.getFirstDeparture();
-                return departure == null ? "" : departure.getCountdownText();
+                return departure == null ? "" : DepartureTextFormatter.countdown(
+                        hostActivity, departure);
             });
 
             String uncertaintyText = firstDeparture.getUncertaintyText();
@@ -221,14 +223,14 @@ public class FavoritesArrayAdapter
                 if (departure == null) {
                     return pair.getFare();
                 }
-                String arrival = departure.getEstimatedArrivalTimeText(
-                        hostActivity, true);
+                String arrival = DepartureTextFormatter.estimatedArrivalTime(
+                        hostActivity, departure, true);
                 int mod = isBlank(arrival) ? 6 : 8;
                 if (tick % mod <= 1) {
                     return pair.getFare();
                 } else if (tick % mod <= 3) {
-                    return "Dep " + departure.getEstimatedDepartureTimeText(
-                            hostActivity, true);
+                    return "Dep " + DepartureTextFormatter.estimatedDepartureTime(
+                            hostActivity, departure, true);
                 } else if (mod == 8 && tick % mod <= 5) {
                     return "Arr " + arrival;
                 }
