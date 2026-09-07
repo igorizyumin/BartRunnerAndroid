@@ -3,19 +3,15 @@ package com.dougkeen.bart.activities;
 import java.util.List;
 
 import android.Manifest;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Rect;
-import android.content.ServiceConnection;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Parcelable;
 import android.os.Vibrator;
 import android.os.VibrationEffect;
@@ -42,20 +38,22 @@ import android.widget.Toast;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
+import com.dougkeen.bart.backend.RouteDepartureProjection;
+import com.dougkeen.bart.backend.TransitProjectionListener;
+import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.controls.Ticker;
 import com.dougkeen.bart.data.DepartureArrayAdapter;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.services.BoardedDepartureService;
-import com.dougkeen.bart.services.EtdService;
-import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
-import com.dougkeen.bart.services.EtdService.EtdServiceListener;
 import com.dougkeen.util.Assert;
 import com.dougkeen.util.WakeLocker;
 
 public class ViewDeparturesActivity extends AbstractViewActivity implements
-        EtdServiceListener, DepartureArrayAdapter.Listener {
+        TransitProjectionListener<RealTimeDepartures>,
+        DepartureArrayAdapter.Listener {
 
     private StationPair mStationPair;
 
@@ -69,11 +67,9 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
     private ActionMode mActionMode;
 
-    private EtdService mEtdService;
+    private TransitRepository.Subscription mTransitSubscription;
 
     private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
-
-    private boolean mBound = false;
 
     private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1001;
 
@@ -124,9 +120,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             mStationPair = IntentCompat.getParcelableExtra(intent,
                     Constants.STATION_PAIR_EXTRA, StationPair.class);
             setListTitle();
-            if (mBound && mEtdService != null)
-                mEtdService
-                        .registerListener(ViewDeparturesActivity.this, false);
         }
 
         if (savedInstanceState != null) {
@@ -283,24 +276,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
     }
 
-    private final ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mEtdService = null;
-            mBound = false;
-        }
-
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            mEtdService = ((EtdServiceBinder) service).getService();
-            mBound = true;
-            if (getStationPair() != null) {
-                mEtdService
-                        .registerListener(ViewDeparturesActivity.this, false);
-            }
-        }
-    };
-
     @Override
     public void onDepartureClicked(Departure departure) {
         if (mActionMode != null) {
@@ -328,11 +303,9 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     @Override
     protected void onStop() {
         super.onStop();
-        if (mEtdService != null)
-            mEtdService.unregisterListener(this);
-        if (mBound) {
-            unbindService(mConnection);
-            mBound = false;
+        if (mTransitSubscription != null) {
+            mTransitSubscription.close();
+            mTransitSubscription = null;
         }
         Ticker.getInstance().stopTicking(this);
         WakeLocker.release();
@@ -362,8 +335,9 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        bindService(new Intent(this, EtdService.class), mConnection,
-                Context.BIND_AUTO_CREATE);
+        mTransitSubscription = ((BartRunnerApplication) getApplication())
+                .getTransitRepository().subscribe(
+                        new RouteDepartureProjection(mStationPair), this);
         Ticker.getInstance().startTicking(this);
     }
 
@@ -530,7 +504,12 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     }
 
     @Override
-    public void onETDChanged(final List<Departure> departures) {
+    public void onData(RealTimeDepartures result,
+                       com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+        onETDChanged(result.getDepartures());
+    }
+
+    private void onETDChanged(final List<Departure> departures) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -588,7 +567,9 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     }
 
     @Override
-    public void onError(final String errorMessage) {
+    public void onError(final Exception exception,
+                        com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+        final String errorMessage = getString(R.string.could_not_connect);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -596,31 +577,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 updateEmptyState(true);
             }
         });
-    }
-
-    @Override
-    public void onRequestStarted() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mProgress.setVisibility(View.VISIBLE);
-            }
-        });
-    }
-
-    @Override
-    public void onRequestEnded() {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                mProgress.setVisibility(View.GONE);
-            }
-        });
-    }
-
-    @Override
-    public StationPair getStationPair() {
-        return mStationPair;
     }
 
     private boolean isDepartureActionModeActive() {

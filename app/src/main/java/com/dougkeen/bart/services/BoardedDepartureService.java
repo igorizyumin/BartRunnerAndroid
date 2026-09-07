@@ -6,10 +6,8 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.Manifest;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.ServiceInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -24,26 +22,27 @@ import androidx.core.content.IntentCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
+import com.dougkeen.bart.backend.RouteDepartureProjection;
+import com.dougkeen.bart.backend.TransitProjectionListener;
+import com.dougkeen.bart.backend.TransitRepository;
+import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
-import com.dougkeen.bart.services.EtdService.EtdServiceListener;
 import com.dougkeen.util.Observer;
 
 import java.lang.ref.WeakReference;
 import java.util.List;
 
 public class BoardedDepartureService extends Service implements
-        EtdServiceListener {
+        TransitProjectionListener<RealTimeDepartures> {
 
     private static final int DEPARTURE_NOTIFICATION_ID = 123;
 
     private volatile Looper mServiceLooper;
     private volatile ServiceHandler mServiceHandler;
 
-    private boolean mBound = false;
-    private EtdService mEtdService;
+    private TransitRepository.Subscription mTransitSubscription;
     private StationPair mStationPair;
     private NotificationManagerCompat mNotificationManager;
     private AlarmManager mAlarmManager;
@@ -73,24 +72,6 @@ public class BoardedDepartureService extends Service implements
         }
     }
 
-    private final ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mEtdService = null;
-            mBound = false;
-        }
-
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            mEtdService = ((EtdServiceBinder) service).getService();
-            mBound = true;
-            if (getStationPair() != null) {
-                mEtdService.registerListener(BoardedDepartureService.this,
-                        false);
-            }
-        }
-    };
-
     @Override
     public void onCreate() {
         HandlerThread thread = new HandlerThread(
@@ -100,8 +81,6 @@ public class BoardedDepartureService extends Service implements
         mServiceLooper = thread.getLooper();
         mServiceHandler = new ServiceHandler(mServiceLooper, this);
 
-        bindService(new Intent(this, EtdService.class), mConnection,
-                Context.BIND_AUTO_CREATE);
         mNotificationManager = NotificationManagerCompat.from(this);
         mAlarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         mHandler = new Handler(Looper.getMainLooper());
@@ -138,9 +117,6 @@ public class BoardedDepartureService extends Service implements
     @Override
     public void onDestroy() {
         shutDown(true);
-        if (mBound)
-            unbindService(mConnection);
-        mBound = false;
         mServiceLooper.quitSafely();
         super.onDestroy();
     }
@@ -181,13 +157,16 @@ public class BoardedDepartureService extends Service implements
         StationPair oldStationPair = mStationPair;
         mStationPair = boardedDeparture.getStationPair();
 
-        if (mEtdService != null && mStationPair != null
+        if (mTransitSubscription != null && mStationPair != null
                 && !mStationPair.equals(oldStationPair)) {
-            mEtdService.unregisterListener(this);
+            mTransitSubscription.close();
+            mTransitSubscription = null;
         }
 
-        if (getStationPair() != null && mEtdService != null) {
-            mEtdService.registerListener(this, false);
+        if (mStationPair != null && mTransitSubscription == null) {
+            mTransitSubscription = ((BartRunnerApplication) getApplication())
+                    .getTransitRepository().subscribe(
+                            new RouteDepartureProjection(mStationPair), this);
         }
 
         boardedDeparture.getAlarmLeadTimeMinutesObservable().registerObserver(
@@ -220,7 +199,12 @@ public class BoardedDepartureService extends Service implements
     }
 
     @Override
-    public void onETDChanged(List<Departure> departures) {
+    public void onData(RealTimeDepartures result,
+                       com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+        onETDChanged(result.getDepartures());
+    }
+
+    private void onETDChanged(List<Departure> departures) {
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
                 .getBoardedDeparture();
         for (Departure departure : departures) {
@@ -240,23 +224,9 @@ public class BoardedDepartureService extends Service implements
     }
 
     @Override
-    public void onError(String errorMessage) {
+    public void onError(Exception exception,
+                        com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
         // Do nothing
-    }
-
-    @Override
-    public void onRequestStarted() {
-        // Do nothing
-    }
-
-    @Override
-    public void onRequestEnded() {
-        // Do nothing
-    }
-
-    @Override
-    public StationPair getStationPair() {
-        return mStationPair;
     }
 
     private long mNextScheduledCheckClockTime = 0;
@@ -270,17 +240,10 @@ public class BoardedDepartureService extends Service implements
             return;
         }
 
-        if (mEtdService != null) {
-            /*
-             * Make sure we're still listening for ETD changes (in case weak ref
-             * was garbage collected). Not a huge fan of this approach, but I
-             * think I'd rather keep the weak references to avoid memory leaks
-             * than move to soft references or some other form of stronger
-             * reference. Besides, registerListener() should only result in a
-             * few constant-time map operations, so there shouldn't be a big
-             * performance hit.
-             */
-            mEtdService.registerListener(this, false);
+        if (mTransitSubscription == null && mStationPair != null) {
+            mTransitSubscription = ((BartRunnerApplication) getApplication())
+                    .getTransitRepository().subscribe(
+                            new RouteDepartureProjection(mStationPair), this);
         }
 
         boardedDeparture.updateAlarm(getApplicationContext(), mAlarmManager);
@@ -309,8 +272,9 @@ public class BoardedDepartureService extends Service implements
                 stopForeground(true);
             }
             mHasShutDown = true;
-            if (mEtdService != null) {
-                mEtdService.unregisterListener(this);
+            if (mTransitSubscription != null) {
+                mTransitSubscription.close();
+                mTransitSubscription = null;
             }
             if (mNotificationManager != null) {
                 mNotificationManager.cancel(DEPARTURE_NOTIFICATION_ID);
@@ -322,9 +286,6 @@ public class BoardedDepartureService extends Service implements
 
     private void updateNotification() {
         if (mHasShutDown) {
-            if (mEtdService != null) {
-                mEtdService.unregisterListener(this);
-            }
             return;
         }
 

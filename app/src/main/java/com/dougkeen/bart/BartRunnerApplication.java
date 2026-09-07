@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -18,11 +19,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Parcel;
 import android.util.Log;
 
 import com.dougkeen.bart.data.DatabaseHelper;
 import com.dougkeen.bart.data.FavoritesPersistence;
+import com.dougkeen.bart.backend.HttpTransitFeedClient;
+import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.Station;
@@ -53,6 +58,14 @@ public class BartRunnerApplication extends Application implements
 
     private final ExecutorService persistenceExecutor =
             Executors.newSingleThreadExecutor();
+
+    private TransitRepository transitRepository;
+
+    private final ScheduledExecutorService transitScheduler =
+            Executors.newSingleThreadScheduledExecutor();
+
+    private final ExecutorService transitProjectionExecutor =
+            Executors.newFixedThreadPool(2);
 
     private List<StationPair> favorites;
 
@@ -110,11 +123,21 @@ public class BartRunnerApplication extends Application implements
         context = getApplicationContext();
         mApplicationPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         favoritesPersistenceContext = new FavoritesPersistence(this);
+        transitRepository = new TransitRepository(
+                new HttpTransitFeedClient(),
+                transitScheduler,
+                transitProjectionExecutor,
+                new Handler(Looper.getMainLooper())::post,
+                30_000L);
         registerActivityLifecycleCallbacks(this);
     }
 
     public static Context getAppContext() {
         return context;
+    }
+
+    public TransitRepository getTransitRepository() {
+        return transitRepository;
     }
 
     public boolean shouldPlayAlarmRingtone() {

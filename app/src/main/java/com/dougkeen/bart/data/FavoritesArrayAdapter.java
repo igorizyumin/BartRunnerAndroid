@@ -1,10 +1,7 @@
 package com.dougkeen.bart.data;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,14 +14,16 @@ import android.widget.ViewSwitcher.ViewFactory;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
+import com.dougkeen.bart.backend.RouteDepartureProjection;
+import com.dougkeen.bart.backend.TransitProjectionListener;
+import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.controls.CountdownTextView;
 import com.dougkeen.bart.controls.TimedTextSwitcher;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.services.EtdService;
-import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
-import com.dougkeen.bart.services.EtdService.EtdServiceListener;
 
 import java.util.HashMap;
 import java.util.List;
@@ -44,49 +43,28 @@ public class FavoritesArrayAdapter
     private final List<StationPair> items;
     private final Listener listener;
     private final Map<StationPair, EtdListener> etdListeners = new HashMap<>();
-    private EtdService etdService;
-    private boolean bound;
-
-    private final ServiceConnection connection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            etdService = ((EtdServiceBinder) service).getService();
-            bound = true;
-            setUpEtdListeners();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            etdService = null;
-            bound = false;
-            etdListeners.clear();
-        }
-    };
+    private final TransitRepository transitRepository;
 
     public FavoritesArrayAdapter(Activity hostActivity, List<StationPair> items,
                                  Listener listener) {
         this.hostActivity = hostActivity;
         this.items = items;
         this.listener = listener;
-        hostActivity.bindService(new Intent(hostActivity, EtdService.class),
-                connection, Context.BIND_AUTO_CREATE);
+        transitRepository = ((BartRunnerApplication) hostActivity.getApplication())
+                .getTransitRepository();
+        setUpEtdListeners();
     }
 
     public void setUpEtdListeners() {
-        if (!bound || etdService == null) {
-            return;
-        }
         clearEtdListeners();
         for (StationPair item : items) {
-            etdListeners.put(item, new EtdListener(item, etdService));
+            etdListeners.put(item, new EtdListener(item));
         }
     }
 
     public void clearEtdListeners() {
-        if (etdService != null) {
-            for (EtdListener listener : etdListeners.values()) {
-                listener.close(etdService);
-            }
+        for (EtdListener listener : etdListeners.values()) {
+            listener.close();
         }
         etdListeners.clear();
     }
@@ -97,11 +75,6 @@ public class FavoritesArrayAdapter
 
     public void close() {
         clearEtdListeners();
-        if (bound) {
-            hostActivity.unbindService(connection);
-            bound = false;
-            etdService = null;
-        }
     }
 
     public StationPair getItem(int position) {
@@ -118,8 +91,8 @@ public class FavoritesArrayAdapter
 
     public void add(StationPair item) {
         items.add(item);
-        if (bound && etdService != null) {
-            etdListeners.put(item, new EtdListener(item, etdService));
+        if (transitRepository != null) {
+            etdListeners.put(item, new EtdListener(item));
         }
         notifyItemInserted(items.size() - 1);
     }
@@ -130,8 +103,8 @@ public class FavoritesArrayAdapter
             return;
         }
         EtdListener etdListener = etdListeners.remove(item);
-        if (etdListener != null && etdService != null) {
-            etdListener.close(etdService);
+        if (etdListener != null) {
+            etdListener.close();
         }
         items.remove(index);
         notifyItemRemoved(index);
@@ -150,8 +123,8 @@ public class FavoritesArrayAdapter
     public void insert(StationPair item, int index) {
         int safeIndex = Math.max(0, Math.min(index, items.size()));
         items.add(safeIndex, item);
-        if (bound && etdService != null) {
-            etdListeners.put(item, new EtdListener(item, etdService));
+        if (transitRepository != null) {
+            etdListeners.put(item, new EtdListener(item));
         }
         notifyItemInserted(safeIndex);
     }
@@ -271,21 +244,26 @@ public class FavoritesArrayAdapter
         return text == null || text.trim().isEmpty();
     }
 
-    private final class EtdListener implements EtdServiceListener {
+    private final class EtdListener
+            implements TransitProjectionListener<RealTimeDepartures> {
         private final StationPair stationPair;
+        private final TransitRepository.Subscription subscription;
         private Departure firstDeparture;
 
-        EtdListener(StationPair stationPair, EtdService etdService) {
+        EtdListener(StationPair stationPair) {
             this.stationPair = stationPair;
-            etdService.registerListener(this, true);
+            subscription = transitRepository.subscribe(
+                    new RouteDepartureProjection(stationPair), this);
         }
 
-        void close(EtdService etdService) {
-            etdService.unregisterListener(this);
+        void close() {
+            subscription.close();
         }
 
         @Override
-        public void onETDChanged(List<Departure> departures) {
+        public void onData(RealTimeDepartures result,
+                           com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+            List<Departure> departures = result.getDepartures();
             for (Departure departure : departures) {
                 if (!departure.hasDeparted()) {
                     if (!departure.equals(firstDeparture)) {
@@ -305,10 +283,10 @@ public class FavoritesArrayAdapter
             }
         }
 
-        @Override public void onError(String errorMessage) { }
-        @Override public void onRequestStarted() { }
-        @Override public void onRequestEnded() { }
-        @Override public StationPair getStationPair() { return stationPair; }
+        @Override
+        public void onError(Exception exception,
+                            com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+        }
         Departure getFirstDeparture() { return firstDeparture; }
     }
 }

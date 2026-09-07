@@ -1,11 +1,8 @@
 package com.dougkeen.bart.activities;
 
 import android.Manifest;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,31 +19,31 @@ import androidx.core.content.IntentCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
+import com.dougkeen.bart.backend.RouteDepartureProjection;
+import com.dougkeen.bart.backend.TripProgressProjection;
+import com.dougkeen.bart.backend.TransitProjectionListener;
+import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.Line;
+import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
 import com.dougkeen.bart.services.BoardedDepartureService;
-import com.dougkeen.bart.services.EtdService;
-import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
-import com.dougkeen.bart.services.EtdService.EtdServiceListener;
-import com.dougkeen.bart.networktasks.GetTripProgressTask;
 
 import java.util.Date;
 import java.util.List;
 
 /** Shows the live state of a selected, possibly multi-train trip. */
 public class TripInProgressActivity extends AbstractViewActivity implements
-        EtdServiceListener {
+        TransitProjectionListener<RealTimeDepartures> {
 
     private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1002;
 
     private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     private Departure mDeparture;
     private boolean mIsFollowing;
-    private EtdService mEtdService;
-    private boolean mBound;
-    private GetTripProgressTask mProgressTask;
+    private TransitRepository.Subscription mTransitSubscription;
+    private TransitRepository.Subscription mTripProgressSubscription;
 
     private TextView mStatus;
     private TextView mRoute;
@@ -54,40 +51,12 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     private View mFollowTripButton;
     private LinearLayout mTimeline;
 
-    private final ServiceConnection mConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            mEtdService = ((EtdServiceBinder) service).getService();
-            mBound = true;
-            if (mDeparture != null && mDeparture.getStationPair() != null) {
-                mEtdService.registerListener(TripInProgressActivity.this,
-                        false);
-            }
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            mEtdService = null;
-            mBound = false;
-        }
-    };
-
     private final Runnable mRefreshRunnable = new Runnable() {
         @Override
         public void run() {
             renderTrip();
             if (!isFinishing()) {
                 mHandler.postDelayed(this, 1000L);
-            }
-        }
-    };
-
-    private final Runnable mProgressRefreshRunnable = new Runnable() {
-        @Override
-        public void run() {
-            refreshTripProgress();
-            if (!isFinishing()) {
-                mHandler.postDelayed(this, 15000L);
             }
         }
     };
@@ -132,26 +101,52 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     @Override
     protected void onStart() {
         super.onStart();
-        bindService(new Intent(this, EtdService.class), mConnection,
-                Context.BIND_AUTO_CREATE);
+        if (mDeparture != null && mDeparture.getStationPair() != null) {
+            TransitRepository repository = ((BartRunnerApplication)
+                    getApplication()).getTransitRepository();
+            mTransitSubscription = repository.subscribe(
+                    new RouteDepartureProjection(mDeparture.getStationPair()),
+                    this);
+            if (!mDeparture.getTripLegs().isEmpty()) {
+                final BartRunnerApplication application =
+                        (BartRunnerApplication) getApplication();
+                mTripProgressSubscription = repository.subscribe(
+                        new TripProgressProjection(
+                                mDeparture.getStationPair().getOrigin(),
+                                mDeparture.getStationPair().getDestination(),
+                                mDeparture.getTripLegs()),
+                        new TransitProjectionListener<List<TripLeg>>() {
+                            @Override
+                            public void onData(List<TripLeg> updatedLegs,
+                                               com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+                                if (application.getBoardedDeparture()
+                                        == mDeparture) {
+                                    mDeparture.setTripLegs(updatedLegs);
+                                    renderTrip();
+                                    invalidateOptionsMenu();
+                                }
+                            }
+
+                            @Override
+                            public void onError(Exception exception,
+                                                com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+                            }
+                        });
+            }
+        }
         mHandler.post(mRefreshRunnable);
-        mHandler.post(mProgressRefreshRunnable);
     }
 
     @Override
     protected void onStop() {
         mHandler.removeCallbacks(mRefreshRunnable);
-        mHandler.removeCallbacks(mProgressRefreshRunnable);
-        if (mProgressTask != null) {
-            mProgressTask.cancel(true);
-            mProgressTask = null;
+        if (mTransitSubscription != null) {
+            mTransitSubscription.close();
+            mTransitSubscription = null;
         }
-        if (mEtdService != null) {
-            mEtdService.unregisterListener(this);
-        }
-        if (mBound) {
-            unbindService(mConnection);
-            mBound = false;
+        if (mTripProgressSubscription != null) {
+            mTripProgressSubscription.close();
+            mTripProgressSubscription = null;
         }
         super.onStop();
     }
@@ -396,35 +391,6 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         return null;
     }
 
-    private void refreshTripProgress() {
-        if (mDeparture == null || mDeparture.getStationPair() == null
-                || mDeparture.getTripLegs().isEmpty() || mProgressTask != null) {
-            return;
-        }
-        final BartRunnerApplication application =
-                (BartRunnerApplication) getApplication();
-        final List<TripLeg> legs = mDeparture.getTripLegs();
-        mProgressTask = new GetTripProgressTask() {
-            @Override
-            public void onResult(List<TripLeg> updatedLegs) {
-                mProgressTask = null;
-                if (application.getBoardedDeparture() == mDeparture) {
-                    mDeparture.setTripLegs(updatedLegs);
-                    renderTrip();
-                    invalidateOptionsMenu();
-                }
-            }
-
-            @Override
-            public void onError(Exception exception) {
-                mProgressTask = null;
-            }
-        };
-        mProgressTask.execute(new GetTripProgressTask.Params(
-                mDeparture.getStationPair().getOrigin(),
-                mDeparture.getStationPair().getDestination(), legs));
-    }
-
     private void addLeg(TripLeg leg, boolean isCurrentTrain) {
         TextView heading = addText(null, true);
         String lineName = leg.getLine() == null ? "Train"
@@ -560,7 +526,9 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     }
 
     @Override
-    public void onETDChanged(final List<Departure> departures) {
+    public void onData(RealTimeDepartures result,
+                       com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+        final List<Departure> departures = result.getDepartures();
         for (Departure departure : departures) {
             if (departure.equals(mDeparture)) {
                 mDeparture.mergeEstimate(departure, false);
@@ -577,19 +545,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     }
 
     @Override
-    public void onError(String errorMessage) {
-    }
-
-    @Override
-    public void onRequestStarted() {
-    }
-
-    @Override
-    public void onRequestEnded() {
-    }
-
-    @Override
-    public com.dougkeen.bart.model.StationPair getStationPair() {
-        return mDeparture == null ? null : mDeparture.getStationPair();
+    public void onError(Exception exception,
+                        com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
     }
 }

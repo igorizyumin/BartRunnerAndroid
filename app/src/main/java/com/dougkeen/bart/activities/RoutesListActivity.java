@@ -4,6 +4,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.fragment.app.DialogFragment;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -24,20 +26,25 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.controls.Ticker;
-import com.dougkeen.bart.controls.Ticker.TickSubscriber;
+import com.dougkeen.bart.backend.AlertProjection;
+import com.dougkeen.bart.backend.TransitProjectionListener;
+import com.dougkeen.bart.backend.TransitRepository;
 import com.dougkeen.bart.data.FavoritesArrayAdapter;
 import com.dougkeen.bart.model.Alert;
 import com.dougkeen.bart.model.Alert.AlertList;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.networktasks.GetRouteFareTask;
-import com.dougkeen.bart.networktasks.GetServiceAlertsTask;
+import com.dougkeen.bart.networktasks.GtfsStaticData;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
-public class   RoutesListActivity extends AppCompatActivity implements TickSubscriber,
+public class   RoutesListActivity extends AppCompatActivity implements
         FavoritesArrayAdapter.Listener {
     private static final String NO_DELAYS_REPORTED = "No delays reported";
 
@@ -63,6 +70,13 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
     CoordinatorLayout coordinatorLayout;
 
     TextView emptyView;
+
+    private TransitRepository.Subscription alertSubscription;
+
+    private final ExecutorService staticDataExecutor =
+            Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private boolean destroyed;
 
     void quickLookupButtonClick() {
         DialogFragment dialog = new QuickRouteDialogFragment();
@@ -173,7 +187,6 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
                 view -> quickLookupButtonClick());
         afterViews();
 
-        Ticker.getInstance().addSubscriber(this, getApplicationContext());
     }
 
     protected FavoritesArrayAdapter getListAdapter() {
@@ -200,6 +213,8 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
     }
 
     private void refreshFares() {
+        final List<StationPair> routesNeedingFares =
+                new ArrayList<StationPair>();
         for (int i = getListAdapter().getCount() - 1; i >= 0; i--) {
             final StationPair stationPair = getListAdapter().getItem(i);
 
@@ -217,23 +232,41 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
             // Update every day
             if (now.get(Calendar.DAY_OF_YEAR) != lastUpdate.get(Calendar.DAY_OF_YEAR)
                     || now.get(Calendar.YEAR) != lastUpdate.get(Calendar.YEAR)) {
-                GetRouteFareTask fareTask = new GetRouteFareTask() {
-                    @Override
-                    public void onResult(String fare) {
-                        stationPair.setFare(fare);
-                        stationPair.setFareLastUpdated(System.currentTimeMillis());
-                        getListAdapter().notifyDataSetChanged();
-                    }
-
-                    @Override
-                    public void onError(Exception exception) {
-                        // Ignore... we can do this later
-                    }
-                };
-                fareTask.execute(new GetRouteFareTask.Params(stationPair
-                        .getOrigin(), stationPair.getDestination()));
+                routesNeedingFares.add(stationPair);
             }
         }
+        if (routesNeedingFares.isEmpty()) {
+            return;
+        }
+        staticDataExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final GtfsStaticData staticData = GtfsStaticData.get();
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (destroyed) {
+                                return;
+                            }
+                            long now = System.currentTimeMillis();
+                            for (StationPair stationPair : routesNeedingFares) {
+                                String fare = staticData.getFare(
+                                        stationPair.getOrigin(),
+                                        stationPair.getDestination());
+                                if (fare != null) {
+                                    stationPair.setFare(fare);
+                                    stationPair.setFareLastUpdated(now);
+                                }
+                            }
+                            getListAdapter().notifyDataSetChanged();
+                        }
+                    });
+                } catch (IOException exception) {
+                    Log.w(TAG, "Could not load static GTFS fares", exception);
+                }
+            }
+        });
     }
 
     @Override
@@ -245,8 +278,24 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
     @Override
     protected void onResume() {
         super.onResume();
-        Ticker.getInstance().startTicking(this);
         startEtdListeners();
+        if (alertSubscription == null) {
+            alertSubscription = app.getTransitRepository().subscribe(
+                    new AlertProjection(),
+                    new TransitProjectionListener<AlertList>() {
+                        @Override
+                        public void onData(AlertList alertList,
+                                           com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+                            displayAlerts(alertList);
+                        }
+
+                        @Override
+                        public void onError(Exception exception,
+                                            com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
+                            Log.w(TAG, "Could not fetch alerts", exception);
+                        }
+                    });
+        }
     }
 
     private void startEtdListeners() {
@@ -262,29 +311,26 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
         if (mRoutesAdapter != null && mRoutesAdapter.areEtdListenersActive()) {
             mRoutesAdapter.clearEtdListeners();
         }
+        if (alertSubscription != null) {
+            alertSubscription.close();
+            alertSubscription = null;
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        Ticker.getInstance().stopTicking(this);
         app.saveFavorites();
 
     }
 
     @Override
     protected void onDestroy() {
+        destroyed = true;
+        staticDataExecutor.shutdownNow();
         super.onDestroy();
         if (mRoutesAdapter != null) {
             mRoutesAdapter.close();
-        }
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-            Ticker.getInstance().startTicking(this);
         }
     }
 
@@ -324,38 +370,27 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
         }
     }
 
-    void fetchAlerts() {
-        Log.d(TAG, "Fetching alerts");
-        new GetServiceAlertsTask() {
-            @Override
-            public void onResult(AlertList alertList) {
-                if (alertList.hasAlerts()) {
-                    StringBuilder alertText = new StringBuilder();
-                    boolean firstAlert = true;
-                    for (Alert alert : alertList.getAlerts()) {
-                        if (!firstAlert) {
-                            alertText.append("\n\n");
-                        }
-                        if (alert.getPostedTime() != null
-                                && !alert.getPostedTime().isEmpty()) {
-                            alertText.append(alert.getPostedTime()).append("\n");
-                        }
-                        alertText.append(alert.getDescription());
-                        firstAlert = false;
-                    }
-                    showAlertMessage(alertText.toString());
-                } else if (alertList.areNoDelaysReported()) {
-                    showAlertMessage(NO_DELAYS_REPORTED);
-                } else {
-                    hideAlertMessage();
+    private void displayAlerts(AlertList alertList) {
+        if (alertList.hasAlerts()) {
+            StringBuilder alertText = new StringBuilder();
+            boolean firstAlert = true;
+            for (Alert alert : alertList.getAlerts()) {
+                if (!firstAlert) {
+                    alertText.append("\n\n");
                 }
+                if (alert.getPostedTime() != null
+                        && !alert.getPostedTime().isEmpty()) {
+                    alertText.append(alert.getPostedTime()).append("\n");
+                }
+                alertText.append(alert.getDescription());
+                firstAlert = false;
             }
-
-            @Override
-            public void onError(Exception exception) {
-                Log.w(TAG, "Could not fetch alerts", exception);
-            }
-        }.execute();
+            showAlertMessage(alertText.toString());
+        } else if (alertList.areNoDelaysReported()) {
+            showAlertMessage(NO_DELAYS_REPORTED);
+        } else {
+            hideAlertMessage();
+        }
     }
 
     void hideAlertMessage() {
@@ -465,13 +500,4 @@ public class   RoutesListActivity extends AppCompatActivity implements TickSubsc
 
     }
 
-    @Override
-    public int getTickInterval() {
-        return 90;
-    }
-
-    @Override
-    public void onTick(long mTickCount) {
-        fetchAlerts();
-    }
 }

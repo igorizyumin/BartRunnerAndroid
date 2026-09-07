@@ -71,10 +71,6 @@
             android:name=".services.BoardedDepartureService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
-        <service
-            android:name=".services.EtdService"
-            android:exported="false" />
-
         <receiver
             android:name=".receivers.AlarmBroadcastReceiver"
             android:exported="false">
