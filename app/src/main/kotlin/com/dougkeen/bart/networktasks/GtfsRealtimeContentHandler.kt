@@ -67,11 +67,132 @@ class GtfsRealtimeContentHandler(
             .filter { !it.tripId.isNullOrEmpty() }
             .associateBy { it.tripId!! }
 
-        return existingLegs.map { existing ->
+        val updatedLegs = existingLegs.map { existing ->
             val current = tripsById[existing.tripId] ?: findMatchingTrip(existing, trips)
             if (current == null) existing else updateTripLeg(existing, current)
+        }.toMutableList()
+
+        val route = routes.firstOrNull { matchesExistingLegs(it, updatedLegs) }
+        if (route != null && updatedLegs.size < route.lines.size) {
+            appendConnectingLegs(route, updatedLegs, trips)
+        }
+        return updatedLegs
+    }
+
+    private fun matchesExistingLegs(route: Route, legs: List<TripLeg>): Boolean {
+        if (legs.isEmpty() || legs.size > route.lines.size) {
+            return false
+        }
+        for (index in legs.indices) {
+            val leg = legs[index]
+            val expectedOrigin = if (index == 0) origin else legs[index - 1].destination
+            if (leg.line != route.lines[index] || leg.origin != expectedOrigin) {
+                return false
+            }
+
+            val expectedDestination = if (index < route.transferStations.size) {
+                route.transferStations[index]
+            } else {
+                destination
+            }
+            if (leg.destination == expectedDestination) {
+                continue
+            }
+
+            // A previously selected itinerary can end partway through a
+            // route segment when the next connection was not present in the
+            // feed. It is still the same line sequence, so allow the refresh
+            // to continue from that actual station.
+            if (index != legs.lastIndex || index >= route.transferStations.size
+                || !isBeforeOnRoute(route, route.lines[index], leg.destination,
+                    expectedDestination)
+            ) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun isBeforeOnRoute(
+        route: Route,
+        line: Line,
+        station: Station?,
+        destination: Station?
+    ): Boolean {
+        val sequence = route.getStationSequence(line)
+        val stationIndex = sequence.indexOf(station)
+        val destinationIndex = sequence.indexOf(destination)
+        return stationIndex >= 0 && destinationIndex >= 0 && stationIndex < destinationIndex
+    }
+
+    private fun appendConnectingLegs(
+        route: Route,
+        legs: MutableList<TripLeg>,
+        trips: List<TripSnapshot>
+    ) {
+        val tripDestination = destination ?: return
+        while (legs.size < route.lines.size) {
+            val index = legs.size
+            val legOrigin = legs[index - 1].destination ?: return
+            val legDestination = if (index < route.transferStations.size) {
+                route.transferStations[index]
+            } else {
+                tripDestination
+            }
+            val currentTrip = findConnectingTrip(
+                route.lines[index],
+                legOrigin,
+                legDestination,
+                legs[index - 1],
+                trips
+            )
+            if (currentTrip == null) {
+                if (isUnscheduledTerminalLeg(route.lines[index], legOrigin, legDestination)) {
+                    legs += unscheduledTerminalLeg(legOrigin, legDestination)
+                    continue
+                }
+                return
+            }
+            val departure = currentTrip.pointAt(legOrigin) ?: return
+            val arrival = currentTrip.pointAt(legDestination)
+            val stops = currentTrip.pointsBetween(legOrigin, legDestination).map {
+                TripStop(it.station, it.arrivalTime, it.departureTime)
+            }
+            legs += TripLeg(
+                lineForDestination(currentTrip.line, currentTrip.trainDestination),
+                legOrigin,
+                legDestination,
+                currentTrip.trainDestination,
+                currentTrip.tripId,
+                departure.departureTime,
+                arrival?.arrivalTime ?: 0L,
+                stops,
+                minimumTransferSecondsAfter(route, index, legOrigin, currentTrip.line)
+            )
         }
     }
+
+    private fun isUnscheduledTerminalLeg(
+        line: Line,
+        origin: Station,
+        destination: Station
+    ): Boolean = line == Line.YELLOW_DMU
+        && origin == Station.PITT
+        && (destination == Station.PCTR || destination == Station.ANTC)
+
+    private fun unscheduledTerminalLeg(
+        origin: Station,
+        destination: Station
+    ): TripLeg = TripLeg(
+        Line.YELLOW_DMU,
+        origin,
+        destination,
+        destination,
+        null,
+        0L,
+        0L,
+        emptyList()
+    )
 
     private fun parseTrips(
         entities: List<GtfsRealtime.FeedEntity>,
@@ -81,6 +202,61 @@ class GtfsRealtimeContentHandler(
             if (entity.hasTripUpdate()) {
                 parseTrip(entity.getTripUpdate(), feedTime)?.let(::add)
             }
+        }
+    }.also(::mergePittsburgTerminalTrips)
+
+    /**
+     * BART publishes the Pittsburg transfer-platform update from the schedule
+     * system and the PCTR/Antioch update from the separate DMU system. Their
+     * trip IDs cannot be joined directly, so join the matching directional
+     * pair by platform and the scheduled travel-time window.
+     */
+    private fun mergePittsburgTerminalTrips(trips: List<TripSnapshot>) {
+        val platformTrips = trips.filter { trip ->
+            (trip.line == Line.YELLOW || trip.line == Line.YELLOW_DMU)
+                && (trip.feedPlatform == "1" || trip.feedPlatform == "2")
+                && trip.pointAt(Station.PITT) != null
+        }
+        val dmuTrips = trips.filter { trip ->
+            trip.line == Line.YELLOW_DMU
+                && trip.pointAt(Station.PITT) == null
+                && trip.pointAt(Station.PCTR) != null
+        }
+        for (dmuTrip in dmuTrips) {
+            val pctrPoint = dmuTrip.pointAt(Station.PCTR) ?: continue
+            val reverse = dmuTrip.feedPlatform == "2"
+            val match = platformTrips
+                .filter { it.feedPlatform == dmuTrip.feedPlatform }
+                .mapNotNull { platformTrip ->
+                    val pittPoint = platformTrip.pointAt(Station.PITT)
+                        ?: return@mapNotNull null
+                    val travelTime = if (reverse) {
+                        pittPoint.departureTime - pctrPoint.departureTime
+                    } else {
+                        pctrPoint.departureTime - pittPoint.departureTime
+                    }
+                    if (travelTime in PITT_TO_PCTR_MIN_MILLIS..PITT_TO_PCTR_MAX_MILLIS) {
+                        platformTrip to kotlin.math.abs(
+                            travelTime - PITT_TO_PCTR_TYPICAL_MILLIS
+                        )
+                    } else {
+                        null
+                    }
+                }
+                .minByOrNull { it.second }
+                ?.first
+                ?: continue
+            val pittPoint = match.pointAt(Station.PITT) ?: continue
+            dmuTrip.addPoint(
+                StopTimePoint(
+                    Station.PITT,
+                    if (reverse) pctrPoint.order + 1 else pctrPoint.order - 1,
+                    pittPoint.departureTime,
+                    pittPoint.arrivalTime
+                )
+            )
+            dmuTrip.platform = match.platform
+            dmuTrip.trainDestination = if (reverse) Station.PITT else Station.ANTC
         }
     }
 
@@ -112,7 +288,8 @@ class GtfsRealtimeContentHandler(
             existing.tripId,
             departureTime,
             arrivalTime,
-            stops
+            stops,
+            existing.minimumTransferSecondsAfter
         )
     }
 
@@ -177,7 +354,8 @@ class GtfsRealtimeContentHandler(
         if (routeId.isNullOrEmpty()) {
             routeId = bartGtfsNetwork.routeIdForTrip(trip.getTripId())
         }
-        val line = bartGtfsNetwork.lineForRouteId(routeId) ?: return null
+        val line = bartGtfsNetwork.lineForRouteId(routeId)
+            ?: if (isAntiochShuttleTrip(tripUpdate)) Line.YELLOW_DMU else return null
 
         val result = TripSnapshot(
             tripId = trip.getTripId(),
@@ -191,6 +369,9 @@ class GtfsRealtimeContentHandler(
                 continue
             }
             val station = bartGtfsNetwork.stationForStopId(update.getStopId())
+            if (result.feedPlatform == null) {
+                result.feedPlatform = platformForStopId(update.getStopId())
+            }
             val departure = departureTime(update)
             val arrival = arrivalTime(update)
             if (station != null && station != Station.SPCL && (departure > 0 || arrival > 0)) {
@@ -213,6 +394,15 @@ class GtfsRealtimeContentHandler(
         }
         if (result.trainDestination == null) {
             return null
+        }
+        if (line == Line.YELLOW_DMU && result.pointAt(Station.PITT) == null) {
+            if (result.feedPlatform == "1" && result.pointAt(Station.PCTR) != null) {
+                result.trainDestination = Station.ANTC
+            } else if (result.feedPlatform == "2"
+                && result.pointAt(Station.PCTR) != null
+            ) {
+                result.trainDestination = Station.PITT
+            }
         }
         result.canceled = trip.hasScheduleRelationship() &&
             trip.getScheduleRelationship() ==
@@ -258,13 +448,22 @@ class GtfsRealtimeContentHandler(
             val legDestination = if (i < transfers.size) transfers[i] else tripDestination
             if (i > 0) {
                 val arrivingLeg = result[i - 1]
-                currentTrip = findConnectingTrip(
+                val connectingTrip = findConnectingTrip(
                     lines[i],
                     legOrigin,
                     legDestination,
                     arrivingLeg,
                     allTrips
-                ) ?: break
+                )
+                if (connectingTrip == null) {
+                    if (isUnscheduledTerminalLeg(lines[i], legOrigin, legDestination)) {
+                        result += unscheduledTerminalLeg(legOrigin, legDestination)
+                        legOrigin = legDestination
+                        continue
+                    }
+                    break
+                }
+                currentTrip = connectingTrip
             }
             val departure = currentTrip.pointAt(legOrigin) ?: break
             val arrival = currentTrip.pointAt(legDestination)
@@ -279,7 +478,8 @@ class GtfsRealtimeContentHandler(
                 currentTrip.tripId,
                 departure.departureTime,
                 arrival?.arrivalTime ?: 0L,
-                stops
+                stops,
+                minimumTransferSecondsAfter(route, i, legDestination, currentTrip.line)
             )
             legOrigin = legDestination
         }
@@ -299,7 +499,7 @@ class GtfsRealtimeContentHandler(
                 continue
             }
             val departure = trip.pointAt(origin)
-            if (departure == null || !TransferConnectionValidator.canConnect(
+            if (departure == null || !TransferConnectionValidator.canTransfer(
                     arrivingLeg.arrivalTime,
                     departure.departureTime,
                     origin,
@@ -318,6 +518,20 @@ class GtfsRealtimeContentHandler(
         return best
     }
 
+    private fun minimumTransferSecondsAfter(
+        route: Route,
+        legIndex: Int,
+        transferStation: Station,
+        fromLine: Line
+    ): Int {
+        if (legIndex + 1 >= route.lines.size) {
+            return 0
+        }
+        return bartGtfsNetwork.minimumTransferSeconds(
+            transferStation, fromLine, route.lines[legIndex + 1]
+        ).coerceAtLeast(0)
+    }
+
     private class StopTimePoint(
         val station: Station,
         val order: Int,
@@ -332,9 +546,16 @@ class GtfsRealtimeContentHandler(
     ) {
         var trainDestination: Station? = null
         var platform: String? = null
+        var feedPlatform: String? = null
         var canceled = false
         var lastOrder = Int.MIN_VALUE
         val points = mutableListOf<StopTimePoint>()
+
+        fun addPoint(point: StopTimePoint) {
+            points.removeAll { it.station == point.station }
+            points += point
+            lastOrder = maxOf(lastOrder, point.order)
+        }
 
         fun pointAt(station: Station?): StopTimePoint? =
             points.firstOrNull { it.station == station }
@@ -352,11 +573,20 @@ class GtfsRealtimeContentHandler(
                 return emptyList()
             }
             return points.filter { it.order in start.order..end.order }
+                .sortedBy { it.order }
         }
     }
 
     private fun isDirectionApplicable(direction: String?): Boolean =
         direction != null && routes.any { it.direction == direction }
+
+    private fun isAntiochShuttleTrip(
+        tripUpdate: GtfsRealtime.TripUpdate
+    ): Boolean = tripUpdate.getStopTimeUpdateList().any { update ->
+        bartGtfsNetwork.stationForStopId(update.getStopId()) == Station.PITT
+            || bartGtfsNetwork.stationForStopId(update.getStopId()) == Station.PCTR
+            || bartGtfsNetwork.stationForStopId(update.getStopId()) == Station.ANTC
+    }
 
     private fun directionForLine(line: Line, routeId: String?): String? {
         routes.firstOrNull {
@@ -374,6 +604,9 @@ class GtfsRealtimeContentHandler(
 
     companion object {
         private const val ESTIMATE_TOLERANCE_MILLIS = 30000L
+        private const val PITT_TO_PCTR_MIN_MILLIS = 5 * 60 * 1000L
+        private const val PITT_TO_PCTR_TYPICAL_MILLIS = 12 * 60 * 1000L
+        private const val PITT_TO_PCTR_MAX_MILLIS = 20 * 60 * 1000L
         private val PACIFIC_TIME = TimeZone.getTimeZone("America/Los_Angeles")
 
         private fun feedTime(feed: GtfsRealtime.FeedMessage): Long =
@@ -473,7 +706,7 @@ class GtfsRealtimeContentHandler(
         private fun colorForLine(line: Line): String = when (line) {
             Line.RED -> "#ffff0000"
             Line.ORANGE -> "#ffff9933"
-            Line.YELLOW, Line.YELLOW_LATE_NIGHT -> "#ffffff33"
+            Line.YELLOW, Line.YELLOW_LATE_NIGHT, Line.YELLOW_DMU -> "#ffffff33"
             Line.GREEN -> "#ff339933"
             Line.BLUE -> "#ff0099cc"
             else -> "#ffffffff"

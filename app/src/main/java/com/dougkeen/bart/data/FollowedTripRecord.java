@@ -121,6 +121,7 @@ public final class FollowedTripRecord {
         public String tripId;
         public long departureTime;
         public long arrivalTime;
+        public int minimumTransferSecondsAfter;
         public List<TripStopRecord> stops = new ArrayList<>();
 
         public TripLegRecord() {
@@ -135,6 +136,7 @@ public final class FollowedTripRecord {
             record.tripId = leg.getTripId();
             record.departureTime = leg.getDepartureTime();
             record.arrivalTime = leg.getArrivalTime();
+            record.minimumTransferSecondsAfter = leg.getMinimumTransferSecondsAfter();
             for (TripStop stop : leg.getStops()) {
                 record.stops.add(TripStopRecord.fromTripStop(stop));
             }
@@ -151,7 +153,7 @@ public final class FollowedTripRecord {
             return new TripLeg(line == null ? null : Line.valueOf(line),
                     station(origin), station(destination),
                     station(trainDestination), tripId, departureTime,
-                    arrivalTime, tripStops);
+                    arrivalTime, tripStops, minimumTransferSecondsAfter);
         }
     }
 

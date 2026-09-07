@@ -30,7 +30,7 @@ public class BartGtfsNetworkTest {
     }
 
     @Test
-    public void keepsRouteIdMappingAsAThinBARTAdapter() {
+    public void mapsRouteIdsAndInfersSharedStationTransfers() {
         GtfsNetworkCatalog catalog = GtfsNetworkCatalog.fromFiles(files());
         BartGtfsNetwork network = BartGtfsNetwork.fromCatalog(catalog);
 
@@ -39,7 +39,7 @@ public class BartGtfsNetworkTest {
         assertEquals("s", network.directionForRouteId("1"));
         assertEquals("n", network.directionForRouteId("12"));
         assertTrue(network.validationErrors().isEmpty());
-        assertFalse(network.canTransfer(Station.LAKE, Line.YELLOW, Line.BLUE));
+        assertTrue(network.canTransfer(Station.LAKE, Line.YELLOW, Line.BLUE));
     }
 
     @Test

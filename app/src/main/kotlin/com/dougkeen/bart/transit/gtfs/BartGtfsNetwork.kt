@@ -168,18 +168,27 @@ class BartGtfsNetwork private constructor(
     fun getTransferRules(): List<TransferRule> = transferRules
 
     /**
-     * Returns whether the feed explicitly permits changing between two lines
-     * at a station. Missing transfer data is not treated as permission.
+     * Returns whether changing between two lines at a station is possible.
+     * BART's feed lists only some route pairs, and omits transfer rows at
+     * stations such as Bay Fair, so shared station topology is the fallback.
+     * Explicit forbidden rules always win.
      */
     fun canTransfer(station: Station?, fromLine: Line?, toLine: Line?): Boolean {
         if (station == null || fromLine == null || toLine == null || fromLine == toLine) {
             return false
         }
+        if (station == Station.PITT
+            && ((fromLine == Line.YELLOW && toLine == Line.YELLOW_DMU)
+                || (fromLine == Line.YELLOW_DMU && toLine == Line.YELLOW))
+        ) {
+            return true
+        }
         var matchedRule = false
-        for (rule in transferRules) {
-            if (rule.fromStation != station
-                || rule.toStation != station
-                || !lineMatches(rule.fromRouteId, rule.fromLine, fromLine)
+        val stationRules = transferRules.filter {
+            it.fromStation == station && it.toStation == station
+        }
+        for (rule in stationRules) {
+            if (!lineMatches(rule.fromRouteId, rule.fromLine, fromLine)
                 || !lineMatches(rule.toRouteId, rule.toLine, toLine)
             ) {
                 continue
@@ -189,7 +198,12 @@ class BartGtfsNetwork private constructor(
                 return false
             }
         }
-        return matchedRule
+        if (matchedRule) {
+            return true
+        }
+
+        return routePatternsForLine(fromLine).any { station in it.stations }
+            && routePatternsForLine(toLine).any { station in it.stations }
     }
 
     /** Returns the smallest matching feed minimum in seconds. */

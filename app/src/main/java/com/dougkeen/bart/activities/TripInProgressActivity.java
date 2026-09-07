@@ -114,8 +114,6 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                     new RouteDepartureProjection(mDeparture.getStationPair(), this),
                     this);
             if (!mDeparture.getTripLegs().isEmpty()) {
-                final BartRunnerApplication application =
-                        (BartRunnerApplication) getApplication();
                 mTripProgressSubscription = repository.subscribe(
                         new TripProgressProjection(
                                 this,
@@ -126,12 +124,9 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                             @Override
                             public void onData(List<TripLeg> updatedLegs,
                                                com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-                                if (application.getFollowedTripRepository().getFollowedDeparture()
-                                        == mDeparture) {
-                                    mDeparture.setTripLegs(updatedLegs);
-                                    renderTrip();
-                                    invalidateOptionsMenu();
-                                }
+                                mDeparture.setTripLegs(updatedLegs);
+                                renderTrip();
+                                invalidateOptionsMenu();
                             }
 
                             @Override
@@ -300,10 +295,14 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         mRoute.setText(mDeparture.getStationPair().getOrigin().getName() + " → "
                 + mDeparture.getStationPair().getDestination().getName());
         mStatus.setText(getTripStatus());
-        mArrival.setText(getString(R.string.trip_final_arrival,
+        String estimatedArrival = DepartureTextFormatter.estimatedArrivalTime(
+                this, mDeparture, false);
+        mArrival.setText(estimatedArrival.isEmpty()
+                ? getString(R.string.trip_final_arrival_unknown,
+                mDeparture.getStationPair().getDestination().getName())
+                : getString(R.string.trip_final_arrival,
                 mDeparture.getStationPair().getDestination().getName(),
-                DepartureTextFormatter.estimatedArrivalTime(
-                        this, mDeparture, false)));
+                estimatedArrival));
 
         mTimeline.removeAllViews();
         List<TripLeg> legs = mDeparture.getTripLegs();
@@ -396,8 +395,13 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                     && arrivingLeg.getArrivalTime() <= now
                     && nextLeg.getDepartureTime() > now) {
                 String lineName = nextLeg.getLine() == null ? "Train"
-                        : nextLeg.getLine().name();
+                        : nextLeg.getLine().getDisplayName();
                 return getString(R.string.trip_transfer_now, lineName);
+            }
+            if (arrivingLeg.getArrivalTime() > 0
+                    && arrivingLeg.getArrivalTime() <= now
+                    && nextLeg.getDepartureTime() <= 0) {
+                return getString(R.string.trip_no_departure_scheduled);
             }
         }
         return null;
@@ -406,7 +410,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
     private void addLeg(TripLeg leg, boolean isCurrentTrain) {
         TextView heading = addText(null, true);
         String lineName = leg.getLine() == null ? "Train"
-                : leg.getLine().name();
+                : leg.getLine().getDisplayName();
         String prefix = isCurrentTrain ? getString(R.string.trip_current_train)
                 : getString(R.string.trip_connection_train);
         heading.setText(prefix + " · " + lineName);
@@ -418,8 +422,10 @@ public class TripInProgressActivity extends AbstractViewActivity implements
 
         if (leg.getStops().isEmpty()) {
             TextView arrival = addText(null, false);
-            arrival.setText(getString(R.string.trip_train_departure,
-                    formatTime(leg.getDepartureTime())));
+            arrival.setText(leg.getDepartureTime() > 0
+                    ? getString(R.string.trip_train_departure,
+                    formatTime(leg.getDepartureTime()))
+                    : getString(R.string.trip_no_departure_scheduled));
             return;
         }
         for (TripStop stop : leg.getStops()) {
@@ -457,10 +463,23 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         TextView details = addText(null, false);
         long arrival = getArrivalAt(arrivingLeg, arrivingLeg.getDestination());
         long departure = getDepartureAt(nextLeg, nextLeg.getOrigin());
-        details.setText(getString(R.string.trip_connection_details,
-                formatTime(arrival), formatEta(arrival), formatTime(departure),
-                formatMargin(departure - arrival)));
-        details.setTextColor(getResources().getColor(R.color.text_secondary));
+        if (departure <= 0) {
+            details.setText(R.string.trip_no_departure_scheduled);
+        } else {
+            details.setText(getString(R.string.trip_connection_details,
+                    formatTime(arrival), formatEta(arrival), formatTime(departure),
+                    formatMargin(departure - arrival)));
+        }
+        long margin = departure - arrival;
+        details.setTextColor(getResources().getColor(
+                isConnectionWarning(arrivingLeg, margin)
+                        ? R.color.connection_warning : R.color.text_secondary));
+    }
+
+    private boolean isConnectionWarning(TripLeg arrivingLeg, long margin) {
+        int minimumSeconds = arrivingLeg.getMinimumTransferSecondsAfter();
+        return margin < 0
+                || (minimumSeconds > 0 && margin < minimumSeconds * 1000L);
     }
 
     private long getArrivalAt(TripLeg leg,
@@ -543,7 +562,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
         final List<Departure> departures = result.getDepartures();
         for (Departure departure : departures) {
             if (departure.equals(mDeparture)) {
-                mDeparture.mergeEstimate(departure, false);
+                mDeparture.mergeEstimate(departure, true);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {

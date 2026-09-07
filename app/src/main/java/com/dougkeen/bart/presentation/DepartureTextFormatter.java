@@ -30,12 +30,13 @@ public final class DepartureTextFormatter {
             if (i > 0) {
                 details.append("\n");
             }
-            details.append(leg.getLine() == null ? "Train" : leg.getLine().name());
+            details.append(leg.getLine() == null ? "Train"
+                    : leg.getLine().getDisplayName());
             details.append(" ");
-            if (leg.getDepartureTime() > 0) {
-                details.append(format.format(new Date(leg.getDepartureTime())));
+            if (leg.getDepartureTime() <= 0) {
+                details.append(context.getString(R.string.trip_no_departure_scheduled));
             } else {
-                details.append("--");
+                details.append(format.format(new Date(leg.getDepartureTime())));
             }
             if (leg.getOrigin() != null && leg.getDestination() != null) {
                 details.append(" ").append(leg.getOrigin().shortName)

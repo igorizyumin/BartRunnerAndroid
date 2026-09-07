@@ -12,6 +12,32 @@ object TransferConnectionValidator {
         arrivalTime: Long,
         departureTime: Long,
         minimumTransferSeconds: Int
+    ): Boolean = meetsMinimumTransferTime(
+        arrivalTime, departureTime, minimumTransferSeconds
+    )
+
+    /** Returns whether the connection is feasible based on the feed rule. */
+    @JvmStatic
+    fun canTransfer(
+        arrivalTime: Long,
+        departureTime: Long,
+        transferStation: Station?,
+        fromLine: Line?,
+        toLine: Line?,
+        network: BartGtfsNetwork?
+    ): Boolean {
+        if (arrivalTime <= 0 || departureTime < arrivalTime) {
+            return false
+        }
+        return network != null && network.canTransfer(transferStation, fromLine, toLine)
+    }
+
+    /** Returns whether the connection meets the feed's recommended minimum. */
+    @JvmStatic
+    fun meetsMinimumTransferTime(
+        arrivalTime: Long,
+        departureTime: Long,
+        minimumTransferSeconds: Int
     ): Boolean {
         if (arrivalTime <= 0 || departureTime <= 0 || minimumTransferSeconds < 0) {
             return false
@@ -19,7 +45,7 @@ object TransferConnectionValidator {
         return departureTime - arrivalTime >= minimumTransferSeconds * 1000L
     }
 
-    /** Checks both the feed rule and its minimum time requirement. */
+    /** Checks whether the feed allows this transfer, ignoring its time warning. */
     @JvmStatic
     fun canConnect(
         arrivalTime: Long,
@@ -29,13 +55,7 @@ object TransferConnectionValidator {
         toLine: Line?,
         network: BartGtfsNetwork?
     ): Boolean {
-        if (network == null || !network.canTransfer(transferStation, fromLine, toLine)) {
-            return false
-        }
-        return canConnect(
-            arrivalTime,
-            departureTime,
-            network.minimumTransferSeconds(transferStation, fromLine, toLine)
-        )
+        return canTransfer(arrivalTime, departureTime, transferStation,
+            fromLine, toLine, network)
     }
 }

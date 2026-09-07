@@ -6,6 +6,7 @@ import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
 import com.dougkeen.bart.networktasks.GtfsStaticData
+import com.dougkeen.bart.routing.TripPlanner
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import kotlin.jvm.JvmSuppressWildcards
 
@@ -39,10 +40,11 @@ class TripProgressProjection private constructor(
 
     override fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
         val network = network()
+        val routes = TripPlanner.routesFor(origin, destination, network)
         val handler = GtfsRealtimeContentHandler(
             origin,
             destination,
-            emptyList(),
+            routes,
             true,
             network
         )

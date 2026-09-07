@@ -1,11 +1,18 @@
 package com.dougkeen.bart.transit.gtfs;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.dougkeen.bart.model.Line;
+import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Route;
 import com.dougkeen.bart.model.Station;
+import com.dougkeen.bart.model.TripLeg;
+import com.dougkeen.bart.backend.TripProgressProjection;
+import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler;
+import com.google.transit.realtime.GtfsRealtime;
 import com.dougkeen.bart.routing.TripPlanner;
 
 import org.junit.Test;
@@ -96,6 +103,476 @@ public class LiveGtfsRoutingTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void castroValleyToPittsburgUsesTheExpectedThreeLegRoute() {
+        List<Route> routes = TripPlanner.routesFor(Station.CAST, Station.PITT,
+                NETWORK);
+
+        assertFalse("routes=" + routes, routes.isEmpty());
+        Route route = routes.get(0);
+        assertEquals(Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW),
+                route.getLines());
+        assertEquals(Arrays.asList(Station.BAYF, Station._19TH),
+                route.getTransferStations());
+        assertTrue(route.hasTransfer());
+    }
+
+    @Test
+    public void sfoToCastroValleyUsesRedToBlueAtBalboaPark() {
+        List<Route> routes = TripPlanner.routesFor(Station.SFIA, Station.CAST,
+                NETWORK);
+
+        assertFalse("routes=" + routes, routes.isEmpty());
+        Route route = routes.get(0);
+        assertEquals("routes=" + routes, Arrays.asList(Line.RED, Line.BLUE),
+                route.getLines());
+        assertEquals("routes=" + routes, Arrays.asList(Station.BALB),
+                route.getTransferStations());
+    }
+
+    @Test
+    public void milpitasToCastroValleyUsesGreenToBlueAtBayFair() {
+        List<Route> routes = TripPlanner.routesFor(Station.MLPT, Station.CAST,
+                NETWORK);
+
+        assertFalse("routes=" + routes, routes.isEmpty());
+        Route greenRoute = null;
+        for (Route route : routes) {
+            if (route.getLines().equals(Arrays.asList(Line.GREEN, Line.BLUE))) {
+                greenRoute = route;
+                break;
+            }
+        }
+        assertTrue("routes=" + routeLines(routes), greenRoute != null);
+        assertEquals("routes=" + routes,
+                Arrays.asList(Station.BAYF), greenRoute.getTransferStations());
+    }
+
+    @Test
+    public void currentGreenDepartureFromMilpitasUsesBlueAtBayFair()
+            throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.MLPT, Station.CAST,
+                TripPlanner.routesFor(Station.MLPT, Station.CAST, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        Departure greenDeparture = null;
+        for (Departure departure : departures.getDepartures()) {
+            if (departure.getLine() == Line.GREEN) {
+                greenDeparture = departure;
+                break;
+            }
+        }
+        assertTrue("departures=" + departures.getDepartures(),
+                greenDeparture != null);
+        assertEquals(Arrays.asList(Line.GREEN, Line.BLUE),
+                linesOf(greenDeparture.getTripLegs()));
+        assertEquals(Arrays.asList(Station.BAYF),
+                transferStationsOf(greenDeparture.getTripLegs()));
+    }
+
+    @Test
+    public void castroValleyToPittsburgCenterRouteReachesTheTerminal() {
+        List<Route> routes = TripPlanner.routesFor(Station.CAST, Station.PCTR,
+                NETWORK);
+
+        assertFalse("routes=" + routes, routes.isEmpty());
+        Route route = routes.get(0);
+        assertEquals("routes=" + routes,
+                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW,
+                        Line.YELLOW_DMU),
+                route.getLines());
+        assertEquals(Arrays.asList(Station.BAYF, Station._19TH, Station.PITT),
+                route.getTransferStations());
+        assertEquals(Station.PCTR, route.getDestination());
+    }
+
+    @Test
+    public void pleasantHillToPittsburgCenterUsesTheTerminalShuttle() {
+        List<Route> routes = TripPlanner.routesFor(Station.PHIL, Station.PCTR,
+                NETWORK);
+
+        assertFalse("routes=" + routes, routes.isEmpty());
+        Route route = routes.get(0);
+        assertEquals(Arrays.asList(Line.YELLOW, Line.YELLOW_DMU),
+                route.getLines());
+        assertEquals(Arrays.asList(Station.PITT), route.getTransferStations());
+        assertEquals(Station.PCTR, route.getDestination());
+    }
+
+    @Test
+    public void currentFeedKeepsPittsburgCenterAsTheFinalStop() throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.CAST, Station.PCTR,
+                TripPlanner.routesFor(Station.CAST, Station.PCTR, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            TripLeg terminal = departure.getTripLegs()
+                    .get(departure.getTripLegs().size() - 1);
+            assertEquals(Station.PITT, departure.getTripLegs()
+                    .get(departure.getTripLegs().size() - 2).getDestination());
+            assertEquals(Station.PCTR, terminal.getDestination());
+            assertEquals(Line.YELLOW_DMU, terminal.getLine());
+            assertEquals(0L, terminal.getDepartureTime());
+        }
+    }
+
+    @Test
+    public void currentFeedConnectsPleasantHillToPittsburgCenterShuttle()
+            throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.PHIL, Station.PCTR,
+                TripPlanner.routesFor(Station.PHIL, Station.PCTR, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        boolean hasShuttle = false;
+        for (Departure departure : departures.getDepartures()) {
+            if (linesOf(departure.getTripLegs()).contains(Line.YELLOW_DMU)) {
+                hasShuttle = true;
+                for (TripLeg leg : departure.getTripLegs()) {
+                    if (leg.getLine() == Line.YELLOW_DMU) {
+                        assertTrue("departure=" + departure,
+                                leg.getDepartureTime() > 0);
+                        assertEquals(Arrays.asList(Station.PITT, Station.PCTR),
+                                stationsOf(leg.getStops()));
+                    }
+                }
+                break;
+            }
+        }
+        assertTrue("departures=" + departures.getDepartures(), hasShuttle);
+    }
+
+    @Test
+    public void castroValleyToAntiochRouteReachesTheTerminal() {
+        List<Route> routes = TripPlanner.routesFor(Station.CAST, Station.ANTC,
+                NETWORK);
+
+        assertFalse("routes=" + routes, routes.isEmpty());
+        Route route = routes.get(0);
+        assertEquals(Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW,
+                        Line.YELLOW_DMU),
+                route.getLines());
+        assertEquals(Arrays.asList(Station.BAYF, Station._19TH, Station.PITT),
+                route.getTransferStations());
+        assertEquals(Station.ANTC, route.getDestination());
+    }
+
+    @Test
+    public void currentFeedKeepsAntiochAsTheFinalStop() throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.CAST, Station.ANTC,
+                TripPlanner.routesFor(Station.CAST, Station.ANTC, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            TripLeg terminal = departure.getTripLegs()
+                    .get(departure.getTripLegs().size() - 1);
+            assertEquals(Station.PITT, departure.getTripLegs()
+                    .get(departure.getTripLegs().size() - 2).getDestination());
+            assertEquals(Station.ANTC, terminal.getDestination());
+            assertEquals(Line.YELLOW_DMU, terminal.getLine());
+            assertEquals(0L, terminal.getDepartureTime());
+        }
+    }
+
+    @Test
+    public void currentFeedReportsPittsburgToAntiochDepartures() throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.PITT, Station.ANTC,
+                TripPlanner.routesFor(Station.PITT, Station.ANTC, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(Line.YELLOW_DMU, departure.getLine());
+            assertEquals(Station.ANTC, departure.getTripLegs().get(0)
+                    .getDestination());
+        }
+    }
+
+    @Test
+    public void currentFeedReportsAntiochToPittsburgDepartures() throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.ANTC, Station.PITT,
+                TripPlanner.routesFor(Station.ANTC, Station.PITT, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(Line.YELLOW_DMU, departure.getLine());
+            assertEquals(Station.PITT, departure.getTripLegs().get(0)
+                    .getDestination());
+        }
+    }
+
+    @Test
+    public void unknownDmuTripIdCanSupplyPittsburgCenterDeparture() {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.PITT, Station.PCTR,
+                TripPlanner.routesFor(Station.PITT, Station.PCTR, NETWORK),
+                false, NETWORK);
+        GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                        .setGtfsRealtimeVersion("2.0")
+                        .setTimestamp(900L))
+                .addEntity(trip("628", "",
+                        new String[]{"PITT", "E20-1"},
+                        new long[]{1000L, 1100L}))
+                .build();
+
+        RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
+        assertEquals(1, departures.getDepartures().size());
+        assertEquals(Line.YELLOW_DMU,
+                departures.getDepartures().get(0).getLine());
+        assertEquals(Station.PCTR,
+                departures.getDepartures().get(0).getTripLegs().get(0)
+                        .getDestination());
+    }
+
+    @Test
+    public void separatePittsburgPlatformAndDmuUpdatesBuildAntiochDeparture() {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.PITT, Station.ANTC,
+                TripPlanner.routesFor(Station.PITT, Station.ANTC, NETWORK),
+                false, NETWORK);
+        GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                        .setGtfsRealtimeVersion("2.0")
+                        .setTimestamp(900L))
+                .addEntity(trip("pitt-platform", "",
+                        new String[]{"C80-1"}, new long[]{1000L}))
+                .addEntity(trip("634", "",
+                        new String[]{"E20-1"}, new long[]{1706L}))
+                .build();
+
+        RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
+        assertEquals(1, departures.getDepartures().size());
+        Departure departure = departures.getDepartures().get(0);
+        assertEquals(Line.YELLOW_DMU, departure.getLine());
+        assertEquals(1000_000L, departure.getTripLegs().get(0)
+                .getDepartureTime());
+        assertEquals(Station.ANTC, departure.getTripLegs().get(0)
+                .getDestination());
+    }
+
+    @Test
+    public void separateReversePlatformAndDmuUpdatesBuildPittsburgDeparture() {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.ANTC, Station.PITT,
+                TripPlanner.routesFor(Station.ANTC, Station.PITT, NETWORK),
+                false, NETWORK);
+        GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                        .setGtfsRealtimeVersion("2.0")
+                        .setTimestamp(900L))
+                .addEntity(trip("pitt-platform", "",
+                        new String[]{"C80-2"}, new long[]{1706L}))
+                .addEntity(trip("634", "",
+                        new String[]{"E30-2", "E20-2"},
+                        new long[]{800L, 1000L}))
+                .build();
+
+        RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
+        assertEquals(1, departures.getDepartures().size());
+        Departure departure = departures.getDepartures().get(0);
+        assertEquals(Line.YELLOW_DMU, departure.getLine());
+        assertEquals(800_000L, departure.getTripLegs().get(0)
+                .getDepartureTime());
+        assertEquals(Station.PITT, departure.getTripLegs().get(0)
+                .getDestination());
+    }
+
+    @Test
+    public void currentRedDepartureFromSfoUsesBlueAtBalboa() throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.SFIA, Station.CAST,
+                TripPlanner.routesFor(Station.SFIA, Station.CAST, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                currentTripUpdates());
+
+        Departure redDeparture = null;
+        for (Departure departure : departures.getDepartures()) {
+            if (departure.getLine() == Line.RED) {
+                redDeparture = departure;
+                break;
+            }
+        }
+        assertTrue("departures=" + departures.getDepartures(),
+                redDeparture != null);
+        assertEquals("routes=" + routeLines(
+                        TripPlanner.routesFor(Station.SFIA, Station.CAST, NETWORK)),
+                Arrays.asList(Line.RED, Line.BLUE),
+                linesOf(redDeparture.getTripLegs()));
+        assertEquals(Arrays.asList(Station.BALB),
+                transferStationsOf(redDeparture.getTripLegs()));
+    }
+
+    @Test
+    public void realtimeItineraryIncludesThePittsburgLeg() {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.CAST, Station.PITT,
+                TripPlanner.routesFor(Station.CAST, Station.PITT, NETWORK),
+                false, NETWORK);
+        GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                        .setGtfsRealtimeVersion("2.0")
+                        .setTimestamp(900L))
+                .addEntity(trip("blue", "11",
+                        new String[]{"CAST", "BAYF", "DALY"},
+                        new long[]{1000L, 1100L, 2000L}))
+                .addEntity(trip("orange", "3",
+                        new String[]{"BAYF", "19TH", "RICH"},
+                        new long[]{1200L, 1300L, 1400L}))
+                .addEntity(trip("yellow", "2",
+                        new String[]{"19TH", "PITT", "ANTC"},
+                        new long[]{1500L, 1600L, 1700L}))
+                .build();
+
+        RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
+        List<TripLeg> legs = departures.getDepartures().get(0).getTripLegs();
+
+        assertEquals(3, legs.size());
+        assertEquals(Station.PITT, legs.get(2).getDestination());
+
+        List<TripLeg> refreshed = handler.updateTripLegs(feed,
+                legs.subList(0, 2), 900_000L);
+        assertEquals(3, refreshed.size());
+        assertEquals(Station.PITT, refreshed.get(2).getDestination());
+    }
+
+    @Test
+    public void currentTripUpdatesBuildCompleteCastroValleyToPittsburgItinerary()
+            throws Exception {
+        GtfsRealtime.FeedMessage feed = currentTripUpdates();
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.CAST, Station.PITT,
+                TripPlanner.routesFor(Station.CAST, Station.PITT, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
+        assertTrue(feed.getEntityCount() > 0);
+        assertEquals(3, departures.getDepartures().size());
+        for (com.dougkeen.bart.model.Departure departure : departures.getDepartures()) {
+            assertEquals(3, departure.getTripLegs().size());
+            assertEquals(Station.BAYF, departure.getTripLegs().get(0).getDestination());
+            assertEquals(Station._19TH, departure.getTripLegs().get(1).getDestination());
+            assertEquals(Station.PITT, departure.getTripLegs().get(2).getDestination());
+            for (int index = 0; index + 1 < departure.getTripLegs().size(); index++) {
+                assertTrue("selected connection goes backwards in time",
+                        departure.getTripLegs().get(index + 1).getDepartureTime()
+                                >= departure.getTripLegs().get(index).getArrivalTime());
+            }
+        }
+    }
+
+    @Test
+    public void progressProjectionRestoresMissingPittsburgLegFromCurrentFeed()
+            throws Exception {
+        GtfsRealtime.FeedMessage feed = currentTripUpdates();
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.CAST, Station.PITT,
+                TripPlanner.routesFor(Station.CAST, Station.PITT, NETWORK),
+                false, NETWORK);
+        Departure selected = handler.getRealTimeDepartures(feed)
+                .getDepartures().get(0);
+        List<TripLeg> partial = selected.getTripLegs().subList(0, 2);
+
+        List<TripLeg> refreshed = new TripProgressProjection(
+                Station.CAST, Station.PITT, partial, NETWORK)
+                .project(new com.dougkeen.bart.backend.TransitFeedSnapshot(
+                        feed, emptyFeed(), System.currentTimeMillis()));
+
+        assertEquals(3, refreshed.size());
+        assertEquals(Station.PITT, refreshed.get(2).getDestination());
+    }
+
+    private static GtfsRealtime.FeedMessage currentTripUpdates() throws Exception {
+        try (InputStream input = LiveGtfsRoutingTest.class.getResourceAsStream(
+                "/gtfsrt/bart_trip_updates.pb")) {
+            assertTrue("current trip-update fixture is missing", input != null);
+            return GtfsRealtime.FeedMessage.parseFrom(input);
+        }
+    }
+
+    private static GtfsRealtime.FeedMessage emptyFeed() {
+        return GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                        .setGtfsRealtimeVersion("2.0"))
+                .build();
+    }
+
+    private static List<Line> linesOf(List<TripLeg> legs) {
+        List<Line> result = new java.util.ArrayList<Line>();
+        for (TripLeg leg : legs) {
+            result.add(leg.getLine());
+        }
+        return result;
+    }
+
+    private static List<Station> transferStationsOf(List<TripLeg> legs) {
+        List<Station> result = new java.util.ArrayList<Station>();
+        for (int index = 0; index + 1 < legs.size(); index++) {
+            result.add(legs.get(index).getDestination());
+        }
+        return result;
+    }
+
+    private static List<Station> stationsOf(List<com.dougkeen.bart.model.TripStop> stops) {
+        List<Station> result = new java.util.ArrayList<Station>();
+        for (com.dougkeen.bart.model.TripStop stop : stops) {
+            result.add(stop.getStation());
+        }
+        return result;
+    }
+
+    private static List<List<Line>> routeLines(List<Route> routes) {
+        List<List<Line>> result = new java.util.ArrayList<List<Line>>();
+        for (Route route : routes) {
+            result.add(route.getLines());
+        }
+        return result;
+    }
+
+    private static GtfsRealtime.FeedEntity trip(String tripId, String routeId,
+                                                 String[] stops, long[] times) {
+        GtfsRealtime.TripUpdate.Builder update = GtfsRealtime.TripUpdate
+                .newBuilder()
+                .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
+                        .setRouteId(routeId).setTripId(tripId));
+        for (int i = 0; i < stops.length; i++) {
+            GtfsRealtime.TripUpdate.StopTimeEvent event =
+                    GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                            .setTime(times[i]).build();
+            update.addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate
+                    .newBuilder().setStopId(stops[i]).setStopSequence(i + 1)
+                    .setArrival(event).setDeparture(event).build());
+        }
+        return GtfsRealtime.FeedEntity.newBuilder().setId(tripId)
+                .setTripUpdate(update).build();
     }
 
     private static Map<Line, Station> representativeStations(

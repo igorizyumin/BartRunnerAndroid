@@ -15,29 +15,37 @@ import java.util.Map;
 
 public class TransferConnectionValidatorTest {
     @Test
-    public void enforcesMinimumTimeAtTheExactBoundary() {
+    public void exposesMinimumTimeWithoutRejectingTheTransfer() {
         BartGtfsNetwork network = network();
         long arrival = 1_000_000L;
 
         assertTrue(TransferConnectionValidator.canConnect(arrival,
                 arrival + 90_000L, Station.MONT, Line.YELLOW, Line.BLUE,
                 network));
-        assertFalse(TransferConnectionValidator.canConnect(arrival,
+        assertTrue(TransferConnectionValidator.canConnect(arrival,
                 arrival + 89_999L, Station.MONT, Line.YELLOW, Line.BLUE,
                 network));
+        assertTrue(TransferConnectionValidator.meetsMinimumTransferTime(
+                arrival, arrival + 90_000L, 90));
+        assertFalse(TransferConnectionValidator.meetsMinimumTransferTime(
+                arrival, arrival + 89_999L, 90));
     }
 
     @Test
-    public void rejectsMissingTimesAndForbiddenOrUnlistedConnections() {
+    public void rejectsMissingTimesForbiddenAndNonSharedConnections() {
         BartGtfsNetwork network = network();
 
         assertFalse(TransferConnectionValidator.canConnect(0L, 1000L, 0));
         assertFalse(TransferConnectionValidator.canConnect(1000L, 0L, 0));
+        assertFalse(TransferConnectionValidator.canConnect(1000L, 999L,
+                Station.MONT, Line.YELLOW, Line.BLUE, network));
         assertFalse(TransferConnectionValidator.canConnect(1000L, 2000L, -1));
         assertFalse(TransferConnectionValidator.canConnect(1_000_000L,
-                1_090_000L, Station.MONT, Line.BLUE, Line.YELLOW, network));
-        assertFalse(TransferConnectionValidator.canConnect(1_000_000L,
+                1_090_000L, Station.RICH, Line.BLUE, Line.YELLOW, network));
+        assertTrue(TransferConnectionValidator.canConnect(1_000_000L,
                 1_029_999L, Station.DALY, Line.BLUE, Line.RED, network));
+        assertFalse(TransferConnectionValidator.meetsMinimumTransferTime(
+                1_000_000L, 1_029_999L, 30));
     }
 
     @Test
@@ -53,9 +61,11 @@ public class TransferConnectionValidatorTest {
                 network));
         assertTrue(TransferConnectionValidator.canConnect(secondArrival,
                 thirdDeparture, Station.DALY, Line.BLUE, Line.RED, network));
-        assertFalse(TransferConnectionValidator.canConnect(secondArrival,
+        assertTrue(TransferConnectionValidator.canConnect(secondArrival,
                 thirdDeparture - 1L, Station.DALY, Line.BLUE, Line.RED,
                 network));
+        assertFalse(TransferConnectionValidator.meetsMinimumTransferTime(
+                secondArrival, thirdDeparture - 1L, 30));
     }
 
     private static BartGtfsNetwork network() {

@@ -4,7 +4,7 @@ import java.util.ArrayList
 import java.util.Collections
 
 /** One train in a possibly multi-train itinerary. */
-class TripLeg(
+class TripLeg @JvmOverloads constructor(
     val line: Line?,
     val origin: Station?,
     val destination: Station?,
@@ -12,7 +12,8 @@ class TripLeg(
     val tripId: String?,
     val departureTime: Long,
     val arrivalTime: Long,
-    stops: List<TripStop>
+    stops: List<TripStop>,
+    val minimumTransferSecondsAfter: Int = 0
 ) {
     val stops: List<TripStop> = immutableTripLegList(stops)
 

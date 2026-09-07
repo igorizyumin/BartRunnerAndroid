@@ -70,9 +70,11 @@
     <string name="trip_connection_train">Connection train</string>
     <string name="trip_leaves_in">Leaves in %1$s</string>
     <string name="trip_final_arrival">Final arrival: %1$s around %2$s</string>
+    <string name="trip_final_arrival_unknown">Final arrival: %1$s (time unavailable)</string>
     <string name="trip_transfer_at">Transfer at %1$s</string>
     <string name="trip_connection_details">Arrives %1$s (%2$s) · next train %3$s · margin %4$s</string>
     <string name="trip_train_departure">Departs %1$s</string>
+    <string name="trip_no_departure_scheduled">No departure is currently scheduled</string>
     <string name="trip_details_unavailable">Detailed stop times are not available for this trip yet.</string>
     <string name="trip_eta_unknown">ETA unavailable</string>
     <string name="trip_stop_passed">Passed</string>

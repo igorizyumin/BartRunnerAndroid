@@ -8,6 +8,7 @@
     <color name="brand_primary">#FF0B7285</color>
     <color name="brand_primary_dark">#FF075985</color>
     <color name="brand_secondary">#FFF59E0B</color>
+    <color name="connection_warning">#FFB91C1C</color>
     <color name="surface">#FFF5F7FA</color>
     <color name="surface_container">#FFFFFFFF</color>
     <color name="text_primary">#FF102A43</color>

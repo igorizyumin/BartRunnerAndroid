@@ -69,6 +69,9 @@ class Departure() : Comparable<Departure> {
 
     fun setPassengerDestination(passengerDestination: Station?) {
         this.passengerDestination = passengerDestination
+        if (!hasCompleteTripLegs() && tripLegs.isNotEmpty()) {
+            estimatedTripTime = 0
+        }
     }
 
     fun getTripLegs(): List<TripLeg> =
@@ -76,11 +79,13 @@ class Departure() : Comparable<Departure> {
 
     fun setTripLegs(tripLegs: List<TripLeg>?) {
         this.tripLegs = tripLegs?.toMutableList() ?: mutableListOf()
-        if (this.tripLegs.isNotEmpty()) {
+        if (this.tripLegs.isNotEmpty() && hasCompleteTripLegs()) {
             val finalLeg = this.tripLegs.last()
             if (finalLeg.hasArrivalTime() && getMeanEstimate() > 0) {
                 setEstimatedTripTime((finalLeg.arrivalTime - getMeanEstimate()).toInt())
             }
+        } else if (this.tripLegs.isNotEmpty()) {
+            estimatedTripTime = 0
         }
     }
 
@@ -229,7 +234,7 @@ class Departure() : Comparable<Departure> {
     }
 
     fun getEstimatedArrivalTime(): Long {
-        if (tripLegs.isNotEmpty()) {
+        if (tripLegs.isNotEmpty() && hasCompleteTripLegs()) {
             val finalLeg = tripLegs.last()
             if (finalLeg.hasArrivalTime()) {
                 return finalLeg.arrivalTime
@@ -298,10 +303,18 @@ class Departure() : Comparable<Departure> {
     }
 
     fun hasExpired(): Boolean {
+        if (!hasAnyArrivalEstimate()) {
+            return false
+        }
         val now = System.currentTimeMillis()
         return maxEstimate < now
             && getEstimatedArrivalTime() + EXPIRE_MINUTES_AFTER_ARRIVAL * 60000L < now
     }
+
+    private fun hasCompleteTripLegs(): Boolean =
+        passengerDestination == null
+            || tripLegs.isEmpty()
+            || tripLegs.last().destination == passengerDestination
 
     override fun compareTo(other: Departure): Int =
         getMeanSecondsLeft().compareTo(other.getMeanSecondsLeft())

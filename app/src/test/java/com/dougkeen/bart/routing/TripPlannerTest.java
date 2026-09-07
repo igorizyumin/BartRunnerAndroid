@@ -139,9 +139,10 @@ public class TripPlannerTest {
 
         assertFalse(routes.isEmpty());
         Route route = routes.get(0);
-        assertEquals(asLines(Line.BLUE, Line.ORANGE, Line.YELLOW),
+        assertEquals(asLines(Line.BLUE, Line.ORANGE, Line.YELLOW,
+                        Line.YELLOW_DMU),
                 route.getLines());
-        assertEquals(asStations(Station.BAYF, Station._19TH),
+        assertEquals(asStations(Station.BAYF, Station._19TH, Station.PITT),
                 route.getTransferStations());
     }
 

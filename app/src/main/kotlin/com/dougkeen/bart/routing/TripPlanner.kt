@@ -6,7 +6,6 @@ import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import java.util.ArrayList
 import java.util.Collections
-import java.util.LinkedHashMap
 
 /**
  * Pure BART route-planning rules. This class has no Android, network, or UI
@@ -30,6 +29,10 @@ object TripPlanner {
         if (destination == null) {
             return catalogStationOnlyRoutes(origin, validatedNetwork)
         }
+        terminalShuttleRoute(origin, destination)?.let { return listOf(it) }
+        terminalRoutesViaPitt(origin, destination, validatedNetwork)
+            .takeIf { it.isNotEmpty() }
+            ?.let { return it }
 
         val routes = catalogDirectRoutes(origin, destination, validatedNetwork)
             .toMutableList()
@@ -40,7 +43,7 @@ object TripPlanner {
                 validatedNetwork
             )
         }
-        return immutableList(routes)
+        return immutableList(routes.map(::withTerminalShuttle))
     }
 
     @JvmStatic
@@ -89,6 +92,7 @@ object TripPlanner {
         return immutableList(
             catalogTransferRoutes(origin, destination, validatedNetwork, true)
                 .sortedWith(routePreference)
+                .map(::withTerminalShuttle)
         )
     }
 
@@ -102,14 +106,98 @@ object TripPlanner {
         val doubleTransferRoutes = catalogTransferRoutes(origin, destination, network, true)
             .sortedWith(routePreference)
         if (doubleTransferRoutes.isEmpty()) {
-            return immutableList(transferRoutes)
+            return immutableList(transferRoutes.map(::withTerminalShuttle))
         }
         if (transferRoutes.isEmpty()
             || routeScore(doubleTransferRoutes.first()) < routeScore(transferRoutes.first())
         ) {
-            return immutableList(doubleTransferRoutes)
+            return immutableList(doubleTransferRoutes.map(::withTerminalShuttle))
         }
-        return immutableList(transferRoutes)
+        return immutableList(transferRoutes.map(::withTerminalShuttle))
+    }
+
+    private fun terminalShuttleRoute(
+        origin: Station,
+        destination: Station
+    ): Route? {
+        val sequence = when {
+            origin == Station.PITT && destination == Station.PCTR ->
+                listOf(Station.PITT, Station.PCTR)
+            origin == Station.PITT && destination == Station.ANTC ->
+                listOf(Station.PITT, Station.PCTR, Station.ANTC)
+            origin == Station.PCTR && destination == Station.ANTC ->
+                listOf(Station.PCTR, Station.ANTC)
+            origin == Station.ANTC && destination == Station.PCTR ->
+                listOf(Station.ANTC, Station.PCTR)
+            origin == Station.ANTC && destination == Station.PITT ->
+                listOf(Station.ANTC, Station.PCTR, Station.PITT)
+            origin == Station.PCTR && destination == Station.PITT ->
+                listOf(Station.PCTR, Station.PITT)
+            else -> return null
+        }
+        return Route.direct(
+            origin,
+            destination,
+            Line.YELLOW_DMU,
+            if (origin == Station.ANTC) "s" else "n",
+            sequence
+        )
+    }
+
+    private fun terminalRoutesViaPitt(
+        origin: Station,
+        destination: Station,
+        network: BartGtfsNetwork
+    ): List<Route> {
+        if (destination != Station.PCTR && destination != Station.ANTC) {
+            return emptyList()
+        }
+        val routesToPitt = routesFor(origin, Station.PITT, network)
+        return immutableList(
+            routesToPitt.mapNotNull { route ->
+                if (route.lines.lastOrNull() != Line.YELLOW
+                    || route.destination != Station.PITT
+                ) {
+                    null
+                } else {
+                    appendTerminalShuttle(route, destination)
+                }
+            }
+        )
+    }
+
+    private fun appendTerminalShuttle(route: Route, destination: Station): Route =
+        Route.transfer(
+            route.origin!!,
+            destination,
+            route.lines + Line.YELLOW_DMU,
+            route.transferStations + Station.PITT,
+            route.direction,
+            routeSequences(route) + mapOf(
+                Line.YELLOW_DMU to terminalShuttleSequence(destination)
+            )
+        )
+
+    private fun routeSequences(route: Route): Map<Line, List<Station>> =
+        route.lines.associateWith { line -> route.getStationSequence(line) }
+
+    private fun terminalShuttleSequence(destination: Station): List<Station> =
+        if (destination == Station.ANTC) {
+            listOf(Station.PITT, Station.PCTR, Station.ANTC)
+        } else {
+            listOf(Station.PITT, Station.PCTR)
+        }
+
+    private fun withTerminalShuttle(route: Route): Route {
+        val destination = route.destination
+        if (!route.hasTransfer()
+            || (destination != Station.PCTR && destination != Station.ANTC)
+            || route.lines.lastOrNull() != Line.YELLOW
+            || route.transferStations.lastOrNull() == Station.PITT
+        ) {
+            return route
+        }
+        return appendTerminalShuttle(route, destination!!)
     }
 
     private fun catalogStationOnlyRoutes(
@@ -432,6 +520,9 @@ object TripPlanner {
             return Station.BALB
         }
         if (samePair(first, second, Line.BLUE, Line.ORANGE)) {
+            return Station.BAYF
+        }
+        if (samePair(first, second, Line.GREEN, Line.BLUE)) {
             return Station.BAYF
         }
         if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {

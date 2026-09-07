@@ -14,7 +14,7 @@ import java.util.List;
 /** Android parcel adapter for one trip leg. */
 public final class TripLegParcel implements Parcelable {
     private static final int FORMAT_MAGIC = 0x4252544c;
-    private static final int FORMAT_VERSION = 1;
+    private static final int FORMAT_VERSION = 2;
     private final TripLeg leg;
 
     public TripLegParcel(TripLeg leg) {
@@ -22,7 +22,11 @@ public final class TripLegParcel implements Parcelable {
     }
 
     private TripLegParcel(Parcel in) {
-        if (in.readInt() != FORMAT_MAGIC || in.readInt() != FORMAT_VERSION) {
+        if (in.readInt() != FORMAT_MAGIC) {
+            throw new IllegalArgumentException("Unsupported trip leg parcel format");
+        }
+        int formatVersion = in.readInt();
+        if (formatVersion != 1 && formatVersion != FORMAT_VERSION) {
             throw new IllegalArgumentException("Unsupported trip leg parcel format");
         }
         int lineOrdinal = in.readInt();
@@ -33,6 +37,7 @@ public final class TripLegParcel implements Parcelable {
         String tripId = in.readString();
         long departureTime = in.readLong();
         long arrivalTime = in.readLong();
+        int minimumTransferSecondsAfter = formatVersion >= 2 ? in.readInt() : 0;
         ArrayList<TripStopParcel> stopParcels = in.createTypedArrayList(
                 TripStopParcel.CREATOR);
         List<TripStop> stops = new ArrayList<>();
@@ -42,7 +47,7 @@ public final class TripLegParcel implements Parcelable {
             }
         }
         leg = new TripLeg(line, origin, destination, trainDestination, tripId,
-                departureTime, arrivalTime, stops);
+                departureTime, arrivalTime, stops, minimumTransferSecondsAfter);
     }
 
     public TripLeg getTripLeg() {
@@ -65,6 +70,7 @@ public final class TripLegParcel implements Parcelable {
         dest.writeString(leg.getTripId());
         dest.writeLong(leg.getDepartureTime());
         dest.writeLong(leg.getArrivalTime());
+        dest.writeInt(leg.getMinimumTransferSecondsAfter());
         ArrayList<TripStopParcel> stopParcels = new ArrayList<>();
         for (TripStop stop : leg.getStops()) {
             stopParcels.add(new TripStopParcel(stop));

@@ -22,7 +22,7 @@ import java.util.Map;
 
 public class GtfsRealtimeContentHandlerTest {
     @Test
-    public void skipsConnectingTripsThatDoNotMeetFeedMinimum() {
+    public void keepsConnectingTripsThatDoNotMeetFeedMinimum() {
         BartGtfsNetwork network = network();
         Route route = TripPlanner.routesFor(Station.LAKE, Station.DALY,
                 network).get(0);
@@ -39,9 +39,10 @@ public class GtfsRealtimeContentHandlerTest {
         assertEquals(1, departures.getDepartures().size());
         List<TripLeg> legs = departures.getDepartures().get(0).getTripLegs();
         assertEquals(2, legs.size());
-        assertEquals("blue-valid", legs.get(1).getTripId());
-        assertEquals(1_150_000L, legs.get(1).getDepartureTime());
-        assertEquals(1_210_000L, legs.get(1).getArrivalTime());
+        assertEquals("blue-early", legs.get(1).getTripId());
+        assertEquals(1_100_000L, legs.get(1).getDepartureTime());
+        assertEquals(1_160_000L, legs.get(1).getArrivalTime());
+        assertEquals(90, legs.get(0).getMinimumTransferSecondsAfter());
     }
 
     private static GtfsRealtime.FeedMessage feed() {
