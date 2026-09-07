@@ -15,10 +15,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Station;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.platform.StationPairParcel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -36,10 +34,9 @@ public class ViewDeparturesActivityTest {
     @Test
     public void recreationRestoresRouteQueryWithoutDepartureSnapshot() {
         Context context = ApplicationProvider.getApplicationContext();
-        Intent intent = new Intent(context, ViewDeparturesActivity.class)
-                .putExtra(Constants.STATION_PAIR_EXTRA,
-                        new StationPairParcel(new StationPair(
-                                Station.CAST, Station.MLPT)));
+        Intent intent = new Intent(context, ViewDeparturesActivity.class);
+        RouteArguments.putRoute(intent, new StationPair(
+                Station.CAST, Station.MLPT));
 
         try (ActivityScenario<ViewDeparturesActivity> scenario =
                      ActivityScenario.launch(intent)) {
@@ -48,7 +45,7 @@ public class ViewDeparturesActivityTest {
 
             Bundle savedState = new Bundle();
             scenario.onActivity(activity -> activity.onSaveInstanceState(savedState));
-            assertTrue(savedState.containsKey("stationPair"));
+            assertTrue(savedState.containsKey(RouteArguments.ORIGIN));
             assertFalse(savedState.containsKey("departures"));
 
             scenario.recreate();

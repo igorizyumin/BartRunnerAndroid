@@ -16,8 +16,6 @@ import android.os.VibratorManager;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.view.ActionMode;
-import androidx.core.content.IntentCompat;
-import androidx.core.os.BundleCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,15 +32,12 @@ import android.widget.Toast;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.controls.Ticker;
+import com.dougkeen.bart.controls.ScreenTicker;
 import com.dougkeen.bart.data.DepartureArrayAdapter;
 import com.dougkeen.bart.data.LifecycleFlowCollector;
-import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TimeSource;
-import com.dougkeen.bart.platform.DepartureParcel;
-import com.dougkeen.bart.platform.StationPairParcel;
 import com.dougkeen.bart.services.BoardedDepartureService;
 import com.dougkeen.util.Assert;
 import com.dougkeen.util.WakeLocker;
@@ -50,7 +45,6 @@ import com.dougkeen.util.WakeLocker;
 public class ViewDeparturesActivity extends AbstractViewActivity implements
         DepartureArrayAdapter.Listener {
 
-    private static final String STATE_STATION_PAIR = "stationPair";
     private static final String STATE_SELECTED_DEPARTURE_ID =
             "selectedDepartureIdentity";
     private static final String STATE_HAS_DEPARTURE_ACTION_MODE =
@@ -77,6 +71,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     private RecyclerView mListView;
 
     private ActionMode mActionMode;
+
+    private ScreenTicker mScreenTicker;
 
     private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
 
@@ -136,17 +132,11 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 .get(DeparturesViewModel.class);
 
         if (savedInstanceState != null
-                && savedInstanceState.containsKey(STATE_STATION_PAIR)) {
-            StationPairParcel stationPairParcel = BundleCompat.getParcelable(
-                    savedInstanceState, STATE_STATION_PAIR, StationPairParcel.class);
-            mStationPair = stationPairParcel == null
-                    ? null : stationPairParcel.getStationPair();
+                && savedInstanceState.containsKey(RouteArguments.ORIGIN)) {
+            mStationPair = RouteArguments.readRoute(savedInstanceState);
             setListTitle();
         } else {
-            StationPairParcel stationPairParcel = IntentCompat.getParcelableExtra(
-                    intent, Constants.STATION_PAIR_EXTRA, StationPairParcel.class);
-            mStationPair = stationPairParcel == null
-                    ? null : stationPairParcel.getStationPair();
+            mStationPair = RouteArguments.readRoute(intent);
             setListTitle();
         }
 
@@ -157,7 +147,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     STATE_HAS_DEPARTURE_ACTION_MODE);
         }
 
-        updateEmptyState(mDeparturesAdapter.getCount() == 0);
+        updateEmptyState(mDeparturesAdapter.getItemCount() == 0);
 
         if (mStationPair == null) {
             finish();
@@ -170,6 +160,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 mStationPair);
         LifecycleFlowCollector.collect(this, mDeparturesViewModel.getUiState(),
                 this::renderState);
+        mScreenTicker = new ScreenTicker(getLifecycle(),
+                tick -> mDeparturesAdapter.setTick(tick));
 
         ActionBar supportActionBar = Assert.notNull(getSupportActionBar());
         supportActionBar.setHomeButtonEnabled(true);
@@ -313,7 +305,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     protected void onStop() {
         super.onStop();
         mHandler.removeCallbacks(mClearKeepScreenOnRunnable);
-        Ticker.getInstance().stopTicking(this);
         WakeLocker.release();
     }
 
@@ -331,15 +322,13 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             }
             outState.putBoolean(STATE_HAS_DEPARTURE_ACTION_MODE,
                     isDepartureActionModeActive());
-            outState.putParcelable(STATE_STATION_PAIR,
-                    new StationPairParcel(mStationPair));
+            RouteArguments.putRoute(outState, mStationPair);
         }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        Ticker.getInstance().startTicking(this);
     }
 
     @Override
@@ -350,7 +339,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     .addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             mHandler.removeCallbacks(mClearKeepScreenOnRunnable);
             mHandler.postDelayed(mClearKeepScreenOnRunnable, 10 * 60 * 1000);
-            Ticker.getInstance().startTicking(this);
         }
     }
 
@@ -415,15 +403,18 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         startBoardedDepartureService(command);
 
         if (openTripScreen) {
-            startActivity(new Intent(this, TripInProgressActivity.class));
+            Intent tripIntent = new Intent(this, TripInProgressActivity.class);
+            RouteArguments.putTrip(tripIntent, selectedDeparture.getStationPair(),
+                    selectedDeparture.getIdentity(), RouteArguments.MODE_FOLLOWED);
+            startActivity(tripIntent);
         }
     }
 
     private void openTripSchedule(Departure departure) {
         departure = prepareDepartureForTrip(departure);
         Intent intent = new Intent(this, TripInProgressActivity.class);
-        intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
-                new DepartureParcel(departure));
+        RouteArguments.putTrip(intent, mStationPair, departure.getIdentity(),
+                RouteArguments.MODE_SCHEDULE);
         startActivity(intent);
     }
 
@@ -445,10 +436,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     private void startBoardedDepartureService(TripServiceCommand command) {
         Intent intent = new Intent(this, BoardedDepartureService.class)
                 .setAction(command.getAction());
-        if (command.getDeparture() != null) {
-            intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
-                    new DepartureParcel(command.getDeparture()));
-        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {
@@ -508,8 +495,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     case CONTENT:
                         updateEmptyState(false);
                         mProgress.setVisibility(View.GONE);
-                        Ticker.getInstance().startTicking(
-                                ViewDeparturesActivity.this);
                         mDeparturesAdapter.submitList(state.getDepartures(),
                                 ViewDeparturesActivity.this::restoreSelectedDeparture);
                         break;
@@ -542,8 +527,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             return;
         }
 
-        for (int index = 0; index < mDeparturesAdapter.getCount(); index++) {
-            Departure departure = mDeparturesAdapter.getItem(index);
+        for (int index = 0; index < mDeparturesAdapter.getItemCount(); index++) {
+            Departure departure = mDeparturesAdapter.itemAt(index);
             if (mSelectedDepartureIdentity.equals(departure.getIdentity())) {
                 if (mSelectedDeparture != departure) {
                     setSelectedDeparture(departure);

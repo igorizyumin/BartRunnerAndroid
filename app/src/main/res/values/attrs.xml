@@ -16,13 +16,4 @@
 
 <resources>
 
-    <attr name="tickInterval" format="integer" />
-
-    <declare-styleable name="CountdownTextView">
-        <attr name="tickInterval" />
-    </declare-styleable>
-    <declare-styleable name="TimedTextSwitcher">
-        <attr name="tickInterval" />
-    </declare-styleable>
-
 </resources>

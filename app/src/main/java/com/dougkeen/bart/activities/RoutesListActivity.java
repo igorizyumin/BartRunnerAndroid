@@ -25,12 +25,11 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
+import com.dougkeen.bart.controls.ScreenTicker;
 import com.dougkeen.bart.data.FavoritesArrayAdapter;
 import com.dougkeen.bart.data.LifecycleFlowCollector;
-import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TimeSource;
-import com.dougkeen.bart.platform.StationPairParcel;
 import java.util.ArrayList;
 
 
@@ -49,6 +48,8 @@ public class   RoutesListActivity extends AppCompatActivity implements
     BartRunnerApplication app;
 
     private RoutesViewModel routesViewModel;
+
+    private ScreenTicker screenTicker;
 
     RecyclerView listView;
 
@@ -72,7 +73,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
     public void onFavoriteClicked(StationPair item) {
         Intent intent = new Intent(RoutesListActivity.this,
                 ViewDeparturesActivity.class);
-        intent.putExtra(Constants.STATION_PAIR_EXTRA, new StationPairParcel(item));
+        RouteArguments.putRoute(intent, item);
         startActivity(intent);
     }
 
@@ -104,6 +105,8 @@ public class   RoutesListActivity extends AppCompatActivity implements
                 this, new ArrayList<>(), this, timeSource);
 
         setListAdapter(mRoutesAdapter);
+        screenTicker = new ScreenTicker(getLifecycle(),
+                tick -> mRoutesAdapter.setTick(tick));
         LifecycleFlowCollector.collect(this, routesViewModel.getUiState(),
                 this::renderState);
 
@@ -131,7 +134,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
                         if (position == RecyclerView.NO_POSITION) {
                             return;
                         }
-                        StationPair stationPair = mRoutesAdapter.getItem(position);
+                        StationPair stationPair = mRoutesAdapter.itemAt(position);
                         routesViewModel.removeFavorite(stationPair);
                         showRouteDeletedSnackbar(position, stationPair);
                     }
@@ -181,8 +184,9 @@ public class   RoutesListActivity extends AppCompatActivity implements
         if (emptyView == null || mRoutesAdapter == null) {
             return;
         }
-        emptyView.setVisibility(mRoutesAdapter.isEmpty() ? View.VISIBLE : View.GONE);
-        listView.setVisibility(mRoutesAdapter.isEmpty() ? View.GONE : View.VISIBLE);
+        boolean empty = mRoutesAdapter.getItemCount() == 0;
+        emptyView.setVisibility(empty ? View.VISIBLE : View.GONE);
+        listView.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
 
     private void renderState(RoutesUiState state) {
@@ -300,8 +304,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
             if (item.getItemId() == R.id.view) {
                 Intent intent = new Intent(RoutesListActivity.this,
                         ViewDeparturesActivity.class);
-                intent.putExtra(Constants.STATION_PAIR_EXTRA,
-                        new StationPairParcel(mCurrentlySelectedStationPair));
+                RouteArguments.putRoute(intent, mCurrentlySelectedStationPair);
                 startActivity(intent);
                 mode.finish();
                 return true;

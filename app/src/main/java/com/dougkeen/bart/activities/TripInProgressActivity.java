@@ -5,8 +5,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.IBinder;
 import android.text.format.DateFormat;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -15,17 +13,17 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.IntentCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.data.LifecycleFlowCollector;
+import com.dougkeen.bart.controls.ScreenTicker;
 import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.Line;
+import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.model.TripStop;
-import com.dougkeen.bart.platform.DepartureParcel;
 import com.dougkeen.bart.presentation.DepartureTextFormatter;
 import com.dougkeen.bart.services.BoardedDepartureService;
 
@@ -37,28 +35,18 @@ public class TripInProgressActivity extends AbstractViewActivity {
 
     private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1002;
 
-    private final Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     private TimeSource mTimeSource;
     private Departure mDeparture;
     private TripProgressViewModel mTripProgressViewModel;
     private TripActionsViewModel mTripActionsViewModel;
     private boolean mIsFollowing;
+    private ScreenTicker mScreenTicker;
 
     private TextView mStatus;
     private TextView mRoute;
     private TextView mArrival;
     private View mFollowTripButton;
     private LinearLayout mTimeline;
-
-    private final Runnable mRefreshRunnable = new Runnable() {
-        @Override
-        public void run() {
-            renderTrip();
-            if (!isFinishing()) {
-                mHandler.postDelayed(this, 1000L);
-            }
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,27 +69,24 @@ public class TripInProgressActivity extends AbstractViewActivity {
         mTimeSource = application.getTimeSource();
         mTripActionsViewModel = new androidx.lifecycle.ViewModelProvider(this)
                 .get(TripActionsViewModel.class);
-        DepartureParcel departureParcel = IntentCompat.getParcelableExtra(
-                getIntent(), BoardedDepartureService.DEPARTURE_EXTRA,
-                DepartureParcel.class);
-        Departure requestedDeparture = departureParcel == null
-                ? null : departureParcel.getDeparture();
-        if (requestedDeparture != null) {
-            mDeparture = requestedDeparture;
-            Departure followedDeparture = mTripActionsViewModel.getFollowedDeparture();
-            mIsFollowing = followedDeparture != null
-                    && followedDeparture.equals(requestedDeparture);
-        } else {
-            mDeparture = mTripActionsViewModel.getFollowedDeparture();
-            mIsFollowing = mDeparture != null;
+        Departure followedDeparture = mTripActionsViewModel.getFollowedDeparture();
+        StationPair route = RouteArguments.readRoute(getIntent());
+        String departureIdentity = RouteArguments.readDepartureIdentity(getIntent());
+        String screenMode = RouteArguments.readScreenMode(getIntent());
+        if (route == null && followedDeparture != null
+                && (screenMode == null || RouteArguments.MODE_FOLLOWED.equals(screenMode))) {
+            route = followedDeparture.getStationPair();
+            departureIdentity = followedDeparture.getIdentity();
         }
-        if (mDeparture == null) {
+        if (route == null || departureIdentity == null) {
             finish();
             return;
         }
+        mIsFollowing = followedDeparture != null
+                && departureIdentity.equals(followedDeparture.getIdentity());
         mTripProgressViewModel = new androidx.lifecycle.ViewModelProvider(this)
                 .get(TripProgressViewModel.class);
-        mTripProgressViewModel.setDeparture(mDeparture, mTimeSource);
+        mTripProgressViewModel.setQuery(route, departureIdentity, mTimeSource);
         LifecycleFlowCollector.collect(this,
                 mTripProgressViewModel.getDepartureState(), departure -> {
                     if (departure == null) {
@@ -114,20 +99,9 @@ public class TripInProgressActivity extends AbstractViewActivity {
                     renderTrip();
                     invalidateOptionsMenu();
                 });
+        mScreenTicker = new ScreenTicker(getLifecycle(), tick -> renderTrip());
         updateFollowState();
         renderTrip();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mHandler.post(mRefreshRunnable);
-    }
-
-    @Override
-    protected void onStop() {
-        mHandler.removeCallbacks(mRefreshRunnable);
-        super.onStop();
     }
 
     @Override
@@ -234,10 +208,6 @@ public class TripInProgressActivity extends AbstractViewActivity {
     private void startBoardedDepartureService(TripServiceCommand command) {
         Intent intent = new Intent(this, BoardedDepartureService.class)
                 .setAction(command.getAction());
-        if (command.getDeparture() != null) {
-            intent.putExtra(BoardedDepartureService.DEPARTURE_EXTRA,
-                    new DepartureParcel(command.getDeparture()));
-        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             startForegroundService(intent);
         } else {

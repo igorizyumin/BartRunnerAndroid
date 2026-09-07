@@ -24,7 +24,7 @@ class TripActionsViewModel(application: Application) :
 
     fun followTrip(departure: Departure): TripServiceCommand {
         followedTripRepository.setFollowedDeparture(departure)
-        return TripServiceCommand(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE, departure)
+        return TripServiceCommand(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE)
     }
 
     fun updateFollowedTrip(departure: Departure) {
@@ -50,5 +50,4 @@ class TripActionsViewModel(application: Application) :
 
 data class TripServiceCommand(
     val action: String,
-    val departure: Departure? = null,
 )

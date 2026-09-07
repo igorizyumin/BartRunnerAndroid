@@ -79,16 +79,16 @@ plumbing as soon as its replacement is working.
 
 ### Milestone 5 — remove object-graph transport and global UI plumbing
 
-- [ ] Stop passing whole `Departure` objects between Activities and the
+- [x] Stop passing whole `Departure` objects between Activities and the
   service. Pass station IDs, trip/departure identity, and screen mode, then
   rehydrate current state from the repository.
-- [ ] Remove `DepartureParcel`, `TripLegParcel`, and `TripStopParcel` after
+- [x] Remove `DepartureParcel`, `TripLegParcel`, and `TripStopParcel` after
   their callers are migrated.
-- [ ] Replace `StationPairParcel` with small primitive route arguments or a
+- [x] Replace `StationPairParcel` with small primitive route arguments or a
   single route-arguments type at the Activity boundary.
-- [ ] Replace the global `Ticker` singleton and view-owned tick callbacks with
+- [x] Replace the global `Ticker` singleton and view-owned tick callbacks with
   lifecycle-bound timer state collected only while a screen is visible.
-- [ ] Remove obsolete adapter compatibility methods and make adapters consume
+- [x] Remove obsolete adapter compatibility methods and make adapters consume
   immutable UI items with `ListAdapter`/`DiffUtil`.
 
 ## Platform and release modernization

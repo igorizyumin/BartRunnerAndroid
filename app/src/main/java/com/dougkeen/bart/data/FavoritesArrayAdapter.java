@@ -10,6 +10,8 @@ import android.widget.TextView;
 import android.widget.ViewSwitcher.ViewFactory;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.dougkeen.bart.R;
@@ -20,14 +22,32 @@ import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TimeSource;
 import com.dougkeen.bart.presentation.DepartureTextFormatter;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 /** RecyclerView adapter for favorite routes and their live departure summary. */
 public class FavoritesArrayAdapter
-        extends RecyclerView.Adapter<FavoritesArrayAdapter.ViewHolder> {
+        extends ListAdapter<StationPair, FavoritesArrayAdapter.ViewHolder> {
+
+    private static final DiffUtil.ItemCallback<StationPair> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<StationPair>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull StationPair oldItem,
+                                               @NonNull StationPair newItem) {
+                    return oldItem.equals(newItem);
+                }
+
+                @Override
+                public boolean areContentsTheSame(@NonNull StationPair oldItem,
+                                                  @NonNull StationPair newItem) {
+                    return oldItem.fareEquals(newItem)
+                            && oldItem.getAverageTripLength()
+                            == newItem.getAverageTripLength()
+                            && oldItem.getAverageTripSampleCount()
+                            == newItem.getAverageTripSampleCount();
+                }
+            };
 
     public interface Listener {
         void onFavoriteClicked(StationPair pair);
@@ -36,22 +56,18 @@ public class FavoritesArrayAdapter
     }
 
     private final Context context;
-    private List<StationPair> items;
     private final Listener listener;
     private final TimeSource timeSource;
     private Map<StationPair, Departure> firstDepartures = Collections.emptyMap();
+    private long tick;
 
     public FavoritesArrayAdapter(Context context, List<StationPair> items,
                                  Listener listener, TimeSource timeSource) {
+        super(DIFF_CALLBACK);
         this.context = context;
-        this.items = items;
         this.listener = listener;
         this.timeSource = timeSource;
-    }
-
-    public void submitList(List<StationPair> newItems) {
-        items = new ArrayList<>(newItems);
-        notifyDataSetChanged();
+        submitList(items);
     }
 
     public void setFirstDepartures(Map<StationPair, Departure> firstDepartures) {
@@ -60,46 +76,13 @@ public class FavoritesArrayAdapter
         notifyDataSetChanged();
     }
 
-    public StationPair getItem(int position) {
-        return items.get(position);
+    public void setTick(long tick) {
+        this.tick = tick;
+        notifyDataSetChanged();
     }
 
-    public int getCount() {
-        return items.size();
-    }
-
-    public boolean isEmpty() {
-        return items.isEmpty();
-    }
-
-    public void add(StationPair item) {
-        items.add(item);
-        notifyItemInserted(items.size() - 1);
-    }
-
-    public void remove(StationPair item) {
-        int index = items.indexOf(item);
-        if (index < 0) {
-            return;
-        }
-        items.remove(index);
-        notifyItemRemoved(index);
-    }
-
-    public void move(int from, int to) {
-        if (from == to || from < 0 || to < 0 || from >= items.size()
-                || to >= items.size()) {
-            return;
-        }
-        StationPair item = items.remove(from);
-        items.add(to, item);
-        notifyItemMoved(from, to);
-    }
-
-    public void insert(StationPair item, int index) {
-        int safeIndex = Math.max(0, Math.min(index, items.size()));
-        items.add(safeIndex, item);
-        notifyItemInserted(safeIndex);
+    public StationPair itemAt(int position) {
+        return getItem(position);
     }
 
     @NonNull
@@ -112,12 +95,7 @@ public class FavoritesArrayAdapter
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.bind(getItem(position));
-    }
-
-    @Override
-    public int getItemCount() {
-        return items.size();
+        holder.bind(getItem(position), tick);
     }
 
     public final class ViewHolder extends RecyclerView.ViewHolder {
@@ -148,7 +126,7 @@ public class FavoritesArrayAdapter
             });
         }
 
-        void bind(StationPair pair) {
+        void bind(StationPair pair, long tick) {
             origin.setText(pair.getOrigin().getName());
             View to = itemView.findViewById(R.id.to);
             if (pair.getDestination() == null) {
@@ -165,41 +143,32 @@ public class FavoritesArrayAdapter
             if (firstDeparture == null) {
                 countdown.setText("");
                 uncertainty.setCurrentText(pair.getFare());
-                countdown.setTextProvider(null);
-                uncertainty.setTextProvider(null);
                 return;
             }
 
             countdown.setText(DepartureTextFormatter.countdown(
                     context, firstDeparture, timeSource));
-            countdown.setTextProvider(tick -> {
-                Departure departure = firstDepartures.get(pair);
-                return departure == null ? "" : DepartureTextFormatter.countdown(
-                        context, departure, timeSource);
-            });
 
             String uncertaintyText = firstDeparture.getUncertaintyText(timeSource);
-            uncertainty.setCurrentText(isBlank(uncertaintyText)
-                    ? pair.getFare() : uncertaintyText);
-            uncertainty.setTextProvider(tick -> {
-                Departure departure = firstDepartures.get(pair);
-                if (departure == null) {
-                    return pair.getFare();
-                }
-                String arrival = DepartureTextFormatter.estimatedArrivalTime(
-                        context, departure, true);
-                int mod = isBlank(arrival) ? 6 : 8;
-                if (tick % mod <= 1) {
-                    return pair.getFare();
-                } else if (tick % mod <= 3) {
-                    return "Dep " + DepartureTextFormatter.estimatedDepartureTime(
-                            context, departure, true);
-                } else if (mod == 8 && tick % mod <= 5) {
-                    return "Arr " + arrival;
-                }
-                return departure.getUncertaintyText(timeSource);
-            });
+            uncertainty.setCurrentText(favoriteSecondaryText(
+                    pair, firstDeparture, tick, uncertaintyText));
         }
+    }
+
+    private String favoriteSecondaryText(StationPair pair, Departure departure,
+                                         long tick, String uncertainty) {
+        String arrival = DepartureTextFormatter.estimatedArrivalTime(
+                context, departure, true);
+        int mod = isBlank(arrival) ? 6 : 8;
+        if (tick % mod <= 1) {
+            return pair.getFare();
+        } else if (tick % mod <= 3) {
+            return "Dep " + DepartureTextFormatter.estimatedDepartureTime(
+                    context, departure, true);
+        } else if (mod == 8 && tick % mod <= 5) {
+            return "Arr " + arrival;
+        }
+        return isBlank(uncertainty) ? pair.getFare() : uncertainty;
     }
 
     private void initTextSwitcher(TextSwitcher textSwitcher) {

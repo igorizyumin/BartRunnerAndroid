@@ -1,5 +1,6 @@
 package com.dougkeen.bart.activities
 
+import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dougkeen.bart.BartRunnerApplication
@@ -7,6 +8,7 @@ import com.dougkeen.bart.backend.RouteDepartureProjection
 import com.dougkeen.bart.backend.TransitRepository
 import com.dougkeen.bart.backend.TripProgressProjection
 import com.dougkeen.bart.model.Departure
+import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.model.TripLeg
 import kotlinx.coroutines.Job
@@ -17,7 +19,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /** Owns live trip state from the shared feed until the screen ViewModel clears. */
-class TripProgressViewModel(application: BartRunnerApplication) :
+class TripProgressViewModel(application: Application) :
     AndroidViewModel(application) {
 
     private val _departureState = MutableStateFlow<Departure?>(null)
@@ -27,12 +29,15 @@ class TripProgressViewModel(application: BartRunnerApplication) :
     private var tripProgressCollectionJob: Job? = null
     private var departureTimeSource: TimeSource? = null
 
-    fun setDeparture(initialDeparture: Departure?, timeSource: TimeSource) {
+    fun setQuery(
+        stationPair: StationPair,
+        departureIdentity: String,
+        timeSource: TimeSource,
+    ) {
         cancelCollections()
         departureTimeSource = timeSource
-        _departureState.value = initialDeparture
+        _departureState.value = null
 
-        val stationPair = initialDeparture?.getStationPair() ?: return
         val application = getApplication<BartRunnerApplication>()
         val repository: TransitRepository = application.transitRepository
 
@@ -41,27 +46,9 @@ class TripProgressViewModel(application: BartRunnerApplication) :
                 RouteDepartureProjection(stationPair, application),
             ).collectLatest { projectionState ->
                 projectionState.value?.let { result ->
-                    updateFromRealtime(result.getDepartures())
-                }
-            }
-        }
-
-        val origin = stationPair.origin
-        val destination = stationPair.destination
-        if (initialDeparture.tripLegs.isNotEmpty()
-            && origin != null
-            && destination != null
-        ) {
-            tripProgressCollectionJob = viewModelScope.launch {
-                repository.projectedState(
-                    TripProgressProjection(
-                        application,
-                        origin,
-                        destination,
-                        initialDeparture.tripLegs,
-                    ),
-                ).collectLatest { projectionState ->
-                    projectionState.value?.let(::updateTripLegs)
+                    result.getDepartures()
+                        .firstOrNull { it.identity == departureIdentity }
+                        ?.let(::updateFromRealtime)
                 }
             }
         }
@@ -69,19 +56,38 @@ class TripProgressViewModel(application: BartRunnerApplication) :
 
     fun getDeparture(): Departure? = departureState.value
 
-    private fun updateFromRealtime(departures: List<Departure>) {
-        val current = departureState.value ?: return
+    private fun updateFromRealtime(incoming: Departure) {
         val timeSource = departureTimeSource ?: return
-        val candidate = departures.firstOrNull { it.identity == current.identity }
-            ?: return
-        publish(
-            Departure.merge(
-                current,
-                candidate,
-                true,
-                timeSource,
-            ),
-        )
+        val current = departureState.value
+        val updated = current?.let {
+            Departure.merge(it, incoming, true, timeSource)
+        } ?: incoming
+        publish(updated)
+        startTripProgress(updated)
+    }
+
+    private fun startTripProgress(departure: Departure) {
+        if (tripProgressCollectionJob?.isActive == true
+            || departure.tripLegs.isEmpty()
+        ) {
+            return
+        }
+        val stationPair = departure.getStationPair() ?: return
+        val origin = stationPair.origin ?: return
+        val destination = stationPair.destination ?: return
+        val application = getApplication<BartRunnerApplication>()
+        tripProgressCollectionJob = viewModelScope.launch {
+            application.transitRepository.projectedState(
+                TripProgressProjection(
+                    application,
+                    origin,
+                    destination,
+                    departure.tripLegs,
+                ),
+            ).collectLatest { projectionState ->
+                projectionState.value?.let(::updateTripLegs)
+            }
+        }
     }
 
     private fun updateTripLegs(updatedLegs: List<TripLeg>) {

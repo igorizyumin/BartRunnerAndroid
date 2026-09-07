@@ -58,6 +58,7 @@ public class DepartureArrayAdapter
     private final Listener listener;
     private final TimeSource timeSource;
     private String selectedDepartureIdentity;
+    private long tick;
 
     public DepartureArrayAdapter(Context context, Listener listener,
                                  TimeSource timeSource) {
@@ -67,13 +68,13 @@ public class DepartureArrayAdapter
         this.timeSource = timeSource;
     }
 
-    public int getCount() {
-        return getItemCount();
+    public void setTick(long tick) {
+        this.tick = tick;
+        notifyDataSetChanged();
     }
 
-    @Override
-    public Departure getItem(int position) {
-        return super.getItem(position);
+    public Departure itemAt(int position) {
+        return getItem(position);
     }
 
     /** Presentation-only selection state; it is not stored on transit values. */
@@ -155,17 +156,10 @@ public class DepartureArrayAdapter
                 } else {
                     trainInfo.setCurrentText(departure.getTrainLengthAndPlatform());
                 }
-                trainInfo.setTextProvider(tick -> {
-                    if (tick % 4 == 0) {
-                        return departure.getTrainLengthAndPlatform();
-                    }
-                    if (!isBlank(transferDetails)) {
-                        return transferDetails;
-                    }
-                    String arrival = DepartureTextFormatter.estimatedArrivalTime(
-                            context, departure, false);
-                    return isBlank(arrival) ? "" : arrivesPrefix + arrival;
-                });
+                trainInfo.setCurrentText(tick % 4 == 0
+                        ? departure.getTrainLengthAndPlatform()
+                        : !isBlank(transferDetails) ? transferDetails
+                        : isBlank(estimatedArrival) ? "" : arrivesPrefix + estimatedArrival);
             }
 
             int destinationColor;
@@ -179,8 +173,6 @@ public class DepartureArrayAdapter
             CountdownTextView countdown = itemView.findViewById(R.id.countdown);
             countdown.setText(DepartureTextFormatter.countdown(
                     context, departure, nowMillis));
-            countdown.setTextProvider(tick -> DepartureTextFormatter.countdown(
-                    context, departure, timeSource.nowMillis()));
 
             TextView departureTime = itemView.findViewById(R.id.departureTime);
             if (departureTime != null) {
@@ -192,7 +184,7 @@ public class DepartureArrayAdapter
             } else {
                 TimedTextSwitcher uncertainty = itemView.findViewById(R.id.uncertainty);
                 initTextSwitcher(uncertainty, R.layout.uncertainty_textview);
-                uncertainty.setTextProvider(tick -> tick % 4 == 0
+                uncertainty.setCurrentText(tick % 4 == 0
                         ? departure.getUncertaintyText(timeSource)
                         : DepartureTextFormatter.estimatedDepartureTime(
                                 context, departure, false));

@@ -12,14 +12,12 @@ import android.os.IBinder
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.IntentCompat
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.backend.RouteDepartureProjection
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.SystemTimeSource
-import com.dougkeen.bart.platform.DepartureParcel
 import com.dougkeen.bart.presentation.DepartureNotificationFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -102,12 +100,7 @@ class BoardedDepartureService : Service() {
             }
         }
 
-        val parcel = IntentCompat.getParcelableExtra(
-            intent,
-            DEPARTURE_EXTRA,
-            DepartureParcel::class.java,
-        )
-        val boardedDeparture = parcel?.departure ?: followedTripRepository.getFollowedDeparture()
+        val boardedDeparture = followedTripRepository.getFollowedDeparture()
         if (boardedDeparture == null) {
             shutDown(false)
             return
@@ -307,8 +300,6 @@ class BoardedDepartureService : Service() {
         const val ACTION_FOLLOW_DEPARTURE = "com.dougkeen.action.FOLLOW_BOARDED_DEPARTURE"
         const val ACTION_CANCEL_ALARM = "com.dougkeen.action.CANCEL_BOARDED_DEPARTURE_ALARM"
         const val ACTION_CLEAR_DEPARTURE = "com.dougkeen.action.CLEAR_BOARDED_DEPARTURE"
-        const val DEPARTURE_EXTRA = "departure"
-
         private const val DEPARTURE_NOTIFICATION_ID = 123
         private const val FAST_POLL_MILLIS = 6_000L
         private const val SLOW_POLL_MILLIS = 15_000L

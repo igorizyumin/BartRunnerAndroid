@@ -1,18 +1,10 @@
 package com.dougkeen.bart.controls;
 
 import android.content.Context;
-import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import androidx.appcompat.widget.AppCompatTextView;
 
-import com.dougkeen.bart.R;
-import com.dougkeen.bart.model.TextProvider;
-
-public class CountdownTextView extends AppCompatTextView implements
-        Ticker.TickSubscriber {
-
-    private TextProvider mTextProvider;
-    private int mTickInterval;
+public class CountdownTextView extends AppCompatTextView {
 
     public CountdownTextView(Context context) {
         super(context);
@@ -20,46 +12,10 @@ public class CountdownTextView extends AppCompatTextView implements
 
     public CountdownTextView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        setInstanceVarsFromAttrs(attrs);
     }
 
     public CountdownTextView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        setInstanceVarsFromAttrs(attrs);
-    }
-
-    private void setInstanceVarsFromAttrs(AttributeSet attrs) {
-        TypedArray typedArray = getContext().getTheme()
-                .obtainStyledAttributes(attrs, R.styleable.CountdownTextView, 0, 0);
-        int tickInterval = typedArray.getInteger(R.styleable.CountdownTextView_tickInterval, 0);
-        if (tickInterval > 0) {
-            setTickInterval(tickInterval);
-        }
-    }
-
-    public void setTextProvider(TextProvider provider) {
-        mTextProvider = provider;
-        if (provider != null) {
-            Ticker.getInstance().addSubscriber(this, getContext());
-        } else {
-            Ticker.getInstance().removeSubscriber(this);
-        }
-    }
-
-    @Override
-    public int getTickInterval() {
-        return mTickInterval;
-    }
-
-    public void setTickInterval(int tickInterval) {
-        this.mTickInterval = tickInterval;
-    }
-
-    @Override
-    public void onTick(long tickNumber) {
-        if (mTextProvider != null) {
-            setText(mTextProvider.getText(tickNumber));
-        }
     }
 
 }
