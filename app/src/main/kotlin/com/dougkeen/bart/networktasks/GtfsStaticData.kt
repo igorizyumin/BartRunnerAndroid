@@ -72,19 +72,18 @@ class GtfsStaticData private constructor(
             if (departureTime < nowMillis) {
                 continue
             }
-            val item = ScheduleItem(origin, destination)
-            item.setDepartureTime(departureTime)
-            item.setArrivalTime(day.timeInMillis + destinationStop!!.arrivalSeconds * 1000L)
-            item.setTrainHeadStation((terminal ?: destination).apiName)
-            item.setBikesAllowed(true)
-            trips += item
+            trips += ScheduleItem(
+                origin = origin,
+                destination = destination,
+                departureTime = departureTime,
+                arrivalTime = day.timeInMillis + destinationStop!!.arrivalSeconds * 1000L,
+                bikesAllowed = true,
+                trainHeadStation = (terminal ?: destination).apiName
+            )
         }
-        trips.sortBy { it.getDepartureTime() }
+        trips.sortBy { it.departureTime }
 
-        val schedule = ScheduleInformation(origin, destination)
-        schedule.setDate(nowMillis)
-        trips.take(4).forEach(schedule::addTrip)
-        return schedule
+        return ScheduleInformation(origin, destination, nowMillis, trips.take(4))
     }
 
     fun getNetworkCatalog(): GtfsNetworkCatalog = networkCatalog

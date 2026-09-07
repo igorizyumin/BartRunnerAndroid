@@ -33,7 +33,7 @@ class ScheduleProjection(
             return true
         }
         if (previous == null || current == null
-            || previous.getDate() != current.getDate()
+            || previous.date != current.date
             || previous.getTrips().size != current.getTrips().size
         ) {
             return false
@@ -41,13 +41,13 @@ class ScheduleProjection(
         for (index in previous.getTrips().indices) {
             val left: ScheduleItem = previous.getTrips()[index]
             val right: ScheduleItem = current.getTrips()[index]
-            if (left.getOrigin() != right.getOrigin()
-                || left.getDestination() != right.getDestination()
-                || left.getFare() != right.getFare()
-                || left.getDepartureTime() != right.getDepartureTime()
-                || left.getArrivalTime() != right.getArrivalTime()
+            if (left.origin != right.origin
+                || left.destination != right.destination
+                || left.fare != right.fare
+                || left.departureTime != right.departureTime
+                || left.arrivalTime != right.arrivalTime
                 || left.isBikesAllowed() != right.isBikesAllowed()
-                || left.getTrainHeadStation() != right.getTrainHeadStation()
+                || left.trainHeadStation != right.trainHeadStation
             ) {
                 return false
             }

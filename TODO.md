@@ -17,7 +17,7 @@ This backlog turns the architecture audit into incremental, verifiable work.
 ## P1 — architecture and maintainability
 
 - [x] Make the route and trip-leg models immutable.
-- [ ] Make the remaining transit models immutable.
+- [ ] Separate mutable realtime aggregation state from immutable transit values.
 - [ ] Move transit subscriptions and presentation decisions out of RecyclerView adapters.
 - [x] Centralize transit polling and index each feed once for all route queries.
 - [x] Extract trip planning into a platform-independent `TripPlanner` and add graph-wide routing invariants.

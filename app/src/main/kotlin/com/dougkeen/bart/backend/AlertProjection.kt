@@ -10,41 +10,41 @@ import java.util.Locale
 /** Converts the latest alert feed into the app's alert model. */
 class AlertProjection : TransitProjection<Alert.AlertList> {
     override fun project(snapshot: TransitFeedSnapshot): Alert.AlertList {
-        val result = Alert.AlertList()
         val format = DateFormat.getDateTimeInstance(
             DateFormat.SHORT,
             DateFormat.SHORT,
             Locale.getDefault()
         )
         val index: GtfsRealtimeFeedIndex = snapshot.getAlertIndex()
+        val alerts = mutableListOf<Alert>()
         for (entity in index.alertEntities) {
             if (!entity.hasAlert()) {
                 continue
             }
             val source = entity.alert
-            val alert = Alert(entity.id)
-            alert.setType(if (source.hasEffect()) source.effect.name else "")
-            alert.setDescription(
-                text(
-                    if (source.hasHeaderText()) source.headerText else null,
-                    if (source.hasDescriptionText()) source.descriptionText else null
-                )
-            )
+            var postedTime: String? = null
+            var expiresTime: String? = null
             if (source.activePeriodList.isNotEmpty()) {
                 val period = source.getActivePeriod(0)
                 if (period.hasStart()) {
-                    alert.setPostedTime(format.format(Date(period.start * 1000L)))
+                    postedTime = format.format(Date(period.start * 1000L))
                 }
                 if (period.hasEnd()) {
-                    alert.setExpiresTime(format.format(Date(period.end * 1000L)))
+                    expiresTime = format.format(Date(period.end * 1000L))
                 }
             }
-            result.addAlert(alert)
+            alerts += Alert(
+                id = entity.id,
+                type = if (source.hasEffect()) source.effect.name else "",
+                description = text(
+                    if (source.hasHeaderText()) source.headerText else null,
+                    if (source.hasDescriptionText()) source.descriptionText else null
+                ),
+                postedTime = postedTime,
+                expiresTime = expiresTime
+            )
         }
-        if (!result.hasAlerts()) {
-            result.setNoDelaysReported(true)
-        }
-        return result
+        return Alert.AlertList(alerts, alerts.isEmpty())
     }
 
     override fun areEquivalent(
@@ -63,11 +63,11 @@ class AlertProjection : TransitProjection<Alert.AlertList> {
         for (index in previous.getAlerts().indices) {
             val left = previous.getAlerts()[index]
             val right = current.getAlerts()[index]
-            if (left.getId() != right.getId()
-                || left.getType() != right.getType()
-                || left.getDescription() != right.getDescription()
-                || left.getPostedTime() != right.getPostedTime()
-                || left.getExpiresTime() != right.getExpiresTime()
+            if (left.id != right.id
+                || left.type != right.type
+                || left.description != right.description
+                || left.postedTime != right.postedTime
+                || left.expiresTime != right.expiresTime
             ) {
                 return false
             }
