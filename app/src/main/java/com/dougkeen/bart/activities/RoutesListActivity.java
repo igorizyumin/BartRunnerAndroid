@@ -359,7 +359,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.routes_list_menu, menu);
         MenuItem tripItem = menu.findItem(R.id.view_trip_in_progress);
-        tripItem.setVisible(app.getBoardedDeparture() != null);
+        tripItem.setVisible(app.getFollowedTripRepository().getFollowedDeparture() != null);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -367,7 +367,7 @@ public class   RoutesListActivity extends AppCompatActivity implements
     public boolean onPrepareOptionsMenu(Menu menu) {
         MenuItem tripItem = menu.findItem(R.id.view_trip_in_progress);
         if (tripItem != null) {
-            tripItem.setVisible(app.getBoardedDeparture() != null);
+            tripItem.setVisible(app.getFollowedTripRepository().getFollowedDeparture() != null);
         }
         return super.onPrepareOptionsMenu(menu);
     }

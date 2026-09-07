@@ -412,11 +412,11 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
     }
 
-    private void setBoardedDeparture(Departure selectedDeparture,
-                                     boolean openTripScreen) {
+    private void followDeparture(Departure selectedDeparture,
+                                 boolean openTripScreen) {
         prepareDepartureForTrip(selectedDeparture);
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
-        application.setBoardedDeparture(selectedDeparture);
+        application.getFollowedTripRepository().setFollowedDeparture(selectedDeparture);
         requestNotificationPermissionIfNeeded();
 
         // Start the notification service
@@ -487,7 +487,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
             if (item.getItemId() == R.id.boardTrain) {
-                setBoardedDeparture(mSelectedDeparture, true);
+                followDeparture(mSelectedDeparture, true);
 
                 mode.finish();
                 return true;

@@ -83,11 +83,12 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                 getIntent(), "departure", Departure.class);
         if (requestedDeparture != null) {
             mDeparture = requestedDeparture;
-            Departure followedDeparture = application.getBoardedDeparture();
+            Departure followedDeparture = application.getFollowedTripRepository()
+                    .getFollowedDeparture();
             mIsFollowing = followedDeparture != null
                     && followedDeparture.equals(requestedDeparture);
         } else {
-            mDeparture = application.getBoardedDeparture();
+            mDeparture = application.getFollowedTripRepository().getFollowedDeparture();
             mIsFollowing = mDeparture != null;
         }
         if (mDeparture == null) {
@@ -119,7 +120,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
                             @Override
                             public void onData(List<TripLeg> updatedLegs,
                                                com.dougkeen.bart.backend.TransitFeedSnapshot snapshot) {
-                                if (application.getBoardedDeparture()
+                                if (application.getFollowedTripRepository().getFollowedDeparture()
                                         == mDeparture) {
                                     mDeparture.setTripLegs(updatedLegs);
                                     renderTrip();
@@ -245,7 +246,7 @@ public class TripInProgressActivity extends AbstractViewActivity implements
 
         final BartRunnerApplication application =
                 (BartRunnerApplication) getApplication();
-        application.setBoardedDeparture(mDeparture);
+        application.getFollowedTripRepository().setFollowedDeparture(mDeparture);
         requestNotificationPermissionIfNeeded();
 
         Intent intent = new Intent(this, BoardedDepartureService.class);

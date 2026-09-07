@@ -131,7 +131,7 @@ public class BoardedDepartureService extends Service implements
             boardedDeparture = IntentCompat.getParcelableExtra(intent, "departure",
                     Departure.class);
         } else {
-            boardedDeparture = application.getBoardedDeparture();
+            boardedDeparture = application.getFollowedTripRepository().getFollowedDeparture();
         }
         if (boardedDeparture == null) {
             // Nothing to notify about
@@ -146,7 +146,7 @@ public class BoardedDepartureService extends Service implements
             boardedDeparture
                     .cancelAlarm(getApplicationContext(), mAlarmManager);
             if (intent.getBooleanExtra(Constants.CLEAR_DEPARTURE, false)) {
-                application.setBoardedDeparture(null);
+                application.getFollowedTripRepository().clearFollowedDeparture();
                 shutDown(false);
             } else {
                 updateNotification();
@@ -191,7 +191,7 @@ public class BoardedDepartureService extends Service implements
 
     private void updateAlarm() {
         Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getBoardedDeparture();
+                .getFollowedTripRepository().getFollowedDeparture();
         if (boardedDeparture != null) {
             boardedDeparture
                     .updateAlarm(getApplicationContext(), mAlarmManager);
@@ -206,7 +206,7 @@ public class BoardedDepartureService extends Service implements
 
     private void onETDChanged(List<Departure> departures) {
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getBoardedDeparture();
+                .getFollowedTripRepository().getFollowedDeparture();
         for (Departure departure : departures) {
             if (departure.equals(boardedDeparture)
                     && (boardedDeparture.getMeanSecondsLeft() != departure
@@ -233,7 +233,7 @@ public class BoardedDepartureService extends Service implements
 
     private void pollDepartureStatus() {
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getBoardedDeparture();
+                .getFollowedTripRepository().getFollowedDeparture();
 
         if (boardedDeparture == null || boardedDeparture.hasDeparted()) {
             shutDown(false);
@@ -290,7 +290,7 @@ public class BoardedDepartureService extends Service implements
         }
 
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getBoardedDeparture();
+                .getFollowedTripRepository().getFollowedDeparture();
         if (boardedDeparture != null) {
             Notification notification = boardedDeparture.createNotification(getApplicationContext());
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
@@ -309,7 +309,7 @@ public class BoardedDepartureService extends Service implements
 
     private int getPollIntervalMillis() {
         final Departure boardedDeparture = ((BartRunnerApplication) getApplication())
-                .getBoardedDeparture();
+                .getFollowedTripRepository().getFollowedDeparture();
 
         if (boardedDeparture != null && boardedDeparture.getSecondsUntilAlarm() > 3 * 60) {
             return 15 * 1000;

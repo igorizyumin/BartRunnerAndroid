@@ -52,7 +52,8 @@ public class TrainAlarmDialogFragment extends DialogFragment {
         BartRunnerApplication application = (BartRunnerApplication) getActivity()
                 .getApplication();
 
-        final Departure boardedDeparture = application.getBoardedDeparture();
+        final Departure boardedDeparture = application.getFollowedTripRepository()
+                .getFollowedDeparture();
         final int maxValue = boardedDeparture.getMeanSecondsLeft() / 60;
 
         numberPicker.setMinValue(1);
@@ -106,7 +107,7 @@ public class TrainAlarmDialogFragment extends DialogFragment {
 
                                 BartRunnerApplication application =
                                         (BartRunnerApplication) getActivity().getApplication();
-                                application.getBoardedDeparture().setUpAlarm(
+                                application.getFollowedTripRepository().getFollowedDeparture().setUpAlarm(
                                         alarmLeadTime,
                                         application,
                                         (AlarmManager) getActivity()
