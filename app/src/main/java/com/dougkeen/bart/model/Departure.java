@@ -9,9 +9,9 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.ColorInt;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationCompat.Builder;
+import androidx.annotation.ColorInt;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationCompat.Builder;
 import android.util.Log;
 
 import com.dougkeen.bart.BartRunnerApplication;
@@ -28,13 +28,15 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class Departure implements Parcelable, Comparable<Departure> {
     private static final int MINIMUM_MERGE_OVERLAP_MILLIS = 5000;
     private static final int EXPIRE_MINUTES_AFTER_ARRIVAL = 1;
 
-    private static final DateFormat TIME_FORMAT = new SimpleDateFormat("h:mm");
+    private static final DateFormat TIME_FORMAT = new SimpleDateFormat("h:mm", Locale.getDefault());
 
     public Departure() {
         super();
@@ -95,6 +97,8 @@ public class Departure implements Parcelable, Comparable<Departure> {
 
     private boolean selected;
 
+    private List<TripLeg> tripLegs = new ArrayList<TripLeg>();
+
     public Station getOrigin() {
         return origin;
     }
@@ -129,6 +133,80 @@ public class Departure implements Parcelable, Comparable<Departure> {
 
     public void setPassengerDestination(Station passengerDestination) {
         this.passengerDestination = passengerDestination;
+    }
+
+    public List<TripLeg> getTripLegs() {
+        return Collections.unmodifiableList(tripLegs);
+    }
+
+    public void setTripLegs(List<TripLeg> tripLegs) {
+        this.tripLegs = new ArrayList<TripLeg>();
+        if (tripLegs != null) {
+            this.tripLegs.addAll(tripLegs);
+        }
+        if (!this.tripLegs.isEmpty()) {
+            TripLeg finalLeg = this.tripLegs.get(this.tripLegs.size() - 1);
+            if (finalLeg.hasArrivalTime() && getMeanEstimate() > 0) {
+                setEstimatedTripTime((int) (finalLeg.getArrivalTime()
+                        - getMeanEstimate()));
+            }
+        }
+    }
+
+    public boolean hasTransfers() {
+        return tripLegs.size() > 1;
+    }
+
+    public String getTransferDetailsText(Context context) {
+        if (tripLegs.size() < 2) {
+            return "";
+        }
+        DateFormat format = android.text.format.DateFormat
+                .getTimeFormat(context);
+        StringBuilder details = new StringBuilder();
+        for (int i = 0; i < tripLegs.size(); i++) {
+            TripLeg leg = tripLegs.get(i);
+            if (i > 0) {
+                details.append("\n");
+            }
+            details.append(leg.getLine() == null ? "Train"
+                    : leg.getLine().name());
+            details.append(" ");
+            if (leg.getDepartureTime() > 0) {
+                details.append(format.format(new Date(leg.getDepartureTime())));
+            } else {
+                details.append("--");
+            }
+            if (leg.getOrigin() != null && leg.getDestination() != null) {
+                details.append(" ").append(leg.getOrigin().shortName)
+                        .append(" → ").append(leg.getDestination().shortName);
+            }
+            if (leg.getArrivalTime() > 0) {
+                details.append(" (arr ")
+                        .append(format.format(new Date(leg.getArrivalTime())))
+                        .append(")");
+            }
+            if (i + 1 < tripLegs.size()
+                    && leg.getArrivalTime() > 0
+                    && tripLegs.get(i + 1).getDepartureTime() > 0) {
+                long margin = tripLegs.get(i + 1).getDepartureTime()
+                        - leg.getArrivalTime();
+                long safeMargin = Math.max(0L, margin);
+                long marginMinutes = safeMargin / 60000L;
+                long marginSeconds = (safeMargin % 60000L) / 1000L;
+                details.append(" • ");
+                if (marginMinutes > 0) {
+                    details.append(marginMinutes).append(" min");
+                    if (marginSeconds > 0) {
+                        details.append(" ").append(marginSeconds).append(" sec");
+                    }
+                } else {
+                    details.append(marginSeconds).append(" sec");
+                }
+                details.append(" connection");
+            }
+        }
+        return details.toString();
     }
 
     public StationPair getStationPair() {
@@ -323,6 +401,12 @@ public class Departure implements Parcelable, Comparable<Departure> {
     }
 
     public long getEstimatedArrivalTime() {
+        if (!tripLegs.isEmpty()) {
+            TripLeg finalLeg = tripLegs.get(tripLegs.size() - 1);
+            if (finalLeg.hasArrivalTime()) {
+                return finalLeg.getArrivalTime();
+            }
+        }
         if (arrivalTimeOverride > 0) {
             return arrivalTimeOverride;
         }
@@ -408,6 +492,21 @@ public class Departure implements Parcelable, Comparable<Departure> {
     }
 
     public void mergeEstimate(Departure departure) {
+        mergeEstimate(departure, true);
+    }
+
+    /**
+     * Merges the origin departure estimate. A live trip screen can opt out of
+     * replacing its exact per-train leg data with a less-specific origin ETD
+     * snapshot; that data is refreshed separately by trip ID.
+     */
+    public void mergeEstimate(Departure departure, boolean updateTripLegs) {
+        // Stop arrivals and connection times remain useful after the train has
+        // left a long-linger station, even when the departure countdown itself
+        // is intentionally kept stable.
+        if (updateTripLegs && !departure.tripLegs.isEmpty()) {
+            setTripLegs(departure.tripLegs);
+        }
         if (departure.hasDeparted() && origin.longStationLinger
                 && getMinEstimate() > 0 && !beganAsDeparted) {
             /*
@@ -639,24 +738,44 @@ public class Departure implements Parcelable, Comparable<Departure> {
     }
 
     private void scheduleAlarm(AlarmManager alarmManager, PendingIntent alarmIntent) {
+        if (alarmManager == null) {
+            Log.w(Constants.TAG, "No alarm manager available, so alarm will not be scheduled");
+            return;
+        }
         long alarmTime = getAlarmClockTime();
 
-        if (alarmTime < System.currentTimeMillis()
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+        if (alarmTime < System.currentTimeMillis()) {
             alarmManager.set(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && !alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
+                Log.w(Constants.TAG, "Exact alarm permission is unavailable; using an inexact alarm");
+                return;
+            }
+            try {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
+            } catch (SecurityException exception) {
+                // Exact alarms may be disabled by the user on Android 12+.
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
+                Log.w(Constants.TAG, "Exact alarm permission is unavailable; using an inexact alarm");
+            }
         } else {
-            Log.e(Constants.TAG, "Could not find a suitable method for scheduling an alarm");
+            try {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
+            } catch (SecurityException exception) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, alarmTime, alarmIntent);
+                Log.w(Constants.TAG, "Exact alarm permission is unavailable; using a regular alarm");
+            }
         }
 
         Log.v(Constants.TAG, "Scheduling alarm for " + DateFormatUtils.format(alarmTime, "h:mm:ss"));
     }
 
     public void cancelAlarm(Context context, AlarmManager alarmManager) {
-        alarmManager.cancel(getAlarmIntent(context));
+        if (alarmManager != null) {
+            alarmManager.cancel(getAlarmIntent(context));
+        }
         this.alarmPending.setValue(false);
         Log.d(Constants.TAG, "Alarm cancelled");
     }
@@ -693,7 +812,7 @@ public class Departure implements Parcelable, Comparable<Departure> {
         final int halfMinutes = (getMeanSecondsLeft() + 15) / 30;
         float minutes = halfMinutes / 2f;
         final String minutesText = (minutes < 1) ? "Less than one minute"
-                : (String.format("~%.1f minute", minutes) + ((minutes != 1.0) ? "s"
+                : (String.format(Locale.US, "~%.1f minute", minutes) + ((minutes != 1.0) ? "s"
                 : ""));
         final String directionText = getOrigin().shortName + " to " + getPassengerDestination().shortName;
 
@@ -714,25 +833,15 @@ public class Departure implements Parcelable, Comparable<Departure> {
                     .setUsesChronometer(true);
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= 16) {
-            notificationBuilder.setContentText(directionText);
+        notificationBuilder.setContentText(directionText);
+        if (isAlarmPending()) {
+            PendingIntent pendingIntent = PendingIntent.getService(
+                    context, 0, cancelAlarmIntent, PendingIntent.FLAG_IMMUTABLE);
+            String subText = "Alarm " + getAlarmLeadTimeMinutes() + " minutes before departure";
 
-            if (isAlarmPending()) {
-                PendingIntent pendingIntent = PendingIntent.getService(
-                        context, 0, cancelAlarmIntent, PendingIntent.FLAG_IMMUTABLE);
-                String subText = "Alarm " + getAlarmLeadTimeMinutes() + " minutes before departure";
-
-                notificationBuilder
-                        .addAction(R.drawable.ic_action_cancel_alarm, "Cancel alarm", pendingIntent)
-                        .setSubText(subText);
-            }
-        } else if (isAlarmPending()) {
-            notificationBuilder.setContentText(directionText
-                    + " (alarm at " + getAlarmLeadTimeMinutes()
-                    + " min" + ((getAlarmLeadTimeMinutes() == 1) ? "" : "s")
-                    + ")");
-        } else {
-            notificationBuilder.setContentText(directionText);
+            notificationBuilder
+                    .addAction(R.drawable.ic_action_cancel_alarm, "Cancel alarm", pendingIntent)
+                    .setSubText(subText);
         }
 
         return notificationBuilder.build();
@@ -779,6 +888,7 @@ public class Departure implements Parcelable, Comparable<Departure> {
         dest.writeByte(requiresTransfer ? (byte) 1 : (byte) 0);
         dest.writeByte(transferScheduled ? (byte) 1 : (byte) 0);
         dest.writeByte(limited ? (byte) 1 : (byte) 0);
+        dest.writeTypedList(tripLegs);
     }
 
     private void readFromParcel(Parcel in) {
@@ -802,6 +912,10 @@ public class Departure implements Parcelable, Comparable<Departure> {
         requiresTransfer = in.readByte() == (byte) 1;
         transferScheduled = in.readByte() == (byte) 1;
         limited = in.readByte() == (byte) 1;
+        tripLegs = in.createTypedArrayList(TripLeg.CREATOR);
+        if (tripLegs == null) {
+            tripLegs = new ArrayList<TripLeg>();
+        }
     }
 
     public static final Parcelable.Creator<Departure> CREATOR = new Parcelable.Creator<Departure>() {

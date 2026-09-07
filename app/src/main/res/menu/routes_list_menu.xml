@@ -17,10 +17,10 @@
         app:showAsAction="ifRoom|withText"
         />
     <item
-        android:id="@+id/elevator_button"
-        android:icon="@drawable/ic_action_elevator"
-        android:title="Check elevator status"
+        android:id="@+id/view_trip_in_progress"
+        android:icon="@drawable/ic_action_boarding"
+        android:title="@string/trip_in_progress"
+        android:visible="false"
         app:showAsAction="ifRoom|withText"
         />
-
 </menu>

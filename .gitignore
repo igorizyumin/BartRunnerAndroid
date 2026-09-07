@@ -4,6 +4,8 @@
 build
 *~
 .gradle
+.android
+.gradle-home
 .idea
 *.iml
 local.properties

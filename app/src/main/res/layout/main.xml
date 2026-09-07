@@ -1,24 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/coordinatorLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:fitsSystemWindows="true">
     <LinearLayout
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:orientation="vertical">
 
         <com.mobeta.android.dslv.DragSortListView
             android:id="@android:id/list"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="3dp"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:dividerHeight="1dp"
-            android:padding="3dp"
+            android:clipToPadding="false"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="8dp"
+            android:paddingStart="12dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp"
             app:collapsed_height="1dp"
             app:drag_enabled="true"
             app:drag_handle_id="@id/dragHandle"
@@ -31,19 +36,31 @@
 
         <TextView
             android:id="@android:id/empty"
-            android:layout_width="fill_parent"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center_horizontal"
-            android:paddingTop="10sp"
+            android:gravity="center"
+            android:padding="32dp"
             android:text="@string/empty_favorites_list_message"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/alertMessages"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:drawableLeft="@drawable/ic_warn"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/alert_banner_background"
+            app:drawableStartCompat="@drawable/ic_warn"
+            android:drawablePadding="10dp"
+            android:gravity="center_vertical"
+            android:minHeight="52dp"
+            android:padding="12dp"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
             android:visibility="gone" />
 
         <FrameLayout
@@ -52,13 +69,15 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/quickLookupButton"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="@string/quick_departure_lookup" />
+                android:text="@string/quick_departure_lookup"
+                android:textAllCaps="false"
+                app:cornerRadius="12dp" />
         </FrameLayout>
 
     </LinearLayout>
-</android.support.design.widget.CoordinatorLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 
 public class RealTimeDepartures {
     public RealTimeDepartures(Station origin, Station destination,
@@ -78,7 +79,7 @@ public class RealTimeDepartures {
     }
 
     public Departure getEarliestTransferDeparture() {
-        List<Route> xferRoutes = origin.getTransferRoutes(destination);
+        List<Route> xferRoutes = origin.getPreferredTransferRoutes(destination);
         List<Departure> xferDepartures = new ArrayList<>();
         for (Departure departure : unfilteredDepartures) {
             Route route = findRouteForDeparture(departure, xferRoutes);
@@ -97,7 +98,7 @@ public class RealTimeDepartures {
 
     public void includeTransferRoutes() {
         transfersIncluded = true;
-        routes.addAll(origin.getTransferRoutes(destination));
+        routes.addAll(origin.getPreferredTransferRoutes(destination));
         rebuildFilteredDeparturesCollection();
     }
 
@@ -117,7 +118,7 @@ public class RealTimeDepartures {
         Iterator<Departure> iterator = unfilteredDepartures.iterator();
         while (iterator.hasNext()) {
             Departure departure = iterator.next();
-            if (!departure.getDirection().toLowerCase().startsWith(direction)) {
+            if (!departure.getDirection().toLowerCase(Locale.ROOT).startsWith(direction)) {
                 Log.v(Constants.TAG, "Removing departure in wrong direction: " + departure);
                 iterator.remove();
             }

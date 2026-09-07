@@ -13,6 +13,7 @@ import android.util.Log;
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.model.StationPair;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.androidannotations.annotations.EBean;
 
@@ -20,7 +21,8 @@ import org.androidannotations.annotations.EBean;
 public class FavoritesPersistence {
     private static final String TAG = "FavoritesPersistence";
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private BartRunnerApplication app;
 

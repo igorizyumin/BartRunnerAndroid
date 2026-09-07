@@ -14,14 +14,14 @@ public final class CursorUtils {
     }
 
     public static final String getString(Cursor cursor, RoutesColumns column) {
-        return cursor.getString(cursor.getColumnIndex(column.string));
+        return cursor.getString(cursor.getColumnIndexOrThrow(column.string));
     }
 
     public static final Long getLong(Cursor cursor, RoutesColumns column) {
-        return cursor.getLong(cursor.getColumnIndex(column.string));
+        return cursor.getLong(cursor.getColumnIndexOrThrow(column.string));
     }
 
     public static final Integer getInteger(Cursor cursor, RoutesColumns column) {
-        return cursor.getInt(cursor.getColumnIndex(column.string));
+        return cursor.getInt(cursor.getColumnIndexOrThrow(column.string));
     }
 }

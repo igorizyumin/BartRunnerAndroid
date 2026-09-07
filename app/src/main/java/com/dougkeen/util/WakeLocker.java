@@ -16,8 +16,8 @@ public abstract class WakeLocker {
                 .getSystemService(Context.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK
                 | PowerManager.ACQUIRE_CAUSES_WAKEUP
-                | PowerManager.ON_AFTER_RELEASE, Constants.TAG);
-        wakeLock.acquire();
+                | PowerManager.ON_AFTER_RELEASE, "BartRunner:WakeLock");
+        wakeLock.acquire(60_000L);
     }
 
     public static void release() {

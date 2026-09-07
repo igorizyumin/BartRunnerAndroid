@@ -3,8 +3,8 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:bart="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     >
@@ -63,12 +63,14 @@
 
         <ImageView
             android:id="@+id/bikeIcon"
+            android:contentDescription="@string/bike_icon_description"
             style="@style/TrainInfoIcon"
             tools:src="@drawable/bike"
             />
 
         <ImageView
             android:id="@+id/xferIcon"
+            android:contentDescription="@string/transfer_icon_description"
             style="@style/TrainInfoIcon"
             android:src="@drawable/xfer"
             />
@@ -79,9 +81,9 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="5dp"
-        android:layout_marginRight="5dp"
-        android:gravity="right"
+        android:layout_marginStart="5dp"
+        android:layout_marginEnd="5dp"
+        android:gravity="end"
         android:orientation="vertical"
         >
 
@@ -89,7 +91,7 @@
             android:id="@+id/countdown"
             style="@style/DepartureCountdownText"
             android:width="90dp"
-            android:gravity="right"
+            android:gravity="end"
             bart:tickInterval="1"
             tools:text="9m, 57s"
             />

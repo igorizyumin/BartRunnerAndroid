@@ -3,14 +3,13 @@ package com.dougkeen.bart.activities;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.view.MenuItemCompat;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.view.ActionMode;
+import androidx.fragment.app.DialogFragment;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.view.ActionMode;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+
+import com.google.android.material.snackbar.Snackbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -30,9 +29,8 @@ import com.dougkeen.bart.model.Alert;
 import com.dougkeen.bart.model.Alert.AlertList;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.StationPair;
-import com.dougkeen.bart.networktasks.AlertsClient;
-import com.dougkeen.bart.networktasks.ElevatorClient;
 import com.dougkeen.bart.networktasks.GetRouteFareTask;
+import com.dougkeen.bart.networktasks.GetServiceAlertsTask;
 import com.mobeta.android.dslv.DragSortListView;
 
 import org.androidannotations.annotations.AfterViews;
@@ -45,13 +43,10 @@ import org.androidannotations.annotations.ItemClick;
 import org.androidannotations.annotations.ItemLongClick;
 import org.androidannotations.annotations.UiThread;
 import org.androidannotations.annotations.ViewById;
-import org.androidannotations.rest.spring.annotations.RestService;
-import org.springframework.web.client.ResourceAccessException;
 
 import java.util.Calendar;
 import java.util.TimeZone;
 
-import io.sentry.Sentry;
 
 @EActivity(R.layout.main)
 public class RoutesListActivity extends AppCompatActivity implements TickSubscriber {
@@ -74,12 +69,6 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
     @App
     BartRunnerApplication app;
-
-    @RestService
-    AlertsClient alertsClient;
-
-    @RestService
-    ElevatorClient elevatorClient;
 
     @ViewById(android.R.id.list)
     DragSortListView listView;
@@ -133,6 +122,7 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
             mRoutesAdapter.move(item, to);
             mRoutesAdapter.notifyDataSetChanged();
+            app.saveFavorites();
         }
     };
 
@@ -142,6 +132,7 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
             final StationPair stationPair = mRoutesAdapter.getItem(which);
             mRoutesAdapter.remove(stationPair);
             mRoutesAdapter.notifyDataSetChanged();
+            app.saveFavorites();
             showRouteDeletedSnackbar(which, stationPair);
         }
     };
@@ -199,6 +190,7 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
 
     void addFavorite(StationPair pair) {
         mRoutesAdapter.add(pair);
+        app.saveFavorites();
     }
 
     private void refreshFares() {
@@ -290,11 +282,19 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.routes_list_menu, menu);
+        MenuItem tripItem = menu.findItem(R.id.view_trip_in_progress);
+        tripItem.setVisible(app.getBoardedDeparture() != null);
         return super.onCreateOptionsMenu(menu);
     }
 
-    private MenuItem elevatorMenuItem;
-    private View origElevatorActionView;
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem tripItem = menu.findItem(R.id.view_trip_in_progress);
+        if (tripItem != null) {
+            tripItem.setVisible(app.getBoardedDeparture() != null);
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -306,11 +306,8 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
         } else if (itemId == R.id.view_system_map_button) {
             startActivity(new Intent(this, ViewMapActivity.class));
             return true;
-        } else if (itemId == R.id.elevator_button) {
-            elevatorMenuItem = item;
-            fetchElevatorInfo();
-            origElevatorActionView = MenuItemCompat.getActionView(elevatorMenuItem);
-            MenuItemCompat.setActionView(elevatorMenuItem, R.layout.progress_spinner);
+        } else if (itemId == R.id.view_trip_in_progress) {
+            startActivity(new Intent(this, TripInProgressActivity.class));
             return true;
         } else {
             return super.onOptionsItemSelected(item);
@@ -320,31 +317,36 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
     @Background
     void fetchAlerts() {
         Log.d(TAG, "Fetching alerts");
-        AlertList alertList;
-        try {
-            alertList = alertsClient.getAlerts();
-        } catch (Exception e) {
-            // Try again later
-            Log.w(TAG, "Could not fetch alerts", e);
-            return;
-        }
-        if (alertList.hasAlerts()) {
-            StringBuilder alertText = new StringBuilder();
-            boolean firstAlert = true;
-            for (Alert alert : alertList.getAlerts()) {
-                if (!firstAlert) {
-                    alertText.append("\n\n");
+        new GetServiceAlertsTask() {
+            @Override
+            public void onResult(AlertList alertList) {
+                if (alertList.hasAlerts()) {
+                    StringBuilder alertText = new StringBuilder();
+                    boolean firstAlert = true;
+                    for (Alert alert : alertList.getAlerts()) {
+                        if (!firstAlert) {
+                            alertText.append("\n\n");
+                        }
+                        if (alert.getPostedTime() != null
+                                && !alert.getPostedTime().isEmpty()) {
+                            alertText.append(alert.getPostedTime()).append("\n");
+                        }
+                        alertText.append(alert.getDescription());
+                        firstAlert = false;
+                    }
+                    showAlertMessage(alertText.toString());
+                } else if (alertList.areNoDelaysReported()) {
+                    showAlertMessage(NO_DELAYS_REPORTED);
+                } else {
+                    hideAlertMessage();
                 }
-                alertText.append(alert.getPostedTime()).append("\n");
-                alertText.append(alert.getDescription());
-                firstAlert = false;
             }
-            showAlertMessage(alertText.toString());
-        } else if (alertList.areNoDelaysReported()) {
-            showAlertMessage(NO_DELAYS_REPORTED);
-        } else {
-            hideAlertMessage();
-        }
+
+            @Override
+            public void onError(Exception exception) {
+                Log.w(TAG, "Could not fetch alerts", exception);
+            }
+        }.execute();
     }
 
     @UiThread
@@ -368,34 +370,6 @@ public class RoutesListActivity extends AppCompatActivity implements TickSubscri
         mCurrentAlerts = messageText;
         alertMessages.setText(messageText);
         alertMessages.setVisibility(View.VISIBLE);
-    }
-
-    @Background
-    void fetchElevatorInfo() {
-        String elevatorMessage = null;
-        try {
-            elevatorMessage = elevatorClient.getElevatorMessage();
-        } catch (ResourceAccessException e) {
-            Sentry.capture(e);
-        }
-        if (elevatorMessage != null) {
-            showElevatorMessage(elevatorMessage);
-        }
-        resetElevatorMenuGraphic();
-    }
-
-    @UiThread
-    void resetElevatorMenuGraphic() {
-        ActivityCompat.invalidateOptionsMenu(this);
-        MenuItemCompat.setActionView(elevatorMenuItem, origElevatorActionView);
-    }
-
-    @UiThread
-    void showElevatorMessage(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage(message);
-        builder.setTitle("Elevator status");
-        builder.show();
     }
 
     private void startContextualActionMode() {

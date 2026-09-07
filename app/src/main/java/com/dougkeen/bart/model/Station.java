@@ -4,7 +4,10 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 public enum Station {
     _12TH(new Builder("12th", "12th St. Oakland City Center", "12th St Oak")
@@ -274,7 +277,7 @@ public enum Station {
     Station(Builder builder) {
         this.abbreviation = builder.abbreviation;
         this.name = builder.name;
-        this.apiName = builder.apiName != null ? builder.apiName.toLowerCase() : builder.name.toLowerCase();
+        this.apiName = builder.apiName != null ? builder.apiName.toLowerCase(Locale.ROOT) : builder.name.toLowerCase(Locale.ROOT);
         this.shortName = builder.shortName;
         this.invertDirection = builder.invertDirection;
         this.inboundTransferStation = builder.inboundTransferStation;
@@ -291,9 +294,9 @@ public enum Station {
             if (abbr == null) {
                 return null;
             } else if (Character.isDigit(abbr.charAt(0))) {
-                return Station.valueOf("_" + abbr.toUpperCase());
+                return Station.valueOf("_" + abbr.toUpperCase(Locale.ROOT));
             } else {
-                return Station.valueOf(abbr.toUpperCase());
+                return Station.valueOf(abbr.toUpperCase(Locale.ROOT));
             }
         } catch (IllegalArgumentException e) {
             Log.e(Constants.TAG, "Could not find station for '" + abbr + "'", e);
@@ -304,14 +307,14 @@ public enum Station {
     public static Station getByApproximateName(String name) {
         if (name == null) return null;
 
-        final String lowercaseName = name.toLowerCase();
+        final String lowercaseName = name.toLowerCase(Locale.ROOT);
         for (Station station : Station.values()) {
-            if (lowercaseName.startsWith(station.name.toLowerCase())) {
+            if (lowercaseName.startsWith(station.name.toLowerCase(Locale.ROOT))) {
                 return station;
             }
         }
         for (Station station : Station.values()) {
-            if (lowercaseName.endsWith(station.name.toLowerCase())) {
+            if (lowercaseName.endsWith(station.name.toLowerCase(Locale.ROOT))) {
                 return station;
             }
         }
@@ -400,55 +403,272 @@ public enum Station {
     }
 
     public List<Route> getTransferRoutes(Station dest) {
-        List<Route> returnList = new ArrayList<Route>();
-
-        if (this == Station.SFIA && dest == Station.MLBR) {
-            // The SFO to Millbrae routes are weird. Only go direct.
-            return returnList;
+        if (dest == null || (this == Station.SFIA && dest == Station.MLBR)) {
+            return new ArrayList<Route>();
         }
 
-        if (dest.getInboundTransferStation() != null) {
-            // Try getting to the destination's inbound xfer station first
-            returnList.addAll(getDirectRoutesForDestination(this,
-                    dest.getInboundTransferStation(),
-                    dest.getInboundTransferStation(), null));
-        }
+        List<Route> routes = findTransferRoutes(dest, false);
+        Collections.sort(routes, ROUTE_PREFERENCE);
+        return routes;
+    }
 
-        if (returnList.isEmpty() && outboundTransferStation != null) {
-            // Try getting from the outbound transfer station to the
-            // destination next
-            final Collection<Line> outboundTransferLines = Line
-                    .getLinesWithStations(this, getOutboundTransferStation());
-            final List<Route> routesForDestination = getOutboundTransferStation()
-                    .getDirectRoutesForDestination(this, dest,
-                            getOutboundTransferStation(), outboundTransferLines);
-            if (routesForDestination != null && !routesForDestination.isEmpty()) {
-                returnList.addAll(routesForDestination);
-            }
+    /**
+     * Returns the transfer pattern that best matches the network's preferred
+     * transfer stations. Some destinations have a geographically sensible
+     * two-transfer path that is better than the shorter-looking path through
+     * San Francisco.
+     */
+    public List<Route> getPreferredTransferRoutes(Station dest) {
+        List<Route> transferRoutes = getTransferRoutes(dest);
+        List<Route> doubleTransferRoutes = getDoubleTransferRoutes(dest);
+        if (doubleTransferRoutes.isEmpty()) {
+            return transferRoutes;
         }
-
-        if (returnList.isEmpty()) {
-            // Try getting from the outbound transfer station to the
-            // destination's inbound xfer station
-            final List<Route> routesForDestination = getDoubleTransferRoutes(dest);
-            if (routesForDestination != null && !routesForDestination.isEmpty()) {
-                returnList.addAll(routesForDestination);
-            }
+        if (transferRoutes.isEmpty()
+                || routeScore(doubleTransferRoutes.get(0))
+                < routeScore(transferRoutes.get(0))) {
+            return doubleTransferRoutes;
         }
-
-        return returnList;
+        return transferRoutes;
     }
 
     public List<Route> getDoubleTransferRoutes(Station dest) {
-        if (getOutboundTransferStation() == null
-                || dest.getInboundTransferStation() == null)
+        if (dest == null) {
             return new ArrayList<Route>();
+        }
+        List<Route> routes = findTransferRoutes(dest, true);
+        Collections.sort(routes, ROUTE_PREFERENCE);
+        return routes;
+    }
 
-        // Get routes from the outbound transfer station to the
-        // destination's inbound xfer station
-        return getOutboundTransferStation().getDirectRoutesForDestination(this,
-                dest.getInboundTransferStation(), getOutboundTransferStation(),
-                Line.getLinesWithStations(this, getOutboundTransferStation()));
+    private static final Comparator<Route> ROUTE_PREFERENCE =
+            new Comparator<Route>() {
+                @Override
+                public int compare(Route left, Route right) {
+                    return Integer.compare(routeScore(left), routeScore(right));
+                }
+            };
+
+    private static int routeScore(Route route) {
+        int score = route.getTransferStations().size() * 100;
+        List<Line> lines = route.getLines();
+        if ((route.getOrigin() == Station.DUBL
+                || route.getOrigin() == Station.CAST)
+                && (route.getDestination() == Station.PITT
+                || route.getDestination() == Station.PCTR
+                || route.getDestination() == Station.ANTC)
+                && lines.size() == 3
+                && lines.get(0) == Line.BLUE
+                && lines.get(1) == Line.ORANGE
+                && lines.get(2) == Line.YELLOW
+                && route.getTransferStations().size() == 2) {
+            // The one-transfer Balboa option backtracks through Daly City
+            // and is not the useful East-Bay-to-East-Bay itinerary. Prefer
+            // the Blue -> Orange -> Yellow path via Bay Fair and 19th St.
+            score -= 200;
+        }
+        List<Station> transfers = route.getTransferStations();
+        for (int i = 0; i < transfers.size(); i++) {
+            score += transferStationPenalty(route, lines, transfers, i);
+        }
+        return score;
+    }
+
+    private static int transferStationPenalty(Route route, List<Line> lines,
+                                               List<Station> transfers,
+                                               int index) {
+        Line first = lines.get(index);
+        Line second = lines.get(index + 1);
+        Station preferred = preferredTransferStation(route, first, second,
+                lines, transfers, index);
+        return transfers.get(index) == preferred ? 0 : 10;
+    }
+
+    private static Station preferredTransferStation(Route route, Line first,
+                                                    Line second,
+                                                    List<Line> lines,
+                                                    List<Station> transfers,
+                                                    int transferIndex) {
+        if (samePair(first, second, Line.BLUE, Line.YELLOW)) {
+            return Station.BALB;
+        }
+        if (samePair(first, second, Line.BLUE, Line.ORANGE)) {
+            return Station.BAYF;
+        }
+        if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {
+            Line orange = first == Line.ORANGE ? first : second;
+            // Determine the direction on Orange using the endpoints of the
+            // Orange segment. Increasing GTFS station order is northbound.
+            Station orangeStart;
+            Station orangeEnd;
+            if (first == Line.ORANGE) {
+                orangeStart = transferIndex == 0 ? route.getOrigin()
+                        : transfers.get(transferIndex - 1);
+                orangeEnd = transfers.get(transferIndex);
+            } else {
+                orangeStart = transfers.get(transferIndex);
+                orangeEnd = transferIndex + 1 < transfers.size()
+                        ? transfers.get(transferIndex + 1)
+                        : route.getDestination();
+            }
+            if (orangeStart != null && orangeEnd != null) {
+                int startIndex = orange.stations.indexOf(orangeStart);
+                int endIndex = orange.stations.indexOf(orangeEnd);
+                if (startIndex > endIndex) {
+                    return Station.MCAR;
+                }
+                return Station._19TH;
+            }
+            return Station.MCAR;
+        }
+        return null;
+    }
+
+    private static boolean samePair(Line left, Line right, Line expectedLeft,
+                                    Line expectedRight) {
+        return (left == expectedLeft && right == expectedRight)
+                || (left == expectedRight && right == expectedLeft);
+    }
+
+    private List<Route> findTransferRoutes(Station dest,
+                                           boolean onlyDoubleTransfers) {
+        List<Route> routes = new ArrayList<Route>();
+        List<Line> usableLines = usableLines();
+        for (Line first : usableLines) {
+            if (!first.containsStation(this)) {
+                continue;
+            }
+            for (Line last : usableLines) {
+                if (first == last || !last.containsStation(dest)) {
+                    continue;
+                }
+                for (Station transfer : commonStations(first, last)) {
+                    if (isSegmentUsable(first, this, transfer)
+                            && isSegmentUsable(last, transfer, dest)) {
+                        if (!onlyDoubleTransfers) {
+                            Route route = makeTransferRoute(dest,
+                                    asList(first, last),
+                                    asList(transfer));
+                            if (usesPreferredTransferStations(route)) {
+                                routes.add(route);
+                            }
+                        }
+                    }
+                }
+                for (Line middle : usableLines) {
+                        if (middle == first || middle == last) {
+                            continue;
+                        }
+                        for (Station firstTransfer : commonStations(first,
+                                middle)) {
+                            if (!isSegmentUsable(first, this, firstTransfer)) {
+                                continue;
+                            }
+                            for (Station secondTransfer : commonStations(middle,
+                                    last)) {
+                                if (firstTransfer == secondTransfer
+                                        || !isSegmentUsable(middle,
+                                        firstTransfer, secondTransfer)
+                                        || !isSegmentUsable(last,
+                                        secondTransfer, dest)) {
+                                    continue;
+                                }
+                                Route route = makeTransferRoute(dest,
+                                        asList(first, middle, last),
+                                        asList(firstTransfer,
+                                                secondTransfer));
+                                if (usesPreferredTransferStations(route)) {
+                                    routes.add(route);
+                                }
+                            }
+                        }
+                }
+            }
+        }
+        return uniqueRoutes(routes);
+    }
+
+    private static List<Line> usableLines() {
+        List<Line> lines = new ArrayList<Line>();
+        for (Line line : Line.values()) {
+            if (!line.requiresTransfer && line != Line.PURPLE) {
+                lines.add(line);
+            }
+        }
+        return lines;
+    }
+
+    private static List<Station> commonStations(Line first, Line second) {
+        List<Station> stations = new ArrayList<Station>();
+        for (Station station : first.stations) {
+            if (second.stations.contains(station)) {
+                stations.add(station);
+            }
+        }
+        return stations;
+    }
+
+    private static boolean isSegmentUsable(Line line, Station origin,
+                                           Station destination) {
+        int originIndex = line.stations.indexOf(origin);
+        int destinationIndex = line.stations.indexOf(destination);
+        return originIndex >= 0 && destinationIndex >= 0
+                && originIndex != destinationIndex;
+    }
+
+    private Route makeTransferRoute(Station destination, List<Line> lines,
+                                    List<Station> transfers) {
+        Route route = new Route();
+        route.setOrigin(this);
+        route.setDestination(destination);
+        route.setLines(lines);
+        route.setDirectLine(lines.get(0));
+        route.setTransferStations(transfers);
+        route.setTransfer(true);
+        route.setTransferLines(lines.subList(1, lines.size()));
+        Station firstTransfer = transfers.get(0);
+        int originIndex = lines.get(0).stations.indexOf(this);
+        int transferIndex = lines.get(0).stations.indexOf(firstTransfer);
+        route.setDirection(originIndex < transferIndex ? "n" : "s");
+        return route;
+    }
+
+    private static boolean usesPreferredTransferStations(Route route) {
+        List<Line> lines = route.getLines();
+        List<Station> transfers = route.getTransferStations();
+        for (int i = 0; i < transfers.size(); i++) {
+            Station preferred = preferredTransferStation(route, lines.get(i),
+                    lines.get(i + 1), lines, transfers, i);
+            if (preferred != null && transfers.get(i) != preferred) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<Route> uniqueRoutes(List<Route> routes) {
+        List<Route> unique = new ArrayList<Route>();
+        for (Route route : routes) {
+            boolean duplicate = false;
+            for (Route existing : unique) {
+                if (existing.getLines().equals(route.getLines())
+                        && existing.getTransferStations().equals(
+                        route.getTransferStations())) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                unique.add(route);
+            }
+        }
+        return unique;
+    }
+
+    private static <T> List<T> asList(T... values) {
+        List<T> result = new ArrayList<T>();
+        Collections.addAll(result, values);
+        return result;
     }
 
     static public List<Station> getStationList() {

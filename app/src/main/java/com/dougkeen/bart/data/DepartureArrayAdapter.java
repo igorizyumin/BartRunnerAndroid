@@ -1,7 +1,6 @@
 package com.dougkeen.bart.data;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
@@ -14,6 +13,8 @@ import android.widget.ImageView;
 import android.widget.TextSwitcher;
 import android.widget.TextView;
 import android.widget.ViewSwitcher.ViewFactory;
+
+import androidx.core.content.ContextCompat;
 
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.controls.CountdownTextView;
@@ -29,14 +30,10 @@ public class DepartureArrayAdapter extends ArrayAdapter<Departure> {
     private Drawable noBikeDrawable;
     private Drawable bikeDrawable;
 
-    @SuppressWarnings("deprecation")
     public DepartureArrayAdapter(Context context) {
         super(context, 0 /* resource, unused since we override getView */);
-        Resources resources = context.getResources();
-        // We need to use the deprecated getDrawable since the newer version that
-        // replaces it was only made available in API 21.
-        noBikeDrawable = resources.getDrawable(R.drawable.nobike);
-        bikeDrawable = resources.getDrawable(R.drawable.bike);
+        noBikeDrawable = ContextCompat.getDrawable(context, R.drawable.nobike);
+        bikeDrawable = ContextCompat.getDrawable(context, R.drawable.bike);
     }
 
     @Override
@@ -68,6 +65,8 @@ public class DepartureArrayAdapter extends ArrayAdapter<Departure> {
                 R.string.arrives_at_destination);
         final String estimatedArrivalTimeText = departure
                 .getEstimatedArrivalTimeText(getContext(), false);
+        final String transferDetailsText = departure
+                .getTransferDetailsText(getContext());
 
         TextView estimatedArrival = (TextView) view
                 .findViewById(R.id.estimatedArrival);
@@ -76,6 +75,8 @@ public class DepartureArrayAdapter extends ArrayAdapter<Departure> {
                     .setText(departure.getTrainLengthAndPlatform());
             if (departure.isCanceled()) {
                 estimatedArrival.setText("");
+            } else if (!StringUtils.isBlank(transferDetailsText)) {
+                estimatedArrival.setText(transferDetailsText);
             } else if (estimatedArrivalTimeText != "") {
                 estimatedArrival.setText(arrivesAtDestinationPrefix
                         + estimatedArrivalTimeText);
@@ -86,7 +87,9 @@ public class DepartureArrayAdapter extends ArrayAdapter<Departure> {
             initTextSwitcher(textSwitcher,
                     R.layout.train_length_arrival_textview);
 
-            if (!StringUtils.isBlank(estimatedArrivalTimeText)) {
+            if (!StringUtils.isBlank(transferDetailsText)) {
+                textSwitcher.setCurrentText(transferDetailsText);
+            } else if (!StringUtils.isBlank(estimatedArrivalTimeText)) {
                 textSwitcher.setCurrentText(arrivesAtDestinationPrefix
                         + estimatedArrivalTimeText);
             } else {
@@ -98,6 +101,9 @@ public class DepartureArrayAdapter extends ArrayAdapter<Departure> {
                     if (tickNumber % 4 == 0) {
                         return departure.getTrainLengthAndPlatform();
                     } else {
+                        if (!StringUtils.isBlank(transferDetailsText)) {
+                            return transferDetailsText;
+                        }
                         final String estimatedArrivalTimeText = departure
                                 .getEstimatedArrivalTimeText(getContext(), false);
                         if (StringUtils.isBlank(estimatedArrivalTimeText)) {

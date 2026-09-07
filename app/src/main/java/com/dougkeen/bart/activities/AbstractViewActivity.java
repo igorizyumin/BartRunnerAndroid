@@ -1,6 +1,6 @@
 package com.dougkeen.bart.activities;
 
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.dougkeen.bart.BartRunnerApplication;
 

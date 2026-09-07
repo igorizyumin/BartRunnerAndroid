@@ -263,8 +263,7 @@ public class SwipeHelper implements View.OnTouchListener {
     }
 
     public void showWithAnimation() {
-        final int measureSpec = MeasureSpec.makeMeasureSpec(
-                ViewGroup.LayoutParams.WRAP_CONTENT, MeasureSpec.UNSPECIFIED);
+        final int measureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
         mView.measure(measureSpec, measureSpec);
         mViewWidth = mView.getMeasuredWidth();
         final int viewHeight = mView.getMeasuredHeight();

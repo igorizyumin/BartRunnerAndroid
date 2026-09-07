@@ -3,12 +3,12 @@ package com.dougkeen.bart.controls;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
-import android.widget.TextView;
+import androidx.appcompat.widget.AppCompatTextView;
 
 import com.dougkeen.bart.R;
 import com.dougkeen.bart.model.TextProvider;
 
-public class CountdownTextView extends TextView implements
+public class CountdownTextView extends AppCompatTextView implements
         Ticker.TickSubscriber {
 
     private TextProvider mTextProvider;

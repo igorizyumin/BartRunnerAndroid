@@ -2,12 +2,12 @@ package com.dougkeen.bart.activities;
 
 import java.util.List;
 
-import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.ServiceConnection;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
@@ -17,9 +17,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Parcelable;
 import android.os.Vibrator;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.view.ActionMode;
+import android.os.VibrationEffect;
+import android.os.VibratorManager;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.view.ActionMode;
 import android.text.format.DateFormat;
 import android.text.util.Linkify;
 import android.util.Log;
@@ -29,7 +32,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
-import android.widget.Checkable;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -37,9 +39,7 @@ import android.widget.Toast;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
-import com.dougkeen.bart.controls.SwipeHelper;
 import com.dougkeen.bart.controls.Ticker;
-import com.dougkeen.bart.controls.YourTrainLayout;
 import com.dougkeen.bart.data.DepartureArrayAdapter;
 import com.dougkeen.bart.model.Constants;
 import com.dougkeen.bart.model.Departure;
@@ -50,7 +50,6 @@ import com.dougkeen.bart.services.EtdService.EtdServiceBinder;
 import com.dougkeen.bart.services.EtdService.EtdServiceListener;
 import com.dougkeen.bart.services.EtdService_;
 import com.dougkeen.util.Assert;
-import com.dougkeen.util.Observer;
 import com.dougkeen.util.WakeLocker;
 
 public class ViewDeparturesActivity extends AbstractViewActivity implements
@@ -72,6 +71,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
     private Handler mHandler = new Handler();
 
     private boolean mBound = false;
+
+    private static final int POST_NOTIFICATIONS_REQUEST_CODE = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,20 +97,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         listView.setOnItemClickListener(mListItemClickListener);
         listView.setOnItemLongClickListener(mListItemLongClickListener);
 
-        mYourTrainSection = (YourTrainLayout) findViewById(R.id.yourTrainSection);
-        mYourTrainSection.setOnClickListener(mYourTrainSectionClickListener);
-        mSwipeHelper = new SwipeHelper(mYourTrainSection, null,
-                new SwipeHelper.OnDismissCallback() {
-                    @Override
-                    public void onDismiss(View view, Object token) {
-                        dismissYourTrainSelection();
-                        if (mActionMode != null) {
-                            mActionMode.finish();
-                        }
-                    }
-                });
-        mYourTrainSection.setOnTouchListener(mSwipeHelper);
-
         if (savedInstanceState != null
                 && savedInstanceState.containsKey("stationPair")) {
             mStationPair = savedInstanceState.getParcelable("stationPair");
@@ -121,7 +108,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             if (mBound && mEtdService != null)
                 mEtdService
                         .registerListener(ViewDeparturesActivity.this, false);
-            refreshBoardedDeparture(false);
         }
 
         if (savedInstanceState != null) {
@@ -140,14 +126,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     && mSelectedDeparture != null) {
                 startDepartureActionMode();
             }
-            if (savedInstanceState.getBoolean("hasYourTrainActionMode")
-                    && mSelectedDeparture != null) {
-                ((Checkable) findViewById(R.id.yourTrainSection))
-                        .setChecked(true);
-                startYourTrainActionMode();
-            }
         }
-        refreshBoardedDeparture(false);
 
         ActionBar supportActionBar = Assert.notNull(getSupportActionBar());
         supportActionBar.setHomeButtonEnabled(true);
@@ -158,7 +137,7 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
 
         if (bartRunnerApplication.isAlarmSounding()) {
-            Builder builder = new AlertDialog.Builder(this);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setMessage(R.string.train_alarm_text)
                     .setCancelable(false)
                     .setNeutralButton(R.string.silence_alarm,
@@ -201,8 +180,18 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         if (application.getAlarmMediaPlayer() == null) {
             tryToPlayRingtone(alarmSound);
         }
-        final Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-        vibrator.vibrate(new long[]{0, 500, 500}, 1);
+        final Vibrator vibrator;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            VibratorManager vibratorManager = (VibratorManager) getSystemService(VIBRATOR_MANAGER_SERVICE);
+            vibrator = vibratorManager.getDefaultVibrator();
+        } else {
+            vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createWaveform(new long[]{0, 500, 500}, 1));
+        } else {
+            vibrator.vibrate(new long[]{0, 500, 500}, 1);
+        }
         mHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -314,18 +303,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
     };
 
-    private final View.OnClickListener mYourTrainSectionClickListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            ((Checkable) v).setChecked(true);
-            startYourTrainActionMode();
-        }
-    };
-
-    private YourTrainLayout mYourTrainSection;
-
-    private SwipeHelper mSwipeHelper;
-
     protected DepartureArrayAdapter getListAdapter() {
         return mDeparturesAdapter;
     }
@@ -363,8 +340,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             outState.putParcelable("selectedDeparture", mSelectedDeparture);
             outState.putBoolean("hasDepartureActionMode",
                     isDepartureActionModeActive());
-            outState.putBoolean("hasYourTrainActionMode",
-                    isYourTrainActionModeActive());
             outState.putParcelable("stationPair", mStationPair);
         }
     }
@@ -393,7 +368,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                 }
             }, 10 * 60 * 1000);
             Ticker.getInstance().startTicking(this);
-            refreshBoardedDeparture(false);
         }
     }
 
@@ -430,45 +404,42 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         }
     }
 
-    private void refreshBoardedDeparture(boolean animate) {
-        final Departure boardedDeparture = getBoardedDeparture();
-        int currentVisibility = mYourTrainSection.getVisibility();
-
-        if (!doesDepartureApply(boardedDeparture)) {
-            if (currentVisibility != View.GONE) {
-                hideYourTrainSection();
-            }
-            return;
-        }
-
-        mYourTrainSection.updateFromBoardedDeparture(boardedDeparture);
-
-        if (currentVisibility != View.VISIBLE) {
-            showYourTrainSection(animate);
-        }
-    }
-
-    private boolean doesDepartureApply(final Departure departure) {
-        return departure != null && departure.getStationPair() != null
-                && departure.getStationPair().equals(getStationPair());
-    }
-
     private void setBoardedDeparture(Departure selectedDeparture,
-                                     boolean startActionMode) {
+                                     boolean openTripScreen) {
         final BartRunnerApplication application = (BartRunnerApplication) getApplication();
         selectedDeparture.setPassengerDestination(mStationPair.getDestination());
         application.setBoardedDeparture(selectedDeparture);
-        refreshBoardedDeparture(true);
+        requestNotificationPermissionIfNeeded();
 
         // Start the notification service
         final Intent intent = new Intent(ViewDeparturesActivity.this,
                 BoardedDepartureService.class);
         intent.putExtra("departure", selectedDeparture);
-        startService(intent);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startBoardedDepartureService(intent);
+        }
 
-        if (startActionMode) {
-            mYourTrainSection.setChecked(true);
-            startYourTrainActionMode();
+        if (openTripScreen) {
+            startActivity(new Intent(this, TripInProgressActivity.class));
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    POST_NOTIFICATIONS_REQUEST_CODE);
+        }
+    }
+
+    private void startBoardedDepartureService(Intent intent) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
         }
     }
 
@@ -489,14 +460,13 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
 
         @Override
         public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            ((Checkable) findViewById(R.id.yourTrainSection)).setChecked(false);
             return false;
         }
 
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
             if (item.getItemId() == R.id.boardTrain) {
-                setBoardedDeparture(mSelectedDeparture, false);
+                setBoardedDeparture(mSelectedDeparture, true);
 
                 mode.finish();
                 return true;
@@ -510,173 +480,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
             mActionMode = null;
         }
 
-    }
-
-    private void startYourTrainActionMode() {
-        if (mActionMode == null)
-            mActionMode = startSupportActionMode(new YourTrainActionMode());
-        mActionMode.setTitle(R.string.your_train);
-        Departure boardedDeparture = getBoardedDeparture();
-        if (boardedDeparture != null && boardedDeparture.isAlarmPending()) {
-            int leadTime = boardedDeparture.getAlarmLeadTimeMinutes();
-            mActionMode.setSubtitle(getAlarmSubtitle(leadTime));
-        } else {
-            mActionMode.setSubtitle(null);
-        }
-    }
-
-    private String getAlarmSubtitle(int leadTime) {
-        if (leadTime == 0)
-            return null;
-        return "Alarm " + leadTime + " minute" + (leadTime != 1 ? "s" : "")
-                + " before departure";
-    }
-
-    private class YourTrainActionMode implements ActionMode.Callback {
-        private Observer<Boolean> mAlarmPendingObserver;
-        private Observer<Integer> mAlarmLeadTimeObserver;
-
-        @Override
-        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-            mode.getMenuInflater()
-                    .inflate(R.menu.your_train_context_menu, menu);
-            final MenuItem cancelAlarmButton = menu
-                    .findItem(R.id.cancel_alarm_button);
-            final MenuItem setAlarmButton = menu
-                    .findItem(R.id.set_alarm_button);
-            final Departure boardedDeparture = getBoardedDeparture();
-
-            if (boardedDeparture == null) {
-                mode.finish();
-                refreshBoardedDeparture(true);
-                return true;
-            }
-
-            if (boardedDeparture.isAlarmPending()) {
-                cancelAlarmButton.setVisible(true);
-                setAlarmButton.setIcon(R.drawable.ic_action_alarm);
-            } else if (boardedDeparture.getMeanSecondsLeft() > 60) {
-                setAlarmButton.setIcon(R.drawable.ic_action_add_alarm);
-            }
-
-            // Don't allow alarm setting if train is about to leave
-            if (boardedDeparture.getMeanSecondsLeft() / 60 < 1) {
-                menu.findItem(R.id.set_alarm_button).setVisible(false);
-            }
-
-            mAlarmPendingObserver = new Observer<Boolean>() {
-                @Override
-                public void onUpdate(final Boolean newValue) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            cancelAlarmButton.setVisible(newValue);
-                            if (newValue) {
-                                mActionMode
-                                        .setSubtitle(getAlarmSubtitle(boardedDeparture
-                                                .getAlarmLeadTimeMinutes()));
-                                setAlarmButton
-                                        .setIcon(R.drawable.ic_action_alarm);
-                            } else {
-                                mActionMode.setSubtitle(null);
-                                setAlarmButton
-                                        .setIcon(R.drawable.ic_action_add_alarm);
-                            }
-                        }
-                    });
-                }
-            };
-            mAlarmLeadTimeObserver = new Observer<Integer>() {
-                @Override
-                public void onUpdate(final Integer newValue) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            mActionMode.setSubtitle(getAlarmSubtitle(newValue));
-                        }
-                    });
-                }
-            };
-            boardedDeparture.getAlarmPendingObservable().registerObserver(
-                    mAlarmPendingObserver);
-            boardedDeparture.getAlarmLeadTimeMinutesObservable()
-                    .registerObserver(mAlarmLeadTimeObserver);
-            return true;
-        }
-
-        @Override
-        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            getListView().clearChoices();
-            getListView().requestLayout();
-            return false;
-        }
-
-        @Override
-        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-            final int itemId = item.getItemId();
-            final Departure boardedDeparture = getBoardedDeparture();
-            if (itemId == R.id.set_alarm_button) {
-                // Don't prompt for alarm if train is about to leave
-                if (boardedDeparture.getMeanSecondsLeft() > 60) {
-                    new TrainAlarmDialogFragment()
-                            .show(getSupportFragmentManager(), TrainAlarmDialogFragment.TAG);
-                }
-
-                return true;
-            } else if (itemId == R.id.cancel_alarm_button) {
-                Intent intent = new Intent(ViewDeparturesActivity.this,
-                        BoardedDepartureService.class);
-                intent.putExtra("cancelNotifications", true);
-                startService(intent);
-                return true;
-            } else if (itemId == R.id.delete) {
-                mSwipeHelper.dismissWithAnimation(true);
-                mode.finish();
-                return true;
-            } else if (itemId == R.id.share_arrival) {
-                Intent intent = new Intent(Intent.ACTION_SEND);
-                intent.setType("text/plain");
-                intent.putExtra(Intent.EXTRA_SUBJECT, "My BART train");
-                intent.putExtra(
-                        Intent.EXTRA_TEXT,
-                        getString(
-                                R.string.arrival_message,
-                                boardedDeparture.getStationPair()
-                                        .getDestination().name,
-                                boardedDeparture
-                                        .getEstimatedArrivalTimeText(ViewDeparturesActivity.this, false)));
-
-                startActivity(Intent.createChooser(intent,
-                        getString(R.string.share_arrival_time)));
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public void onDestroyActionMode(ActionMode mode) {
-            ((Checkable) findViewById(R.id.yourTrainSection)).setChecked(false);
-
-            final Departure boardedDeparture = getBoardedDeparture();
-            if (boardedDeparture != null) {
-                boardedDeparture.getAlarmPendingObservable()
-                        .unregisterObserver(mAlarmPendingObserver);
-                boardedDeparture.getAlarmLeadTimeMinutesObservable()
-                        .unregisterObserver(mAlarmLeadTimeObserver);
-            }
-
-            mAlarmPendingObserver = null;
-            mAlarmLeadTimeObserver = null;
-            mActionMode = null;
-        }
-    }
-
-    private void dismissYourTrainSelection() {
-        Intent intent = new Intent(ViewDeparturesActivity.this,
-                BoardedDepartureService.class);
-        intent.putExtra(Constants.CLEAR_DEPARTURE, true);
-        startService(intent);
-        hideYourTrainSection();
     }
 
     @Override
@@ -694,18 +497,10 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                     Ticker.getInstance().startTicking(
                             ViewDeparturesActivity.this);
 
-                    Departure boardedDeparture = getBoardedDeparture();
-                    boolean boardedDepartureFound = false;
-
                     // Merge lists
                     if (mDeparturesAdapter.getCount() > 0) {
                         int adapterIndex = -1;
                         for (Departure departure : departures) {
-                            if (!boardedDepartureFound
-                                    && departure.equals(boardedDeparture)) {
-                                boardedDepartureFound = true;
-                            }
-
                             adapterIndex++;
                             Departure existingDeparture = null;
                             if (adapterIndex < mDeparturesAdapter.getCount()) {
@@ -736,13 +531,6 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
                             listAdapter.add(departure);
                         }
                     }
-
-                    if (doesDepartureApply(boardedDeparture)
-                            && !boardedDepartureFound) {
-                        boardedDeparture.setListedInETDs(false);
-                    }
-
-                    refreshBoardedDeparture(true);
 
                     getListAdapter().notifyDataSetChanged();
                 }
@@ -785,30 +573,8 @@ public class ViewDeparturesActivity extends AbstractViewActivity implements
         return mStationPair;
     }
 
-    private void hideYourTrainSection() {
-        mYourTrainSection.setVisibility(View.GONE);
-    }
-
-    private void showYourTrainSection(boolean animate) {
-        mYourTrainSection.setVisibility(View.VISIBLE);
-        if (animate) {
-            mSwipeHelper.showWithAnimation();
-        }
-    }
-
-    private boolean isYourTrainActionModeActive() {
-        return mActionMode != null
-                && mActionMode.getTitle()
-                .equals(getString(R.string.your_train));
-    }
-
     private boolean isDepartureActionModeActive() {
-        return mActionMode != null
-                && !mActionMode.getTitle().equals(
-                getString(R.string.your_train));
+        return mActionMode != null;
     }
 
-    private Departure getBoardedDeparture() {
-        return ((BartRunnerApplication) getApplication()).getBoardedDeparture();
-    }
 }

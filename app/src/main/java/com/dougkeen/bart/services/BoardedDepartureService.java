@@ -5,17 +5,21 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.ServiceInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.support.v4.app.NotificationManagerCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import com.dougkeen.bart.BartRunnerApplication;
 import com.dougkeen.bart.R;
@@ -116,8 +120,7 @@ public class BoardedDepartureService extends Service implements
         super.onCreate();
     }
 
-    @Override
-    public void onStart(Intent intent, int startId) {
+    private void enqueueIntent(Intent intent, int startId) {
         Message msg = mServiceHandler.obtainMessage();
         msg.arg1 = startId;
         msg.obj = intent;
@@ -127,7 +130,7 @@ public class BoardedDepartureService extends Service implements
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         mHasShutDown = false;
-        onStart(intent, startId);
+        enqueueIntent(intent, startId);
         return START_REDELIVER_INTENT;
     }
 
@@ -136,7 +139,7 @@ public class BoardedDepartureService extends Service implements
         shutDown(true);
         if (mBound)
             unbindService(mConnection);
-        mServiceLooper.quit();
+        mServiceLooper.quitSafely();
         super.onDestroy();
     }
 
@@ -223,9 +226,9 @@ public class BoardedDepartureService extends Service implements
                     .getMeanSecondsLeft() || boardedDeparture
                     .getUncertaintySeconds() != departure
                     .getUncertaintySeconds())) {
-                boardedDeparture.mergeEstimate(departure);
+                boardedDeparture.mergeEstimate(departure, false);
                 // Also merge back, in case boardedDeparture estimate is better
-                departure.mergeEstimate(boardedDeparture);
+                departure.mergeEstimate(boardedDeparture, false);
 
                 updateAlarm();
                 break;
@@ -297,7 +300,11 @@ public class BoardedDepartureService extends Service implements
 
     private void shutDown(boolean isBeingDestroyed) {
         if (!mHasShutDown) {
-            stopForeground(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE);
+            } else {
+                stopForeground(true);
+            }
             mHasShutDown = true;
             if (mEtdService != null) {
                 mEtdService.unregisterListener(this);
@@ -322,9 +329,17 @@ public class BoardedDepartureService extends Service implements
                 .getBoardedDeparture();
         if (boardedDeparture != null) {
             Notification notification = boardedDeparture.createNotification(getApplicationContext());
-            mNotificationManager.notify(DEPARTURE_NOTIFICATION_ID,
-                    notification);
-            startForeground(DEPARTURE_NOTIFICATION_ID, notification);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                    || ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                mNotificationManager.notify(DEPARTURE_NOTIFICATION_ID, notification);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(DEPARTURE_NOTIFICATION_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            } else {
+                startForeground(DEPARTURE_NOTIFICATION_ID, notification);
+            }
         }
     }
 

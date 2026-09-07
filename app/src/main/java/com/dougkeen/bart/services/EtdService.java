@@ -2,7 +2,6 @@ package com.dougkeen.bart.services;
 
 import android.app.Service;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
@@ -20,6 +19,7 @@ import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.networktasks.BartApiException;
 import com.dougkeen.bart.networktasks.GetRealTimeDeparturesTask;
 import com.dougkeen.bart.networktasks.GetScheduleInformationTask;
+import com.dougkeen.bart.networktasks.NetworkTask;
 
 import org.androidannotations.annotations.EService;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -33,6 +33,8 @@ import java.util.Map;
 
 @EService
 public class EtdService extends Service {
+
+    private static final long DEPARTURE_LOOKUP_CACHE_MILLIS = 15000L;
 
     private IBinder mBinder;
 
@@ -116,11 +118,12 @@ public class EtdService extends Service {
 
         private List<Departure> mLatestDepartures;
         private ScheduleInformation mLatestScheduleInfo;
+        private long mLatestDepartureLookupTime;
 
         private String mLatestDepartureError;
 
-        private AsyncTask<StationPair, Integer, RealTimeDepartures> mGetDeparturesTask;
-        private AsyncTask<StationPair, Integer, ScheduleInformation> mGetScheduleInformationTask;
+        private NetworkTask<StationPair, Integer, RealTimeDepartures> mGetDeparturesTask;
+        private NetworkTask<StationPair, Integer, ScheduleInformation> mGetScheduleInformationTask;
 
         private Handler mRunnableQueue;
 
@@ -139,8 +142,12 @@ public class EtdService extends Service {
             if (!limitToFirstNonDeparted) {
                 mLimitToFirstNonDeparted = false;
             }
-            if (!mPendingEtdRequest) {
-                mStarted = true;
+            mStarted = true;
+            boolean hasFreshLookup = mLatestDepartureLookupTime > 0
+                    && System.currentTimeMillis()
+                    - mLatestDepartureLookupTime
+                    < DEPARTURE_LOOKUP_CACHE_MILLIS;
+            if (!mPendingEtdRequest && !hasFreshLookup) {
                 fetchLatestDepartures();
             }
             // Replay ETD or error event
@@ -156,12 +163,12 @@ public class EtdService extends Service {
             if (mListeners.isEmpty()) {
                 if (mGetDeparturesTask != null
                         && mGetDeparturesTask.getStatus().equals(
-                        AsyncTask.Status.RUNNING)) {
+                        NetworkTask.Status.RUNNING)) {
                     mGetDeparturesTask.cancel(true);
                 }
                 if (mGetScheduleInformationTask != null
                         && mGetScheduleInformationTask.getStatus().equals(
-                        AsyncTask.Status.RUNNING)) {
+                        NetworkTask.Status.RUNNING)) {
                     mGetScheduleInformationTask.cancel(true);
                 }
                 mStarted = false;
@@ -194,7 +201,7 @@ public class EtdService extends Service {
 
         private void fetchLatestDepartures() {
             if (mGetDeparturesTask != null
-                    && mGetDeparturesTask.equals(AsyncTask.Status.RUNNING)) {
+                    && mGetDeparturesTask.getStatus().equals(NetworkTask.Status.RUNNING)) {
                 // Don't overlap fetches
                 return;
             }
@@ -206,9 +213,10 @@ public class EtdService extends Service {
                 @Override
                 public void onResult(RealTimeDepartures result) {
                     mLatestDepartureError = null;
-                    Log.v(Constants.TAG, "Processing data from server");
+                    mLatestDepartureLookupTime = System.currentTimeMillis();
+                    Log.v(Constants.TAG, "Processing departure lookup result");
                     processLatestDepartures(result);
-                    Log.v(Constants.TAG, "Done processing data from server");
+                    Log.v(Constants.TAG, "Done processing departure lookup result");
                     notifyListenersOfRequestEnd();
                     mPendingEtdRequest = false;
                 }
@@ -230,7 +238,7 @@ public class EtdService extends Service {
                 }
             };
             mGetDeparturesTask = task;
-            Log.v(Constants.TAG, "Fetching data from server");
+            Log.v(Constants.TAG, "Looking up departures (shared 15-second cache)");
             task.execute(mStationPair);
             notifyListenersOfRequestStart();
         }
@@ -238,7 +246,7 @@ public class EtdService extends Service {
         private void fetchLatestSchedule() {
             if (mGetScheduleInformationTask != null
                     && mGetScheduleInformationTask.getStatus().equals(
-                    AsyncTask.Status.RUNNING)) {
+                    NetworkTask.Status.RUNNING)) {
                 // Don't overlap fetches
                 return;
             }
@@ -246,10 +254,10 @@ public class EtdService extends Service {
             GetScheduleInformationTask task = new GetScheduleInformationTask() {
                 @Override
                 public void onResult(ScheduleInformation result) {
-                    Log.v(Constants.TAG, "Processing data from server");
+                    Log.v(Constants.TAG, "Processing schedule lookup result");
                     mLatestScheduleInfo = result;
                     applyScheduleInformation(result);
-                    Log.v(Constants.TAG, "Done processing data from server");
+                    Log.v(Constants.TAG, "Done processing schedule lookup result");
                 }
 
                 @Override
@@ -261,7 +269,7 @@ public class EtdService extends Service {
                     scheduleScheduleInfoFetch(60000);
                 }
             };
-            Log.i(Constants.TAG, "Fetching data from server");
+            Log.v(Constants.TAG, "Looking up schedule (shared 15-second cache)");
             mGetScheduleInformationTask = task;
             task.execute(mStationPair);
         }
@@ -466,7 +474,7 @@ public class EtdService extends Service {
                     }
                     mLatestDepartures.add(departure);
                     if (departure.equals(boardedDeparture)) {
-                        boardedDeparture.mergeEstimate(departure);
+                        boardedDeparture.mergeEstimate(departure, false);
                     }
                     if (!departure.hasDeparted() && mLimitToFirstNonDeparted) {
                         break;
@@ -534,7 +542,7 @@ public class EtdService extends Service {
                     }
 
                     if (departure.equals(boardedDeparture)) {
-                        boardedDeparture.mergeEstimate(departure);
+                        boardedDeparture.mergeEstimate(departure, false);
                     }
 
                     if (!departure.hasDeparted() && mLimitToFirstNonDeparted) {
