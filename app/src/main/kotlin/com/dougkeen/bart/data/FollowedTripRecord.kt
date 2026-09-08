@@ -39,7 +39,7 @@ class FollowedTripRecord constructor() {
         return Departure.builder()
             .setOrigin(station(origin))
             .setTrainDestination(station(trainDestination))
-            .setPassengerDestination(station(passengerDestination))
+            .setPassengerDestination(station(passengerDestination) ?: station(trainDestination))
             .setLine(line?.let(Line::valueOf))
             .setTrainDestinationColorHex(trainDestinationColorHex)
             .setTrainDestinationColorText(trainDestinationColorText)

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.dougkeen.bart.R
+import com.dougkeen.bart.activities.RouteArguments
 import com.dougkeen.bart.activities.TripInProgressActivity
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.TimeSource
@@ -35,8 +36,8 @@ object DepartureNotificationFactory {
         }
         val directionText = context.getString(
             R.string.notification_direction,
-            departure.origin!!.shortName,
-            departure.passengerDestination!!.shortName,
+            departure.origin?.shortName.orEmpty(),
+            (departure.passengerDestination ?: departure.trainDestination)?.shortName.orEmpty(),
         )
         val cancelAlarmIntent = Intent(context, BoardedDepartureService::class.java)
             .setAction(BoardedDepartureService.ACTION_CANCEL_ALARM)
@@ -44,9 +45,10 @@ object DepartureNotificationFactory {
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_notification)
             .setContentTitle(minutesText)
-            .setContentIntent(notificationIntent(context))
+            .setContentIntent(notificationIntent(context, departure))
             .setDeleteIntent(deleteNotificationIntent(context))
             .setContentText(directionText)
+            .setOnlyAlertOnce(true)
 
         if (secondsLeft > 0) {
             builder
@@ -71,10 +73,16 @@ object DepartureNotificationFactory {
         return builder.build()
     }
 
-    private fun notificationIntent(context: Context): PendingIntent {
+    private fun notificationIntent(context: Context, departure: Departure): PendingIntent {
         val targetIntent = Intent(context, TripInProgressActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
+        RouteArguments.putTrip(
+            targetIntent,
+            departure.getStationPair(),
+            departure.identity,
+            RouteArguments.MODE_FOLLOWED,
+        )
         return PendingIntent.getActivity(
             context,
             0,

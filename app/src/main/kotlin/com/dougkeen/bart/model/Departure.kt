@@ -71,7 +71,9 @@ data class Departure(
     fun hasEstimatedTripTime(): Boolean = estimatedTripTime > 0
 
     fun hasAnyArrivalEstimate(): Boolean =
-        estimatedTripTime > 0 || arrivalTimeOverride > 0
+        (tripLegs.isNotEmpty() && hasCompleteTripLegs() && tripLegs.last().hasArrivalTime())
+            || estimatedTripTime > 0
+            || arrivalTimeOverride > 0
 
     fun getUncertaintySeconds(): Int =
         ((maxEstimate - minEstimate + 1000L) / 2000L).toInt()

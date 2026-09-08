@@ -44,7 +44,7 @@ class FavoritesRepository(context: Context) : AutoCloseable {
     }
 
     fun addFavorite(favorite: StationPair) {
-        updateFavorites { it.add(favorite) }
+        updateFavorites { addFavoriteIfAbsent(it, favorite) }
     }
 
     fun removeFavorite(favorite: StationPair) {
@@ -97,14 +97,15 @@ class FavoritesRepository(context: Context) : AutoCloseable {
         }
 
         synchronized(stateLock) {
-            val merged = restored.toMutableList()
+            val merged = deduplicateFavorites(restored).toMutableList()
             val hadPendingChanges = pendingChanges.isNotEmpty()
             pendingChanges.forEach { it(merged) }
             pendingChanges.clear()
-            currentFavorites = immutableCopy(merged)
+            val normalized = deduplicateFavorites(merged)
+            currentFavorites = immutableCopy(normalized)
             loaded = true
             _uiState.value = FavoritesUiState(currentFavorites, isLoading = false)
-            if (hadPendingChanges) {
+            if (hadPendingChanges || normalized.size != restored.size) {
                 // Queue this write before releasing stateLock so a concurrent
                 // update cannot enqueue a newer snapshot ahead of this merge.
                 persistSnapshot(currentFavorites)
@@ -145,3 +146,12 @@ class FavoritesRepository(context: Context) : AutoCloseable {
         persistenceExecutor.shutdownNow()
     }
 }
+
+internal fun addFavoriteIfAbsent(favorites: MutableList<StationPair>, favorite: StationPair) {
+    if (favorite !in favorites) {
+        favorites.add(favorite)
+    }
+}
+
+internal fun deduplicateFavorites(favorites: List<StationPair>): List<StationPair> =
+    favorites.distinct()

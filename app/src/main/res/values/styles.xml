@@ -3,12 +3,10 @@
 
     <!-- Base application theme is the default theme. -->
 
-    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
         <item name="colorSecondary">@color/brand_secondary</item>
-        <item name="actionBarStyle">@style/AppActionBar</item>
-        <item name="windowActionBarOverlay">false</item>
         <item name="android:fontFamily">sans</item>
         <item name="android:statusBarColor">@color/brand_primary_dark</item>
         <item name="android:navigationBarColor">@color/surface</item>

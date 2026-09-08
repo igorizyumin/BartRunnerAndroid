@@ -98,10 +98,22 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         updateState(leadTimeMinutes, false)
     }
 
-    override fun close() {
+    /**
+     * Closes this scheduler. When a live feed replaces the Departure instance for
+     * the same train, the pending preference must survive long enough for the new
+     * scheduler to restore and reschedule it with the updated ETA.
+     */
+    fun close(preservePending: Boolean = false) {
         if (isPending) {
-            cancel()
+            alarmManager?.cancel(alarmIntent())
+            if (!preservePending) {
+                updateState(leadTimeMinutes, false)
+            }
         }
+    }
+
+    override fun close() {
+        close(preservePending = false)
     }
 
     private fun alarmIntent(): PendingIntent {
@@ -164,12 +176,9 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         append("alarm.")
         appendStation(this, departure.origin)
         appendStation(this, departure.trainDestination)
-        appendStation(this, departure.passengerDestination)
         append('|').append(departure.line)
         append('|').append(departure.direction)
         append('|').append(departure.platform)
-        append('|').append(departure.minEstimate)
-        append('|').append(departure.maxEstimate)
     }
 
     private fun appendStation(builder: StringBuilder, station: Station?) {

@@ -12,6 +12,17 @@ import org.junit.Test
 
 class FollowedTripRecordTest {
     @Test
+    fun missingPassengerDestinationRestoresFromTrainDestination() {
+        val record = FollowedTripRecord().apply {
+            origin = "cast"
+            trainDestination = "balb"
+            passengerDestination = null
+        }
+
+        assertEquals(Station.BALB, record.toDeparture().passengerDestination)
+    }
+
+    @Test
     fun jsonRoundTripRestoresFollowedTripState() {
         val leg = TripLeg(
             Line.RED, Station.MONT, Station.RICH, Station.RICH,

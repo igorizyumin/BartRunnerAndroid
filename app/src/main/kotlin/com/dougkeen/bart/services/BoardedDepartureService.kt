@@ -1,17 +1,13 @@
 package com.dougkeen.bart.services
 
-import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.backend.RouteDepartureProjection
@@ -179,7 +175,6 @@ class BoardedDepartureService : Service() {
                             false
                         } else {
                             updateAlarm()
-                            updateNotification()
                             true
                         }
                     }
@@ -255,14 +250,6 @@ class BoardedDepartureService : Service() {
             followedTripRepository.getAlarmScheduler(),
             timeSource,
         )
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
-            || ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationManager?.notify(DEPARTURE_NOTIFICATION_ID, notification)
-        }
         startForeground(
             DEPARTURE_NOTIFICATION_ID,
             notification,
@@ -285,6 +272,7 @@ class BoardedDepartureService : Service() {
 
     companion object {
         const val ACTION_FOLLOW_DEPARTURE = "com.dougkeen.action.FOLLOW_BOARDED_DEPARTURE"
+        const val ACTION_REFRESH_DEPARTURE = "com.dougkeen.action.REFRESH_BOARDED_DEPARTURE"
         const val ACTION_CANCEL_ALARM = "com.dougkeen.action.CANCEL_BOARDED_DEPARTURE_ALARM"
         const val ACTION_CLEAR_DEPARTURE = "com.dougkeen.action.CLEAR_BOARDED_DEPARTURE"
         private const val DEPARTURE_NOTIFICATION_ID = 123

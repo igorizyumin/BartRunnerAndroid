@@ -80,6 +80,10 @@
     <string name="route_title_arrow">%1$s → %2$s</string>
     <string name="notification_channel_id">BART_Runner_notifications</string>
     <string name="notification_channel_name">BART Runner departure notifications</string>
+    <string name="alarm_notification_channel_id">BART_Runner_alarm_notifications</string>
+    <string name="alarm_notification_channel_name">BART Runner departure alarms</string>
+    <string name="alarm_notification_title">Your train is leaving soon</string>
+    <string name="alarm_notification_text">Departing for %1$s</string>
     <string name="snackbar_route_deleted">Route deleted.</string>
     <string name="undo">Undo</string>
     <string name="drag_handle_description">Reorder route</string>

@@ -108,7 +108,7 @@ object DepartureTextFormatter {
 
     @JvmStatic
     fun estimatedArrivalTime(context: Context, departure: Departure, compact: Boolean): String {
-        if (departure.estimatedTripTime <= 0 && departure.arrivalTimeOverride <= 0) return ""
+        if (!departure.hasAnyArrivalEstimate()) return ""
         return formatTime(timeFormatter(context), departure.getEstimatedArrivalTime())
     }
 

@@ -28,15 +28,18 @@ class TripProgressViewModel(application: Application) :
     private var routeCollectionJob: Job? = null
     private var tripProgressCollectionJob: Job? = null
     private var departureTimeSource: TimeSource? = null
+    private var queryStationPair: StationPair? = null
 
     fun setQuery(
         stationPair: StationPair,
         departureIdentity: String,
         timeSource: TimeSource,
+        initialDeparture: Departure? = null,
     ) {
         cancelCollections()
         departureTimeSource = timeSource
-        _departureState.value = null
+        queryStationPair = stationPair
+        _departureState.value = initialDeparture
 
         val application = getApplication<BartRunnerApplication>()
         val repository: TransitRepository = application.transitRepository
@@ -61,10 +64,13 @@ class TripProgressViewModel(application: Application) :
 
     private fun updateFromRealtime(incoming: Departure) {
         val timeSource = departureTimeSource ?: return
+        val normalizedIncoming = queryStationPair?.destination?.let {
+            incoming.withPassengerDestination(it)
+        } ?: incoming
         val current = departureState.value
         val updated = current?.let {
-            Departure.merge(it, incoming, true, timeSource)
-        } ?: incoming
+            Departure.merge(it, normalizedIncoming, true, timeSource)
+        } ?: normalizedIncoming
         publish(updated)
         startTripProgress(updated)
     }
