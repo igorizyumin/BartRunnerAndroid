@@ -15,12 +15,6 @@ class HttpTransitFeedClient : TransitFeedClient {
 
     private val client: OkHttpClient
 
-    override fun fetch(): TransitFeedSnapshot {
-        val tripUpdates = fetchFeed(TRIP_UPDATES_URL)
-        val alerts = fetchFeed(ALERTS_URL)
-        return TransitFeedSnapshot(tripUpdates, alerts, System.currentTimeMillis())
-    }
-
     override fun fetchFeeds(): TransitFeedFetchResult {
         var tripUpdates: GtfsRealtime.FeedMessage? = null
         var alerts: GtfsRealtime.FeedMessage? = null

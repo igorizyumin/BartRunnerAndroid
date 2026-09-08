@@ -17,7 +17,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Collections
 
 /** Converts BART's GTFS-RT trip updates into the app's departure model. */
 class GtfsRealtimeContentHandler @JvmOverloads constructor(
@@ -39,12 +38,19 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         feedIndex: GtfsRealtimeFeedIndex,
         feedTime: Long
     ): RealTimeDepartures {
-        val departures = RealTimeDepartures(origin, destination, routes, bartGtfsNetwork)
-        departures.setTime(feedTime)
+        val departures = DepartureCollection()
 
         val trips = parseTrips(feedIndex.tripUpdateEntities, feedTime)
-        trips.forEach { trip -> addTripUpdate(departures, trip, trips) }
-        return departures
+        trips.forEach { trip -> addTripUpdate(departures, trip, trips, feedTime) }
+        return RealTimeDepartures(
+            origin,
+            destination,
+            feedTime,
+            routes,
+            departures.unfiltered,
+            departures.filtered,
+            bartGtfsNetwork,
+        )
     }
 
     /**
@@ -296,9 +302,10 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     }
 
     private fun addTripUpdate(
-        departures: RealTimeDepartures,
+        departures: DepartureCollection,
         trip: TripSnapshot,
-        allTrips: List<TripSnapshot>
+        allTrips: List<TripSnapshot>,
+        feedTime: Long,
     ) {
         if (destination != null && !ignoreDirection && !origin.ignoreRoutingDirection
             && !isDirectionApplicable(trip.direction)
@@ -311,7 +318,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         }
         val route = findRoute(trip) ?: return
 
-        val minutes = maxOf(0L, (originPoint.departureTime - departures.getTime()) / 60000L).toInt()
+        val minutes = maxOf(0L, (originPoint.departureTime - feedTime) / 60000L).toInt()
         val legs = buildTripLegs(route, trip, allTrips)
         val line = lineForDestination(trip.line, trip.trainDestination)
         val departure = Departure.builder()
@@ -338,7 +345,34 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 }
             }
             .build()
-        departures.addDeparture(departure)
+        addDeparture(departures, departure)
+    }
+
+    private fun addDeparture(collection: DepartureCollection, departure: Departure) {
+        collection.unfiltered += departure
+        val route = findRouteForDeparture(departure) ?: return
+        collection.filtered += departure.copy(
+            requiresTransfer = route.hasTransfer(),
+            transferScheduled = Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine,
+        )
+    }
+
+    private fun findRouteForDeparture(departure: Departure): Route? {
+        val trainDestination = Station.getByAbbreviation(
+            departure.trainDestination?.abbreviation
+        )
+        val line = departure.line ?: return null
+        return routes.firstOrNull { route ->
+            route.trainDestinationIsApplicable(trainDestination, line)
+                && (route.destination == null
+                || route.destination!!.includedInLimitedService
+                || !departure.limited)
+        }
+    }
+
+    private class DepartureCollection {
+        val unfiltered = mutableListOf<Departure>()
+        val filtered = mutableListOf<Departure>()
     }
 
     private fun parseTrip(

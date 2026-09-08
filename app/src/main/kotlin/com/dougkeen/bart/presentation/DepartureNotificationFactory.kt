@@ -1,0 +1,91 @@
+package com.dougkeen.bart.presentation
+
+import android.app.Notification
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import androidx.core.app.NotificationCompat
+import com.dougkeen.bart.R
+import com.dougkeen.bart.activities.TripInProgressActivity
+import com.dougkeen.bart.model.Departure
+import com.dougkeen.bart.model.TimeSource
+import com.dougkeen.bart.platform.DepartureAlarmScheduler
+import com.dougkeen.bart.services.BoardedDepartureService
+
+/** Builds the foreground notification for a followed departure. */
+object DepartureNotificationFactory {
+    @JvmStatic
+    fun create(
+        context: Context,
+        departure: Departure,
+        alarmScheduler: DepartureAlarmScheduler?,
+        timeSource: TimeSource,
+    ): Notification {
+        val nowMillis = timeSource.nowMillis()
+        val secondsLeft = departure.getMeanSecondsLeft(
+            departure.minEstimate,
+            departure.maxEstimate,
+            nowMillis,
+        )
+        val minutes = (secondsLeft + 15) / 30 / 2f
+        val minutesText = when {
+            minutes < 1 -> context.getString(R.string.notification_less_than_minute)
+            minutes == 1f -> context.getString(R.string.notification_minutes_until_departure, minutes)
+            else -> context.getString(R.string.notification_minutes_until_departures, minutes)
+        }
+        val directionText = context.getString(
+            R.string.notification_direction,
+            departure.origin!!.shortName,
+            departure.passengerDestination!!.shortName,
+        )
+        val cancelAlarmIntent = Intent(context, BoardedDepartureService::class.java)
+            .setAction(BoardedDepartureService.ACTION_CANCEL_ALARM)
+        val channelId = context.getString(R.string.notification_channel_id)
+        val builder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_stat_notification)
+            .setContentTitle(minutesText)
+            .setContentIntent(notificationIntent(context))
+            .setDeleteIntent(deleteNotificationIntent(context))
+            .setContentText(directionText)
+
+        if (secondsLeft > 0) {
+            builder
+                .setWhen(nowMillis + secondsLeft * 1000L)
+                .setUsesChronometer(true)
+        }
+        if (alarmScheduler?.isPending == true) {
+            val pendingIntent = PendingIntent.getService(
+                context,
+                0,
+                cancelAlarmIntent,
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+            builder
+                .addAction(
+                    R.drawable.ic_action_cancel_alarm,
+                    context.getString(R.string.notification_cancel_alarm),
+                    pendingIntent,
+                )
+                .setSubText(context.getString(R.string.notification_alarm, alarmScheduler.leadTimeMinutes))
+        }
+        return builder.build()
+    }
+
+    private fun notificationIntent(context: Context): PendingIntent {
+        val targetIntent = Intent(context, TripInProgressActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        return PendingIntent.getActivity(
+            context,
+            0,
+            targetIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
+    private fun deleteNotificationIntent(context: Context): PendingIntent {
+        val targetIntent = Intent(context, BoardedDepartureService::class.java)
+            .setAction(BoardedDepartureService.ACTION_CLEAR_DEPARTURE)
+        return PendingIntent.getService(context, 0, targetIntent, PendingIntent.FLAG_IMMUTABLE)
+    }
+}

@@ -40,7 +40,7 @@
             tools:text="Richmond"
             />
 
-        <com.dougkeen.bart.controls.TimedTextSwitcher
+        <TextSwitcher
             android:id="@+id/trainLengthText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -75,7 +75,7 @@
         android:orientation="vertical"
         >
 
-        <com.dougkeen.bart.controls.CountdownTextView
+        <TextView
             android:id="@+id/countdown"
             style="@style/DepartureCountdownText"
             android:width="90dp"
@@ -83,7 +83,7 @@
             tools:text="9m, 57s"
             />
 
-        <com.dougkeen.bart.controls.TimedTextSwitcher
+        <TextSwitcher
             android:id="@+id/uncertainty"
             style="@style/DepartureUncertaintyText"
             tools:text="(+8s)"

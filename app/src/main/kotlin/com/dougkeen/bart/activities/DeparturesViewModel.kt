@@ -1,13 +1,14 @@
 package com.dougkeen.bart.activities
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dougkeen.bart.backend.RouteDepartureProjection
 import com.dougkeen.bart.backend.TransitRepository
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
+import com.dougkeen.bart.model.SystemTimeSource
 import com.dougkeen.bart.model.TimeSource
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,10 +17,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.ArrayList
 import java.util.Collections
+import java.util.function.Supplier
 
 /** Owns departures-screen state and its shared-feed projection. */
-class DeparturesViewModel(
-    private val timeSource: TimeSource,
+class DeparturesViewModel @JvmOverloads constructor(
+    private val timeSource: TimeSource = SystemTimeSource,
 ) : ViewModel() {
     enum class Status {
         LOADING,
@@ -28,7 +30,7 @@ class DeparturesViewModel(
         ERROR,
     }
 
-    class State private constructor(
+    data class State(
         val status: Status,
         val departures: List<Departure>,
         val error: Exception?,
@@ -52,7 +54,7 @@ class DeparturesViewModel(
     /** Configures the query; the ViewModel owns collection until it is cleared. */
     fun setQuery(
         repository: TransitRepository,
-        context: Context,
+        networkSupplier: Supplier<BartGtfsNetwork>,
         stationPair: StationPair?,
     ) {
         collectionJob?.cancel()
@@ -64,12 +66,13 @@ class DeparturesViewModel(
         }
 
         collectionJob = viewModelScope.launch {
-            repository.projectedState(RouteDepartureProjection(stationPair, context))
-                .collectLatest { projectionState ->
-                    projectionState.error?.let { exception ->
-                        updateError(exception)
-                    } ?: projectionState.value?.let { result ->
-                        updateFromFeed(result.getDepartures())
+            val projection = RouteDepartureProjection(stationPair, networkSupplier)
+            repository.projectedState(projection::project, projection::areEquivalent)
+                .collectLatest { result ->
+                    result.exceptionOrNull()?.let { exception ->
+                        updateError(asException(exception))
+                    } ?: result.getOrNull()?.let { departures ->
+                        updateFromFeed(departures.getDepartures())
                     }
                 }
         }
@@ -110,4 +113,7 @@ class DeparturesViewModel(
 
     private fun immutableCopy(values: List<Departure>): List<Departure> =
         Collections.unmodifiableList(ArrayList(values))
+
+    private fun asException(error: Throwable): Exception =
+        error as? Exception ?: RuntimeException(error)
 }

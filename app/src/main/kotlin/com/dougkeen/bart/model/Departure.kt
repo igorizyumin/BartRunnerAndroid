@@ -149,10 +149,13 @@ data class Departure(
     }
 
     fun withTripLegs(legs: List<TripLeg>): Departure {
-        val copiedLegs = immutableList(legs)
-        val withLegs = copy(tripLegs = copiedLegs)
-        return if (copiedLegs.isNotEmpty() && withLegs.hasCompleteTripLegs()) {
-            val finalLeg = copiedLegs.last()
+        return withImmutableTripLegs(immutableList(legs))
+    }
+
+    private fun withImmutableTripLegs(legs: List<TripLeg>): Departure {
+        val withLegs = copy(tripLegs = legs)
+        return if (legs.isNotEmpty() && withLegs.hasCompleteTripLegs()) {
+            val finalLeg = legs.last()
             if (finalLeg.hasArrivalTime() && withLegs.getMeanEstimate() > 0) {
                 withLegs.copy(
                     estimatedTripTime =
@@ -161,7 +164,7 @@ data class Departure(
             } else {
                 withLegs
             }
-        } else if (copiedLegs.isNotEmpty()) {
+        } else if (legs.isNotEmpty()) {
             withLegs.copy(estimatedTripTime = 0)
         } else {
             withLegs
@@ -331,29 +334,33 @@ data class Departure(
         fun setListedInETDs(value: Boolean) = apply { listedInETDs = value }
         fun setTripLegs(value: List<TripLeg>?) = apply { tripLegs = value ?: emptyList() }
 
-        fun build(): Departure = Departure(
-            origin,
-            trainDestination,
-            passengerDestination,
-            line,
-            destinationColorHex,
-            destinationColorText,
-            platform,
-            direction,
-            bikeAllowed,
-            trainLength,
-            requiresTransfer,
-            transferScheduled,
-            limited,
-            canceled,
-            minutes,
-            minEstimate,
-            maxEstimate,
-            estimatedTripTime,
-            beganAsDeparted,
-            arrivalTimeOverride,
-            listedInETDs,
-            immutableList(tripLegs),
-        ).withTripLegs(tripLegs)
+        fun build(): Departure {
+            val immutableLegs = immutableList(tripLegs)
+            val departure = Departure(
+                origin,
+                trainDestination,
+                passengerDestination,
+                line,
+                destinationColorHex,
+                destinationColorText,
+                platform,
+                direction,
+                bikeAllowed,
+                trainLength,
+                requiresTransfer,
+                transferScheduled,
+                limited,
+                canceled,
+                minutes,
+                minEstimate,
+                maxEstimate,
+                estimatedTripTime,
+                beganAsDeparted,
+                arrivalTimeOverride,
+                listedInETDs,
+                immutableLegs,
+            )
+            return departure.withImmutableTripLegs(immutableLegs)
+        }
     }
 }

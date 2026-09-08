@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dougkeen.bart.BartRunnerApplication
-import com.dougkeen.bart.R
 import com.dougkeen.bart.backend.AlertProjection
 import com.dougkeen.bart.backend.RouteDepartureProjection
 import com.dougkeen.bart.data.FavoritesRepository
@@ -12,7 +11,6 @@ import com.dougkeen.bart.model.Alert
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.TimeSource
-import com.dougkeen.bart.networktasks.GtfsStaticData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,10 +51,14 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         viewModelScope.launch {
-            transitRepository.projectedState(AlertProjection()).collectLatest { state ->
-                state.error?.let { exception ->
-                    publishError(exception)
-                } ?: state.value?.let { alerts ->
+            val projection = AlertProjection()
+            transitRepository.projectedState(
+                projection::project,
+                projection::areEquivalent,
+            ).collectLatest { state ->
+                state.exceptionOrNull()?.let { exception ->
+                    publishError(asException(exception))
+                } ?: state.getOrNull()?.let { alerts ->
                     publishAlerts(alerts)
                 }
             }
@@ -87,12 +89,17 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         favorites.forEach { route ->
             if (route !in routeJobs) {
                 routeJobs[route] = viewModelScope.launch {
+                    val projection = RouteDepartureProjection(
+                        route,
+                        app.bartGtfsNetworkSupplier,
+                    )
                     transitRepository.projectedState(
-                        RouteDepartureProjection(route, app),
+                        projection::project,
+                        projection::areEquivalent,
                     ).collectLatest { state ->
-                        state.error?.let { exception ->
-                            publishError(exception)
-                        } ?: state.value?.let { departures ->
+                        state.exceptionOrNull()?.let { exception ->
+                            publishError(asException(exception))
+                        } ?: state.getOrNull()?.let { departures ->
                             val firstDeparture = departures.getDepartures()
                                 .firstOrNull { !it.hasDeparted(timeSource) }
                             updateFirstDeparture(route, firstDeparture)
@@ -117,30 +124,17 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun publishAlerts(alerts: Alert.AlertList) {
-        val alertMessage: String?
         val alertKind: RoutesUiState.AlertKind
         if (alerts.hasAlerts()) {
-            val text = StringBuilder()
-            alerts.getAlerts().forEachIndexed { index, alert ->
-                if (index > 0) text.append("\n\n")
-                if (!alert.postedTime.isNullOrEmpty()) {
-                    text.append(alert.postedTime).append("\n")
-                }
-                text.append(alert.description.orEmpty())
-            }
-            alertMessage = text.toString()
             alertKind = RoutesUiState.AlertKind.WARNING
         } else if (alerts.areNoDelaysReported()) {
-            alertMessage = getApplication<Application>().getString(R.string.no_delays_reported)
             alertKind = RoutesUiState.AlertKind.NO_DELAYS
         } else {
-            alertMessage = null
             alertKind = RoutesUiState.AlertKind.HIDDEN
         }
         _uiState.update {
             it.copy(
                 alerts = alerts,
-                alertMessage = alertMessage,
                 alertKind = alertKind,
                 error = null,
             )
@@ -163,7 +157,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val staticData = GtfsStaticData.get(app)
+                val staticData = app.gtfsStaticData
                 val now = timeSource.nowMillis()
                 routesNeedingFares.forEach { route ->
                     val origin = route.origin ?: return@forEach
@@ -192,4 +186,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun immutableMap(values: Map<StationPair, Departure>): Map<StationPair, Departure> =
         Collections.unmodifiableMap(HashMap(values))
+
+    private fun asException(error: Throwable): Exception =
+        error as? Exception ?: RuntimeException(error)
 }

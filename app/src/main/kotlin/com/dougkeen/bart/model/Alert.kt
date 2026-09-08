@@ -5,8 +5,8 @@ data class Alert(
     val id: String,
     val type: String? = null,
     val description: String? = null,
-    val postedTime: String? = null,
-    val expiresTime: String? = null
+    val postedAtMillis: Long? = null,
+    val expiresAtMillis: Long? = null
 ) {
     /** Immutable alert projection result. */
     class AlertList(

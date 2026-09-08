@@ -1,50 +1,69 @@
 package com.dougkeen.bart.backend
 
 import com.google.transit.realtime.GtfsRealtime
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onStart
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 data class TransitFeedState(
     val snapshot: TransitFeedSnapshot? = null,
     val error: Exception? = null,
 )
 
-data class TransitProjectionState<T>(
-    val value: T? = null,
-    val error: Exception? = null,
-)
-
 /** Owns feed polling and exposes one replaying flow for all transit consumers. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TransitRepository(
     private val feedClient: TransitFeedClient,
-    private val scheduler: ScheduledExecutorService,
     private val refreshIntervalMillis: Long,
 ) : AutoCloseable {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private val _state = MutableStateFlow(TransitFeedState())
+    private val feedUpdates = MutableSharedFlow<TransitFeedState>(
+        replay = 1,
+        extraBufferCapacity = 1,
+    )
 
     private var latestSnapshot: TransitFeedSnapshot? = null
-    private var scheduledRefresh: ScheduledFuture<*>? = null
     private var refreshInProgress = false
-    private var flowConsumers = 0
     private var closed = false
 
     init {
         require(refreshIntervalMillis > 0) {
             "refreshIntervalMillis must be positive"
+        }
+        feedUpdates.tryEmit(_state.value)
+        scope.launch {
+            feedUpdates.subscriptionCount
+                .map { count -> count > 0 }
+                .distinctUntilChanged()
+                .collectLatest { observed ->
+                    if (observed) {
+                        while (isActive) {
+                            refreshNow()
+                            delay(refreshIntervalMillis)
+                        }
+                    }
+                }
         }
     }
 
@@ -55,13 +74,18 @@ class TransitRepository(
      * Replays the latest state and holds one polling lease for the collector.
      * Polling stops when the last collector is cancelled.
      */
-    fun feed(): Flow<TransitFeedState> = state
-        .onStart { acquireFlowConsumer() }
-        .onCompletion { releaseFlowConsumer() }
+    fun feed(): Flow<TransitFeedState> = flow {
+        synchronized(lock) {
+            check(!closed) { "Repository is closed" }
+        }
+        emitAll(feedUpdates.asSharedFlow())
+    }
 
-    /** Derives a projection from the shared feed without callback dispatch. */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun <T> projectedState(projection: TransitProjection<T>): Flow<TransitProjectionState<T>> =
+    /** Maps the shared feed and keeps projection failures in the stream. */
+    fun <T> projectedState(
+        project: (TransitFeedSnapshot) -> T,
+        areEquivalent: (T?, T?) -> Boolean = { previous, current -> previous == current },
+    ): Flow<Result<T>> =
         feed()
             .mapNotNull { feedState ->
                 if (feedState.snapshot == null && feedState.error == null) {
@@ -72,19 +96,15 @@ class TransitRepository(
             }
             .mapLatest { feedState ->
                 feedState.error?.let {
-                    return@mapLatest TransitProjectionState<T>(error = it)
+                    return@mapLatest Result.failure<T>(it)
                 }
-                try {
-                    TransitProjectionState(projection.project(feedState.snapshot!!))
-                } catch (exception: Exception) {
-                    TransitProjectionState(error = exception)
-                }
+                runCatching { project(feedState.snapshot!!) }
             }
             .distinctUntilChanged { previous, current ->
-                if (previous.error != null || current.error != null) {
-                    previous.error?.message == current.error?.message
+                if (previous.isFailure || current.isFailure) {
+                    previous.exceptionOrNull()?.message == current.exceptionOrNull()?.message
                 } else {
-                    projection.areEquivalent(previous.value, current.value)
+                    areEquivalent(previous.getOrNull(), current.getOrNull())
                 }
             }
             .flowOn(Dispatchers.Default)
@@ -126,13 +146,13 @@ class TransitRepository(
                         error = refreshErrors.first(),
                     )
                 }
-                if (flowConsumers > 0) {
-                    scheduleNextRefreshLocked()
-                }
             }
         }
 
-        stateToPublish?.let { _state.value = it }
+        stateToPublish?.let {
+            _state.value = it
+            feedUpdates.tryEmit(it)
+        }
     }
 
     fun getLatestSnapshot(): TransitFeedSnapshot? = synchronized(lock) { latestSnapshot }
@@ -162,63 +182,13 @@ class TransitRepository(
         }
     }
 
-    private fun acquireFlowConsumer() {
-        synchronized(lock) {
-            check(!closed) { "Repository is closed" }
-            flowConsumers++
-            ensureRefreshScheduledLocked()
-        }
-    }
-
-    private fun releaseFlowConsumer() {
-        synchronized(lock) {
-            if (flowConsumers > 0) {
-                flowConsumers--
-            }
-            if (flowConsumers == 0) {
-                scheduledRefresh?.cancel(false)
-                scheduledRefresh = null
-            }
-        }
-    }
-
-    private fun ensureRefreshScheduledLocked() {
-        if (scheduledRefresh == null && !refreshInProgress) {
-            scheduledRefresh = scheduler.schedule({
-                synchronized(lock) {
-                    scheduledRefresh = null
-                    if (closed || flowConsumers == 0) {
-                        return@schedule
-                    }
-                }
-                refreshNow()
-            }, 0, TimeUnit.MILLISECONDS)
-        }
-    }
-
-    private fun scheduleNextRefreshLocked() {
-        if (scheduledRefresh == null) {
-            scheduledRefresh = scheduler.schedule({
-                synchronized(lock) {
-                    scheduledRefresh = null
-                    if (closed || flowConsumers == 0) {
-                        return@schedule
-                    }
-                }
-                refreshNow()
-            }, refreshIntervalMillis, TimeUnit.MILLISECONDS)
-        }
-    }
-
     override fun close() {
         synchronized(lock) {
             if (closed) {
                 return
             }
             closed = true
-            flowConsumers = 0
-            scheduledRefresh?.cancel(false)
-            scheduledRefresh = null
         }
+        scope.cancel()
     }
 }

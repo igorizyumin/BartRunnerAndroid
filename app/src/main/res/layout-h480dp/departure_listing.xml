@@ -82,7 +82,7 @@
         android:orientation="vertical"
         >
 
-        <com.dougkeen.bart.controls.CountdownTextView
+        <TextView
             android:id="@+id/countdown"
             style="@style/DepartureCountdownText"
             android:width="90dp"

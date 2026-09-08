@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import java.time.Instant
 import java.time.ZoneId
@@ -131,15 +130,11 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         val intent = alarmIntent()
         if (alarmTime < timeSource.nowMillis()) {
             manager.set(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && !manager.canScheduleExactAlarms()
-            ) {
-                manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-                Log.w(Constants.TAG,
-                    "Exact alarm permission is unavailable; using an inexact alarm")
-                return
-            }
+        } else if (!manager.canScheduleExactAlarms()) {
+            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
+            Log.w(Constants.TAG,
+                "Exact alarm permission is unavailable; using an inexact alarm")
+        } else {
             try {
                 manager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, alarmTime, intent)
@@ -147,14 +142,6 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
                 manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
                 Log.w(Constants.TAG,
                     "Exact alarm permission is unavailable; using an inexact alarm")
-            }
-        } else {
-            try {
-                manager.setExact(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-            } catch (exception: SecurityException) {
-                manager.set(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-                Log.w(Constants.TAG,
-                    "Exact alarm permission is unavailable; using a regular alarm")
             }
         }
 

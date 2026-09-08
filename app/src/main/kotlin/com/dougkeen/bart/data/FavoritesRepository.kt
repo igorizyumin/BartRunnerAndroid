@@ -6,14 +6,9 @@ import com.dougkeen.bart.model.StationPair
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import java.util.Collections
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -32,7 +27,6 @@ class FavoritesRepository(context: Context) : AutoCloseable {
     private val objectMapper = ObjectMapper()
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     private val persistenceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val stateLock = Any()
     private var currentFavorites: List<StationPair> = emptyList()
     private var loaded = false
@@ -44,7 +38,7 @@ class FavoritesRepository(context: Context) : AutoCloseable {
     val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
 
     init {
-        scope.launch {
+        persistenceExecutor.execute {
             load()
         }
     }
@@ -83,17 +77,11 @@ class FavoritesRepository(context: Context) : AutoCloseable {
 
     private fun persistSnapshot(snapshot: List<StationPair>) {
         persistenceExecutor.execute {
-            try {
-                applicationContext.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use { output ->
-                    objectMapper.writeValue(output, snapshot)
-                }
-            } catch (exception: Exception) {
-                Log.e(TAG, "Could not write favorite routes", exception)
-            }
+            writeSnapshot(snapshot)
         }
     }
 
-    private suspend fun load() {
+    private fun load() {
         val restored = try {
             applicationContext.openFileInput(FILE_NAME).use { input ->
                 objectMapper.readValue(
@@ -137,14 +125,16 @@ class FavoritesRepository(context: Context) : AutoCloseable {
             snapshot = currentFavorites
             _uiState.value = FavoritesUiState(snapshot, isLoading = false)
         }
-        persistenceExecutor.execute {
-            try {
-                applicationContext.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use { output ->
-                    objectMapper.writeValue(output, snapshot)
-                }
-            } catch (exception: Exception) {
-                Log.e(TAG, "Could not write favorite routes", exception)
+        persistSnapshot(snapshot)
+    }
+
+    private fun writeSnapshot(snapshot: List<StationPair>) {
+        try {
+            applicationContext.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use { output ->
+                objectMapper.writeValue(output, snapshot)
             }
+        } catch (exception: Exception) {
+            Log.e(TAG, "Could not write favorite routes", exception)
         }
     }
 
@@ -152,7 +142,6 @@ class FavoritesRepository(context: Context) : AutoCloseable {
         Collections.unmodifiableList(ArrayList(favorites))
 
     override fun close() {
-        scope.coroutineContext.cancel()
         persistenceExecutor.shutdownNow()
     }
 }

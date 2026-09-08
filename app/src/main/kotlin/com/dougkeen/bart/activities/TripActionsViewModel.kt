@@ -22,9 +22,9 @@ class TripActionsViewModel(application: Application) :
     fun getAlarmLeadTimeMinutes(): Int =
         followedTripRepository.getAlarmScheduler()?.leadTimeMinutes ?: 0
 
-    fun followTrip(departure: Departure): TripServiceCommand {
+    fun followTrip(departure: Departure): String {
         followedTripRepository.setFollowedDeparture(departure)
-        return TripServiceCommand(BoardedDepartureService.ACTION_FOLLOW_DEPARTURE)
+        return BoardedDepartureService.ACTION_FOLLOW_DEPARTURE
     }
 
     fun updateFollowedTrip(departure: Departure) {
@@ -33,21 +33,17 @@ class TripActionsViewModel(application: Application) :
         }
     }
 
-    fun cancelAlarm(): TripServiceCommand {
+    fun cancelAlarm(): String {
         followedTripRepository.getAlarmScheduler()?.cancel()
-        return TripServiceCommand(BoardedDepartureService.ACTION_CANCEL_ALARM)
+        return BoardedDepartureService.ACTION_CANCEL_ALARM
     }
 
-    fun clearTrip(): TripServiceCommand {
+    fun clearTrip(): String {
         followedTripRepository.clearFollowedDeparture()
-        return TripServiceCommand(BoardedDepartureService.ACTION_CLEAR_DEPARTURE)
+        return BoardedDepartureService.ACTION_CLEAR_DEPARTURE
     }
 
     fun setAlarm(leadTimeMinutes: Int) {
         followedTripRepository.getAlarmScheduler()?.setUp(leadTimeMinutes)
     }
 }
-
-data class TripServiceCommand(
-    val action: String,
-)

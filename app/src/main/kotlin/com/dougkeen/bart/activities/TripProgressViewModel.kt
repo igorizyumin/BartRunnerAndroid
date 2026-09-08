@@ -42,11 +42,14 @@ class TripProgressViewModel(application: Application) :
         val repository: TransitRepository = application.transitRepository
 
         routeCollectionJob = viewModelScope.launch {
-            repository.projectedState(
-                RouteDepartureProjection(stationPair, application),
-            ).collectLatest { projectionState ->
-                projectionState.value?.let { result ->
-                    result.getDepartures()
+            val projection = RouteDepartureProjection(
+                stationPair,
+                application.bartGtfsNetworkSupplier,
+            )
+            repository.projectedState(projection::project, projection::areEquivalent)
+                .collectLatest { result ->
+                result.getOrNull()?.let { departures ->
+                    departures.getDepartures()
                         .firstOrNull { it.identity == departureIdentity }
                         ?.let(::updateFromRealtime)
                 }
@@ -77,16 +80,15 @@ class TripProgressViewModel(application: Application) :
         val destination = stationPair.destination ?: return
         val application = getApplication<BartRunnerApplication>()
         tripProgressCollectionJob = viewModelScope.launch {
-            application.transitRepository.projectedState(
-                TripProgressProjection(
-                    application,
-                    origin,
-                    destination,
-                    departure.tripLegs,
-                ),
-            ).collectLatest { projectionState ->
-                projectionState.value?.let(::updateTripLegs)
-            }
+            val projection = TripProgressProjection(
+                origin,
+                destination,
+                departure.tripLegs,
+                application.bartGtfsNetworkSupplier,
+            )
+            application.transitRepository
+                .projectedState(projection::project)
+                .collectLatest { result -> result.getOrNull()?.let(::updateTripLegs) }
         }
     }
 

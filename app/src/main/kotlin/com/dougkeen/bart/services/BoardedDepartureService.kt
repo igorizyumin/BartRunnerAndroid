@@ -73,7 +73,7 @@ class BoardedDepartureService : Service() {
         pollJob?.cancel()
         cancelDepartureCollection()
         serviceScope.cancel()
-        stopForegroundCompat()
+        stopForeground(STOP_FOREGROUND_REMOVE)
         notificationManager?.cancel(DEPARTURE_NOTIFICATION_ID)
         super.onDestroy()
     }
@@ -122,10 +122,13 @@ class BoardedDepartureService : Service() {
         }
 
         departureCollection = serviceScope.launch {
-            transitRepository.projectedState(
-                RouteDepartureProjection(nextStationPair, applicationContext),
-            ).collectLatest { projectionState ->
-                projectionState.value?.let { departures ->
+            val projection = RouteDepartureProjection(
+                nextStationPair,
+                application.bartGtfsNetworkSupplier,
+            )
+            transitRepository.projectedState(projection::project, projection::areEquivalent)
+                .collectLatest { result ->
+                result.getOrNull()?.let { departures ->
                     serviceMutex.withLock {
                         onDeparturesChanged(departures.getDepartures())
                     }
@@ -228,7 +231,7 @@ class BoardedDepartureService : Service() {
         pollJob?.cancel()
         pollJob = null
         cancelDepartureCollection()
-        stopForegroundCompat()
+        stopForeground(STOP_FOREGROUND_REMOVE)
         notificationManager?.cancel(DEPARTURE_NOTIFICATION_ID)
         if (!isBeingDestroyed) {
             stopSelf()
@@ -260,30 +263,14 @@ class BoardedDepartureService : Service() {
         ) {
             notificationManager?.notify(DEPARTURE_NOTIFICATION_ID, notification)
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                DEPARTURE_NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
-        } else {
-            startForeground(DEPARTURE_NOTIFICATION_ID, notification)
-        }
-    }
-
-    private fun stopForegroundCompat() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
-            @Suppress("DEPRECATION")
-            stopForeground(true)
-        }
+        startForeground(
+            DEPARTURE_NOTIFICATION_ID,
+            notification,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        )
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            return
-        }
         val channel = NotificationChannel(
             getString(R.string.notification_channel_id),
             getString(R.string.notification_channel_name),

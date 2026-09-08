@@ -6,11 +6,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url "https://jitpack.io" }
+        maven { url = uri("https://jitpack.io") }
     }
 }
-
-def compatibilityCatalog = file("gradle/libs.versions.toml").getText("UTF-8")
 
 tasks.register("verifyCompatibility") {
     group = "verification"
@@ -23,20 +21,21 @@ tasks.register("verifyCompatibility") {
             throw new GradleException("JDK 17 or newer is required to build this project")
         }
         [
-                'agp = "9.4.0"',
-                'kotlin = "2.2.10"',
-                'androidxCore = "1.16.0"',
-        ].each { required ->
-            if (!compatibilityCatalog.contains(required)) {
-                throw new GradleException("Version catalog is missing compatibility baseline: $required")
+                agp: [actual: libs.versions.agp.get(), required: "9.4.0"],
+                kotlin: [actual: libs.versions.kotlin.get(), required: "2.2.10"],
+                androidxCore: [actual: libs.versions.androidxCore.get(), required: "1.16.0"],
+        ].each { name, version ->
+            if (version.actual != version.required) {
+                throw new GradleException(
+                        "Compatibility baseline for $name is ${version.required}; found ${version.actual}")
             }
         }
         if (providers.gradleProperty("android.useAndroidX").orNull != "true") {
             throw new GradleException("android.useAndroidX=true is required")
         }
-        def appBuild = file("app/build.gradle").getText("UTF-8")
-        if (!appBuild.contains("JavaVersion.VERSION_17")
-                || !appBuild.contains("JvmTarget.JVM_17")) {
+        def android = project(":app").extensions.getByName("android")
+        if (android.compileOptions.sourceCompatibility != JavaVersion.VERSION_17
+                || android.compileOptions.targetCompatibility != JavaVersion.VERSION_17) {
             throw new GradleException("The app must compile Java and Kotlin for JVM 17")
         }
     }

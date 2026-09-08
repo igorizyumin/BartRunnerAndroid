@@ -4,20 +4,21 @@ import com.dougkeen.bart.routing.TripPlanner
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import java.util.ArrayList
 import java.util.Collections
-import java.util.Locale
 
-/** Realtime departures for one station query and its currently enabled routes. */
-class RealTimeDepartures(
+/** Immutable realtime departures for one station query. */
+class RealTimeDepartures internal constructor(
     private val origin: Station?,
     private val destination: Station?,
+    private val time: Long,
     routes: List<Route>,
-    private val bartGtfsNetwork: BartGtfsNetwork
+    unfilteredDepartures: List<Departure>,
+    departures: List<Departure>,
+    private val bartGtfsNetwork: BartGtfsNetwork,
+    private val transfersIncluded: Boolean = false,
 ) {
-    private var time = 0L
-    private var transfersIncluded = false
-    private var departures: MutableList<Departure>? = null
-    private val unfilteredDepartures = mutableListOf<Departure>()
-    private var routes: MutableList<Route> = routes.toMutableList()
+    private val routes = immutableList(routes)
+    private val unfilteredDepartures = immutableList(unfilteredDepartures)
+    private val departures = immutableList(departures)
 
     init {
         requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
@@ -29,26 +30,12 @@ class RealTimeDepartures(
 
     fun getTime(): Long = time
 
-    fun setTime(time: Long) {
-        this.time = time
-    }
-
-    fun getDepartures(): MutableList<Departure> {
-        if (departures == null) {
-            departures = mutableListOf()
-        }
-        return departures!!
-    }
-
-    fun setDepartures(departures: List<Departure>?) {
-        this.departures = departures?.toMutableList() ?: mutableListOf()
-    }
+    fun getDepartures(): List<Departure> = departures
 
     fun areTransfersIncluded(): Boolean = transfersIncluded
 
     fun getEarliestDirectDeparture(): Departure? =
-        getDepartures()
-            .asSequence()
+        departures.asSequence()
             .filter { !it.requiresTransfer }
             .minByOrNull { it.minutes }
 
@@ -58,84 +45,31 @@ class RealTimeDepartures(
             destination,
             bartGtfsNetwork
         )
-        return unfilteredDepartures
-            .asSequence()
+        return unfilteredDepartures.asSequence()
             .filter { findRouteForDeparture(it, transferRoutes)?.hasTransfer() == true }
             .minByOrNull { it.minutes }
     }
 
-    fun includeTransferRoutes() {
-        transfersIncluded = true
-        routes += TripPlanner.preferredTransferRoutes(origin, destination, bartGtfsNetwork)
-        rebuildFilteredDeparturesCollection()
-    }
+    fun includeTransferRoutes(): RealTimeDepartures = withAdditionalRoutes(
+        TripPlanner.preferredTransferRoutes(origin, destination, bartGtfsNetwork)
+    )
 
-    fun includeDoubleTransferRoutes() {
-        transfersIncluded = true
-        routes += TripPlanner.doubleTransferRoutes(origin, destination, bartGtfsNetwork)
-        rebuildFilteredDeparturesCollection()
-    }
+    fun includeDoubleTransferRoutes(): RealTimeDepartures = withAdditionalRoutes(
+        TripPlanner.doubleTransferRoutes(origin, destination, bartGtfsNetwork)
+    )
 
-    /** Filters the already-indexed feed departures by direction. */
-    fun filterByDirection(direction: String?) {
-        if (direction.isNullOrEmpty()) {
-            return
-        }
-        val normalizedDirection = direction.lowercase(Locale.ROOT)
-        unfilteredDepartures.removeAll {
-            !it.direction.orEmpty().lowercase(Locale.ROOT)
-                .startsWith(normalizedDirection)
-        }
-        rebuildFilteredDeparturesCollection()
-    }
+    fun sortDepartures(): RealTimeDepartures = copy(
+        departures = departures.sortedBy { it.minutes }
+    )
 
-    private fun rebuildFilteredDeparturesCollection() {
-        getDepartures().clear()
-        unfilteredDepartures.forEach(::addDepartureIfApplicable)
-    }
-
-    fun addDeparture(departure: Departure) {
-        unfilteredDepartures += departure
-        addDepartureIfApplicable(departure)
-    }
-
-    private fun addDepartureIfApplicable(departure: Departure) {
-        val route = findRouteForDeparture(departure, routes) ?: return
-        val enriched = departure.copy(
-            requiresTransfer = route.hasTransfer(),
-            transferScheduled = Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine,
-        )
-        getDepartures() += enriched
-    }
-
-    private fun findRouteForDeparture(
-        departure: Departure,
-        routes: List<Route>
-    ): Route? {
-        val destination = Station.getByAbbreviation(
-            departure.trainDestination?.abbreviation
-        )
-        val line = departure.line ?: return null
-        return routes.firstOrNull { route ->
-            route.trainDestinationIsApplicable(destination, line)
-                && (route.destination == null
-                || route.destination!!.includedInLimitedService
-                || !departure.limited)
-        }
-    }
-
-    fun sortDepartures() {
-        getDepartures().sortBy { it.minutes }
-    }
-
-    fun finalizeDeparturesList() {
+    fun finalizeDeparturesList(): RealTimeDepartures {
         if (destination == null) {
-            sortDepartures()
-            return
+            return sortDepartures()
         }
-        val hasDirectRoute = getDepartures().any { !it.requiresTransfer }
-        if (hasDirectRoute) {
-            getDepartures().removeAll { departure ->
+
+        val hasDirectRoute = departures.any { !it.requiresTransfer }
+        val finalized = if (hasDirectRoute) {
+            departures.filterNot { departure ->
                 departure.requiresTransfer
                     && (!departure.transferScheduled
                     || (departure.trainDestination != null
@@ -146,17 +80,63 @@ class RealTimeDepartures(
                     departure.line
                 )))
             }
+        } else {
+            departures
         }
-        sortDepartures()
+        return copy(departures = finalized.sortedBy { it.minutes })
     }
 
-    fun getRoutes(): List<Route> = Collections.unmodifiableList(ArrayList(routes))
-
-    fun setRoutes(routes: List<Route>?) {
-        this.routes = routes?.toMutableList() ?: mutableListOf()
+    private fun withAdditionalRoutes(additionalRoutes: List<Route>): RealTimeDepartures {
+        val nextRoutes = routes + additionalRoutes
+        return copy(
+            routes = nextRoutes,
+            departures = unfilteredDepartures.mapNotNull { departure ->
+                findRouteForDeparture(departure, nextRoutes)?.let { route ->
+                    departure.copy(
+                        requiresTransfer = route.hasTransfer(),
+                        transferScheduled = Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine,
+                    )
+                }
+            },
+            transfersIncluded = true,
+        )
     }
+
+    private fun copy(
+        routes: List<Route> = this.routes,
+        departures: List<Departure> = this.departures,
+        transfersIncluded: Boolean = this.transfersIncluded,
+    ): RealTimeDepartures = RealTimeDepartures(
+        origin,
+        destination,
+        time,
+        routes,
+        unfilteredDepartures,
+        departures,
+        bartGtfsNetwork,
+        transfersIncluded,
+    )
+
+    private fun findRouteForDeparture(
+        departure: Departure,
+        routes: List<Route>,
+    ): Route? {
+        val trainDestination = Station.getByAbbreviation(
+            departure.trainDestination?.abbreviation
+        )
+        val line = departure.line ?: return null
+        return routes.firstOrNull { route ->
+            route.trainDestinationIsApplicable(trainDestination, line)
+                && (route.destination == null
+                || route.destination!!.includedInLimitedService
+                || !departure.limited)
+        }
+    }
+
+    private fun <T> immutableList(values: Collection<T>): List<T> =
+        Collections.unmodifiableList(ArrayList(values))
 
     override fun toString(): String =
         "RealTimeDepartures [origin=$origin, destination=$destination, " +
-            "time=$time, departures=${getDepartures()}]"
+            "time=$time, departures=$departures]"
 }

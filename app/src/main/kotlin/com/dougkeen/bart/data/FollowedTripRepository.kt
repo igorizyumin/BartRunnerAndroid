@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
-import java.util.Objects
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -47,9 +46,7 @@ class FollowedTripRepository @JvmOverloads constructor(
     fun setFollowedDeparture(departure: Departure?) {
         val previousScheduler: DepartureAlarmScheduler?
         synchronized(stateLock) {
-            if (Objects.equals(departure, followedDeparture)
-                && compareDepartures(departure, followedDeparture) == 0
-            ) {
+            if (departure == followedDeparture) {
                 return
             }
             previousScheduler = alarmScheduler
@@ -82,13 +79,6 @@ class FollowedTripRepository @JvmOverloads constructor(
                 // Persistence is best effort; the in-memory state remains authoritative.
             }
         }
-    }
-
-    private fun compareDepartures(first: Departure?, second: Departure?): Int {
-        if (first === second) return 0
-        if (first == null) return -1
-        if (second == null) return 1
-        return first.compareTo(second)
     }
 
     private fun toState(departure: Departure?): FollowedTripState =

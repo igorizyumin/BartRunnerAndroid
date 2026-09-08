@@ -15,20 +15,14 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 import java.io.IOException
 import java.util.ArrayDeque
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class TransitRepositoryTest {
-    private val scheduler: ScheduledExecutorService =
-        Executors.newSingleThreadScheduledExecutor()
     private var repository: TransitRepository? = null
 
     @After
     fun tearDown() {
         repository?.close()
-        scheduler.shutdownNow()
     }
 
     @Test
@@ -152,17 +146,16 @@ class TransitRepositoryTest {
         repository = newRepository(client, 60_000L)
 
         val result = withTimeout(TIMEOUT_MILLIS) {
-            repository!!.projectedState(object : TransitProjection<Int> {
-                override fun project(snapshot: TransitFeedSnapshot): Int =
-                    snapshot.tripUpdates.entityCount
-            }).first { it.value != null }
+            repository!!.projectedState(project = { snapshot ->
+                snapshot.tripUpdates.entityCount
+            }).first { it.getOrNull() != null }
         }
 
-        assertEquals(1, result.value)
+        assertEquals(1, result.getOrNull())
     }
 
     private fun newRepository(client: TransitFeedClient, intervalMillis: Long) =
-        TransitRepository(client, scheduler, intervalMillis)
+        TransitRepository(client, intervalMillis)
 
     private fun snapshot(id: Long, timestampMillis: Long): TransitFeedSnapshot {
         val header = GtfsRealtime.FeedHeader.newBuilder()
@@ -191,19 +184,6 @@ class TransitRepositoryTest {
 
         fun enqueue(response: Any) {
             responses.add(response)
-        }
-
-        override fun fetch(): TransitFeedSnapshot {
-            fetchCount.incrementAndGet()
-            if (generatedSnapshots) {
-                val count = fetchCount.get().toLong()
-                return snapshotForFetch(count)
-            }
-            val response = responses.removeFirst()
-            if (response is IOException) {
-                throw response
-            }
-            return response as TransitFeedSnapshot
         }
 
         override fun fetchFeeds(): TransitFeedFetchResult {

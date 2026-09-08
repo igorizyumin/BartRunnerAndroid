@@ -1,45 +1,33 @@
 package com.dougkeen.bart.backend
 
-import android.content.Context
 import com.dougkeen.bart.model.TripLeg
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
-import com.dougkeen.bart.networktasks.GtfsStaticData
 import com.dougkeen.bart.routing.TripPlanner
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
-import kotlin.jvm.JvmSuppressWildcards
+import java.util.function.Supplier
 
 /** Refreshes an existing itinerary from the latest complete trip feed. */
-class TripProgressProjection private constructor(
-    private val context: Context?,
-    private val origin: Station,
-    private val destination: Station,
-    private val existingLegs: List<TripLeg>,
-    private val bartGtfsNetwork: BartGtfsNetwork?
-) : TransitProjection<@JvmSuppressWildcards List<TripLeg>> {
-    constructor(
-        context: Context?,
+class TripProgressProjection(
         origin: Station,
         destination: Station,
-        existingLegs: List<TripLeg>?
-    ) : this(context, origin, destination, existingLegs ?: emptyList(), null)
+        existingLegs: List<TripLeg>,
+        private val networkSupplier: Supplier<BartGtfsNetwork>,
+    ) {
+    private val origin = origin
+    private val destination = destination
+    private val existingLegs = existingLegs.toList()
 
     constructor(
         origin: Station,
         destination: Station,
         existingLegs: List<TripLeg>?,
         bartGtfsNetwork: BartGtfsNetwork
-    ) : this(null, origin, destination, existingLegs ?: emptyList(), bartGtfsNetwork)
+    ) : this(origin, destination, existingLegs ?: emptyList(), Supplier { bartGtfsNetwork })
 
-    init {
-        require(context != null || bartGtfsNetwork != null) {
-            "A validated GTFS network or context is required"
-        }
-    }
-
-    override fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
-        val network = network()
+    fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
+        val network = networkSupplier.get()
         val routes = TripPlanner.routesFor(origin, destination, network)
         val handler = GtfsRealtimeContentHandler(
             origin,
@@ -55,6 +43,4 @@ class TripProgressProjection private constructor(
         )
     }
 
-    private fun network(): BartGtfsNetwork =
-        bartGtfsNetwork ?: GtfsStaticData.get(context).getBartGtfsNetwork()
 }

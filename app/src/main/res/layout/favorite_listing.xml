@@ -21,7 +21,7 @@
         android:contentDescription="@string/drag_handle_description"
         android:src="@drawable/drag_handle" />
 
-    <com.dougkeen.bart.controls.CountdownTextView
+    <TextView
         android:id="@+id/countdownText"
         style="@style/DepartureCountdownText"
         android:layout_alignParentEnd="true"
@@ -30,7 +30,7 @@
         android:width="90dp"
         />
 
-    <com.dougkeen.bart.controls.TimedTextSwitcher
+    <TextSwitcher
         android:id="@+id/uncertainty"
         style="@style/DepartureUncertaintyText"
         android:layout_alignParentEnd="true"
