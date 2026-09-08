@@ -5,7 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.runtime.collectAsState
@@ -17,7 +17,7 @@ import com.dougkeen.bart.services.BoardedDepartureService
 import com.dougkeen.bart.ui.BartRunnerTheme
 import com.dougkeen.bart.ui.DeparturesScreen
 
-class ViewDeparturesActivity : AppCompatActivity() {
+class ViewDeparturesActivity : ComponentActivity() {
     companion object {
         private const val POST_NOTIFICATIONS_REQUEST_CODE = 1001
     }

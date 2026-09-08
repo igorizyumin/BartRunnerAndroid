@@ -552,20 +552,15 @@ public class LiveGtfsRoutingTest {
     }
 
     @Test
-    public void nightTripUpdatesProvideAshbyToDalyCityRouting() throws Exception {
+    public void nightTripUpdatesDoNotShowTripsThatAlreadyLeftAshby()
+            throws Exception {
         RealTimeDepartures departures = new RouteDepartureProjection(
                 new StationPair(Station.ASHB, Station.DALY), NIGHT_NETWORK)
                 .project(new TransitFeedSnapshot(
                         nightTripUpdates(), emptyFeed(), 0L));
 
-        assertFalse("Ashby -> Daly City has no complete fixture itinerary: "
-                        + departures.getDepartures(),
+        assertTrue("stale Ashby departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty());
-        for (Departure departure : departures.getDepartures()) {
-            assertEquals(Station.DALY,
-                    departure.getTripLegs().get(departure.getTripLegs().size() - 1)
-                            .getDestination());
-        }
     }
 
     @Test

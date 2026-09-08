@@ -1,152 +1,61 @@
-# BartRunner modernization backlog
+# BART Runner modernization backlog
 
-The application has already migrated its core transit feed, routing, followed
-trip, alarm, and screen-state paths to Kotlin, immutable departures, and Flow.
-The next phase should reduce the remaining compatibility plumbing before any
-new UI framework or feature work is introduced.
+This backlog records the post-Compose audit. The current app builds successfully, but the migration still contains unreachable View/XML code and several platform seams that should be modernized in small, verifiable steps.
 
-## Current baseline
+## Phase 1: remove dead pre-Compose code
 
-- [x] GTFS-RT trip updates and alerts are the production transit source.
-- [x] `Departure` is an immutable Kotlin domain model with stable identity.
-- [x] Feed polling is shared through `TransitRepository` and exposed as Flow.
-- [x] Primary screen state is owned by ViewModels.
-- [x] Activities pass primitive route/trip arguments rather than transit objects.
-- [x] Boarded-trip notifications use a foreground service.
-- [x] Java/Kotlin compilation targets Java 17.
-- [x] Debug build, unit tests, lint, and compatibility checks pass locally.
-- [x] Instrumentation tests run in CI on an Android emulator.
+- [x] Delete `FavoritesArrayAdapter` and `DepartureArrayAdapter`; neither had a runtime caller.
+- [x] Delete `CheckableLinearLayout` and `ScreenTicker`; neither had a runtime caller.
+- [x] Delete `AbstractRouteSelectionFragment`, `AddRouteDialogFragment`, and `QuickRouteDialogFragment`; route selection is implemented by `RoutePickerDialog` in Compose.
+- [x] Delete `TrainAlarmDialogFragment`; alarm selection is implemented by `AlarmPickerDialog` in Compose.
+- [x] Delete unused XML layouts: `main.xml`, `departures.xml`, `favorite_listing.xml`, `departure_listing.xml`, `uncertainty_textview.xml`, `trip_in_progress.xml`, `route_form.xml`, and `train_alarm_dialog.xml`.
+- [x] Delete unused XML menus and their legacy action icons.
+- [x] Remove obsolete styles, colors, dimensions, and strings left behind by those layouts.
+- [x] Remove `viewBinding = true` once the XML layer is gone.
 
-## Execution order
+## Phase 2: simplify dependencies and activity plumbing
 
-Complete each item independently where practical. Delete the old layer as soon
-as its replacement is verified. Preserve behavior around GTFS parsing, route
-selection, departure merging, alarms, persistence, and foreground service
-startup with regression tests.
+- [x] Remove unused `RecyclerView`, PhotoView, Material Components, and AppCompat dependencies after Phase 1.
+- [x] Convert the four Compose activities from `AppCompatActivity` to `ComponentActivity`.
+- [ ] Replace `ViewModelProvider(this)[...]` with `by viewModels()` where it improves readability.
+- [ ] Remove duplicate or transitively supplied lifecycle dependencies after checking the resolved dependency graph.
+- [ ] Update the stale migration documentation so it reflects that Compose is now the production UI.
 
-### 1. Delete dead and no-op layers
+## Phase 3: lifecycle-aware Compose state
 
-- [x] Remove the unused static schedule API: `ScheduleProjection`,
-  `StaticScheduleSource`, `ScheduleInformation`, and `ScheduleItem`.
-- [x] Remove schedule-only parsing from `GtfsStaticData`: calendars,
-  calendar exceptions, static stop times, and related private DTOs.
-- [x] Remove `TimedTextSwitcher`; it adds no behavior beyond `TextSwitcher`.
-- [x] Replace `CountdownTextView` with `TextView` or `AppCompatTextView` and
-  delete the empty subclass.
-- [x] Delete the unused `ViewModelFlowCollector`.
-- [x] Replace `Assert.notNull` with standard null checks and delete `Assert`.
-- [x] Remove unused legacy fields from `Constants`, including content-provider
-  URIs/types and `MAP_URL`, after confirming no external compatibility is needed.
+- [ ] Add `lifecycle-runtime-compose` and replace `collectAsState()` with `collectAsStateWithLifecycle()` in all activities.
+- [ ] Move activity-owned alarm state into a ViewModel/repository state flow where practical.
+- [ ] Replace the UI-local `rememberSecondTick()` loop with a shared, testable time/ticker abstraction; keep the injected `TimeSource` authoritative.
+- [ ] Replace remaining hardcoded user-visible text and content descriptions in `BartRunnerUi.kt` with `stringResource` and resource plurals.
+- [ ] Re-run lint and add Compose UI tests for route selection, departures, trip following, alarm controls, and map zoom.
 
-### 2. Remove min-SDK and resource compatibility noise
+## Phase 4: persistence modernization
 
-The app currently has `minSdk 31`, but retains branches and resources for much
-older Android releases.
+- [ ] Migrate small preference values from `SharedPreferences` to Preferences DataStore: route picker selection, static-feed timestamps, and alarm state.
+- [ ] Decide whether followed-trip JSON should remain a file-backed cache or move to a typed Proto DataStore; preserve process-death restoration and atomic writes.
+- [ ] Replace repository-owned `ExecutorService` instances with application-scoped coroutine dispatchers/scope where this does not weaken serialized writes.
+- [ ] Keep persistence migrations backward-compatible for existing installed users.
 
-- [x] Remove pre-31 branches for vibration, foreground-service startup,
-  `stopForeground`, and alarm scheduling.
-- [x] Consolidate obsolete `drawable-*-v9` and `drawable-*-v11` resources;
-  retain the adaptive `mipmap-anydpi-v26` launcher resource.
-- [x] Resolve inconsistent portrait/landscape departure layout IDs and use a
-  single `TextView` contract in the departures adapter.
-- [x] Remove the unnecessary explicit `allowBackup` manifest configuration.
-- [x] Remove obsolete `configChanges`, exported activity surface, and old MIME
-  intent filters that had no documented external deep-link contract.
-- [x] Add launcher monochrome metadata and clean notification/icon lint issues.
+## Phase 5: alarms and background execution
 
-### 3. Collapse the remaining Java/Kotlin boundary
+- [ ] Review `BoardedDepartureService`'s long-running `dataSync` foreground-service design against Android 15's time limits.
+- [ ] Add and test `Service.onTimeout()` handling, or replace continuous polling with a bounded/background-work design where product behavior permits.
+- [ ] Make the full-screen alarm notification the primary background entry point; avoid directly starting an activity from `AlarmBroadcastReceiver` unless required by tested alarm behavior.
+- [ ] Move alarm audio/vibration ownership into a clearly bounded service lifecycle and audit the static `WakeLocker` state for process/re-entry edge cases.
+- [ ] Add device tests for exact-alarm permission denial, notification permission denial, background alarm delivery, and full-screen intent denial.
 
-- [x] Convert all production Activities to Kotlin; shared argument, constants,
-  base-activity, wake lock, checkable-layout, screen-ticker, route dialogs,
-  persistence DTOs, adapters, and presentation helpers are now Kotlin.
-- [ ] Convert the remaining legacy Java unit-test fixtures to Kotlin; these no
-  longer affect the production Java/Kotlin boundary.
-- [x] Delete `LifecycleFlowCollector` once Activities collect directly with
-  lifecycle-scoped Flow collection.
-- [x] Delete `RoutesViewModelFactory` and `DeparturesViewModelFactory` when
-  ViewModels can use direct Kotlin construction or standard factories.
-- [x] Remove redundant `runOnUiThread` calls around lifecycle-scoped Flow
-  collection.
-- [x] Replace the `TripServiceCommand` wrapper with direct service actions or
-  one clearly owned service-start boundary.
-- [x] Remove obsolete Activity adapter compatibility methods such as
-  `getListAdapter` and `setListAdapter`.
-- [x] Convert the departures screen's manual UI state holder to a Kotlin
-  `data class`; retain defensive collection ownership in the ViewModel.
-- [ ] Convert remaining manual UI state holders to Kotlin `data class`/sealed state types
-  where that reduces custom copy and defensive-copy code without weakening
-  defensive collection ownership.
+## Phase 6: feed and build cleanup
 
-### 4. Simplify feed polling and projections
+- [ ] Consolidate per-favorite projection jobs in `RoutesViewModel` into one favorites-derived projection where practical.
+- [ ] Remove the redundant explicit startup refresh if shared-feed subscription polling already covers it.
+- [ ] Upgrade the version catalog in a staged compatibility change, starting with lifecycle, coroutines, AndroidX, Compose, OkHttp, Jackson, and GTFS-RT bindings.
+- [ ] Re-evaluate compile/target SDK after device testing and update obsolete min-SDK resource folders.
+- [ ] Make lint clean after the dead-resource deletion pass, then keep lint clean in CI.
 
-- [x] Replace `TransitRepository`'s manual `ScheduledExecutorService`, consumer
-  counter, `ScheduledFuture`, and duplicate scheduling paths with a coroutine
-  polling flow using lifecycle-aware sharing; retain only the small lock needed
-  to serialize synchronous refresh state.
-- [x] Remove the compatibility `TransitFeedClient.fetch()` method and retain a
-  single feed-fetch contract that supports partial trip/alert success.
-- [x] Remove the generic `TransitProjection`/`TransitProjectionState` layer;
-  repository projections now use standard Kotlin `Result` values.
-- [x] Replace `RouteDepartureProjection` and `TripProgressProjection`'s
-  nullable `Context`/network constructor variants with one application-owned
-  injectable GTFS network supplier and context-free query functions.
-- [x] Keep alert formatting out of the backend: retain raw alert timestamps and
-  format them at the UI boundary.
+## Verification checklist
 
-### 5. Finish the immutable realtime result migration
-
-- [x] Replace mutable `RealTimeDepartures` aggregation state with an immutable
-  result containing the departure list and transfer-inclusion metadata.
-- [x] Keep feed parsing mutable only inside `GtfsRealtimeContentHandler` while
-  constructing that result.
-- [x] Make `Departure` defensively immutable at every construction boundary;
-  avoid duplicate list copying in the builder and `withTripLegs` path.
-- [ ] Preserve tests for feed replacement, estimate merging, trip-leg updates,
-  identity matching, transfer fallback, and followed-trip updates.
-
-### 6. Consolidate application-owned concurrency and persistence
-
-- [x] Simplify `FavoritesRepository`'s separate coroutine scope and
-  `ExecutorService` into one serialized persistence executor; retain the small
-  lock and pending queue needed while the initial file load is in flight.
-- [x] Apply the same single-executor persistence model to
-  `FollowedTripRepository` while retaining atomic file replacement and
-  process-death restoration.
-- [x] Make static GTFS data application-owned and injectable instead of relying
-  on a nullable `Context` and global cache access.
-- [x] Inject the clock into static-data loading so service-day and cache expiry
-  decisions are deterministic; extend the seam to other time-dependent code as
-  those paths are simplified.
-
-### 7. Modernize build and release plumbing
-
-- [x] Replace Travis CI's JDK 8/Android 28 configuration with GitHub Actions
-  covering unit tests, instrumentation tests, lint, and debug builds.
-- [ ] Update the version catalog in a staged change, starting with AndroidX,
-  lifecycle, coroutines, OkHttp, Jackson, and GTFS-RT bindings.
-- [x] Confirm compile/target SDK 36 after compatibility testing.
-- [x] Replace deprecated Groovy space-assignment syntax in Gradle files.
-- [x] Replace the string-search-based compatibility task with standard Gradle
-  configuration checks and focused verification checks.
-- [x] Fix remaining lint findings for plurals, string concatenation, RTL,
-  overdraw, adapter update notifications, and resource density; debug and
-  release lint reports are clean.
-
-## Deliberately deferred
-
-- [ ] Do not introduce Compose until the primary screens share one stable state
-  and event model and the XML implementation has been simplified.
-- [ ] Keep the project single-module unless a real ownership or build-time
-  boundary emerges.
-- [ ] Do not add a repository, use case, mapper, adapter, or compatibility
-  interface solely to preserve an old call shape.
-
-## Working agreement
-
-- Keep changes small and independently buildable.
-- Prefer deleting a layer over adding a migration layer.
-- Add regression coverage before changing feed, routing, alarm, service, or
-  persistence behavior.
-- Treat user preferences and local caches as disposable unless migration is
-  specifically required.
-- Do not include generated Gradle state in application changes.
+- [x] `:app:testDebugUnitTest`
+- [x] `:app:assembleDebug`
+- [x] `:app:lintDebug`
+- [ ] Instrumentation smoke tests on the connected Pixel 10
+- [ ] Manual verification of route selection, live departures, trip following, map viewing, alarms, notification actions, and process-death restoration

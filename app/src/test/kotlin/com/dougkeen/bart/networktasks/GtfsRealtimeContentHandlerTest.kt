@@ -72,6 +72,28 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
+    fun dropsTripsThatLeftTheOriginLongAgo() {
+        val network = network()
+        val route = TripPlanner.routesFor(Station.MONT, Station.DALY, network)[0]
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
+            .addEntity(entity(
+                "12",
+                "blue-stale",
+                arrayOf("MONT", "DALY"),
+                longArrayOf(700L, 760L),
+            ))
+            .build()
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.MONT, Station.DALY, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        assertTrue(departures.getDepartures().isEmpty())
+    }
+
+    @Test
     fun returnsAnImmutableDepartureList() {
         val departures = GtfsRealtimeContentHandler(
             Station.LAKE,

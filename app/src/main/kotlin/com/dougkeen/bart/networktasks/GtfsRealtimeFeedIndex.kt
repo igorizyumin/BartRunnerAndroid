@@ -48,26 +48,32 @@ class GtfsRealtimeFeedIndex private constructor(
         fun from(feed: GtfsRealtime.FeedMessage?): GtfsRealtimeFeedIndex =
             GtfsRealtimeFeedIndex(requireNotNull(feed) { "feed" }.entityList)
 
-        /** Adds fallback entities without replacing a live update for the same trip. */
+        /** Adds fallback entities, replacing explicitly stale live trip updates. */
         @JvmStatic
         fun merge(
             primary: GtfsRealtimeFeedIndex,
-            fallback: GtfsRealtimeFeedIndex
+            fallback: GtfsRealtimeFeedIndex,
+            replaceTripIds: Set<String> = emptySet()
         ): GtfsRealtimeFeedIndex {
             val primaryTripIds = primary.tripUpdatesById.keys
             return GtfsRealtimeFeedIndex(
-                primary.tripUpdateEntities + fallback.tripUpdateEntities.filter { entity ->
-                    val tripId = if (entity.hasTripUpdate() && entity.tripUpdate.hasTrip()
-                        && entity.tripUpdate.trip.hasTripId()
-                    ) {
-                        entity.tripUpdate.trip.tripId
-                    } else {
-                        null
-                    }
-                    tripId == null || tripId !in primaryTripIds
+                primary.tripUpdateEntities.filterNot { entity ->
+                    tripIdOf(entity) in replaceTripIds
+                } + fallback.tripUpdateEntities.filter { entity ->
+                    val tripId = tripIdOf(entity)
+                    tripId in replaceTripIds || tripId == null || tripId !in primaryTripIds
                 }
             )
         }
+
+        private fun tripIdOf(entity: GtfsRealtime.FeedEntity): String? =
+            if (entity.hasTripUpdate() && entity.tripUpdate.hasTrip()
+                && entity.tripUpdate.trip.hasTripId()
+            ) {
+                entity.tripUpdate.trip.tripId
+            } else {
+                null
+            }
     }
 }
 

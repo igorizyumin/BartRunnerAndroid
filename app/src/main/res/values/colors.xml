@@ -1,16 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <color name="blue_selection">#FFD7F3F5</color>
     <color name="ic_background">#FF0B7285</color>
-    <color name="brand_primary">#FF0B7285</color>
-    <color name="brand_primary_dark">#FF075985</color>
-    <color name="brand_secondary">#FFF59E0B</color>
-    <color name="connection_warning">#FFB91C1C</color>
-    <color name="surface">#FFF5F7FA</color>
-    <color name="surface_container">#FFFFFFFF</color>
-    <color name="text_primary">#FF102A43</color>
-    <color name="text_secondary">#FF486581</color>
-    <color name="outline">#FFD9E2EC</color>
-
 </resources>

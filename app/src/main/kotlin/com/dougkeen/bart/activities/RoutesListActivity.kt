@@ -3,7 +3,7 @@ package com.dougkeen.bart.activities
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
@@ -14,7 +14,7 @@ import com.dougkeen.bart.ui.HomeScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class RoutesListActivity : AppCompatActivity() {
+class RoutesListActivity : ComponentActivity() {
     fun addFavorite(route: com.dougkeen.bart.model.StationPair) {
         ViewModelProvider(this)[RoutesViewModel::class.java].addFavorite(route)
     }

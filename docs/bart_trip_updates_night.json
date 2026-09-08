@@ -1,0 +1,7534 @@
+{
+  "header": {
+    "gtfs_realtime_version": "1.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": "1788846725"
+  },
+  "entity": [
+    {
+      "id": "1973374",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973374",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846493",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847108",
+              "uncertainty": 30
+            },
+            "stop_id": "S50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847349",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847367",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847806",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847824",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848182",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848200",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848435",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848453",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848739",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848757",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848980",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848998",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849221",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849239",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849450",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849468",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849703",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849721",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849902",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849920",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850171",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850189",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850345",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850369",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850429",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850483",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850674",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850716",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850890",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850908",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851028",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851052",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851172",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851190",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851364",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851412",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851575",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851623",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973428",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973428",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 102,
+              "time": "1788846977",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 102,
+              "time": "1788846995",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-1"
+          },
+          {
+            "arrival": {
+              "delay": 33,
+              "time": "1788847368",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 33,
+              "time": "1788847416",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973375",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973375",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847686",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848308",
+              "uncertainty": 30
+            },
+            "stop_id": "S50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848549",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848567",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849006",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849024",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849382",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849400",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849635",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849653",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849939",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849957",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850180",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850198",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850421",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850439",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850650",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850668",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850903",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850921",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851102",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851120",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851371",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851389",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851545",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851569",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851629",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851683",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851874",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851916",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852090",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852108",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852228",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852252",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852372",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852390",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852564",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852612",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852775",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852823",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973429",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973429",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 27,
+              "time": "1788846887",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 27,
+              "time": "1788846905",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847113",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847131",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847437",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847455",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847699",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847717",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848075",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848093",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848536",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848584",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973430",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973430",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 60,
+              "time": "1788846737",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 60,
+              "time": "1788846785",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846875",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846911",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847128",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847146",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847320",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847338",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847565",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847583",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847791",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847827",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848060",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848078",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848313",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848331",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848637",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848655",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848899",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848917",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849275",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849293",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849736",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849784",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973431",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973431",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 9,
+              "time": "1788846702",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 9,
+              "time": "1788846726",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846902",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846926",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847052",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847076",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847196",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847214",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847392",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847572",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847751",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847799",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847877",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847925",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848075",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848111",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848328",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848346",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848520",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848538",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848765",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848783",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848991",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849027",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849260",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849278",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849513",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849531",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849837",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849855",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850099",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850117",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850475",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850493",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850936",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850984",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973432",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973432",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847358",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847478",
+              "uncertainty": 30
+            },
+            "stop_id": "R60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847706",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847730",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847894",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847918",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848102",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848126",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848252",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848276",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848396",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848414",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848592",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848772",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848951",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848999",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849077",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849125",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849275",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849311",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849528",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849546",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849720",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849738",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849965",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849983",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850191",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850227",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850460",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850478",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850713",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850731",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851037",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851055",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851299",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851317",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851675",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851693",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852136",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852184",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973370",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973370",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 100,
+              "time": "1788846875",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 100,
+              "time": "1788846923",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973433",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973433",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848558",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848678",
+              "uncertainty": 30
+            },
+            "stop_id": "R60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848906",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848930",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849094",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849118",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849302",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849326",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849452",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849476",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849596",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849614",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849792",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849972",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850151",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850199",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850277",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850325",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850475",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850511",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850728",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850746",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850920",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850938",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851165",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851183",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851391",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851427",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851660",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851678",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851913",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851931",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852237",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852255",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852499",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852517",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852875",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852893",
+              "uncertainty": 30
+            },
+            "stop_id": "S20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853336",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853384",
+              "uncertainty": 30
+            },
+            "stop_id": "S40-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973371",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973371",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 60,
+              "time": "1788846805",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 60,
+              "time": "1788846829",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-1"
+          },
+          {
+            "arrival": {
+              "delay": 33,
+              "time": "1788846862",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 33,
+              "time": "1788846916",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847074",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847116",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847290",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847308",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847428",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847452",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847572",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847590",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847764",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847812",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847975",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848023",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973372",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973372",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 51,
+              "time": "1788846872",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 51,
+              "time": "1788846890",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 31,
+              "time": "1788847080",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 31,
+              "time": "1788847098",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847303",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847321",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847502",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847520",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847771",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847789",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847945",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847969",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848029",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848083",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848274",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848316",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848490",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848508",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848628",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848652",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848772",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848790",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848964",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849012",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849175",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849223",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973373",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973373",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 65,
+              "time": "1788847047",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 65,
+              "time": "1788847065",
+              "uncertainty": 30
+            },
+            "stop_id": "A90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847235",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847253",
+              "uncertainty": 30
+            },
+            "stop_id": "A80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847539",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847557",
+              "uncertainty": 30
+            },
+            "stop_id": "A70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847780",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847798",
+              "uncertainty": 30
+            },
+            "stop_id": "A60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848021",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848039",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848250",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848268",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848503",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848521",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848702",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848720",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848971",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848989",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849145",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849169",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849229",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849283",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849474",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849516",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849690",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849708",
+              "uncertainty": 30
+            },
+            "stop_id": "R10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849828",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849852",
+              "uncertainty": 30
+            },
+            "stop_id": "R20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849972",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849990",
+              "uncertainty": 30
+            },
+            "stop_id": "R30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850164",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850212",
+              "uncertainty": 30
+            },
+            "stop_id": "R40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850375",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850423",
+              "uncertainty": 30
+            },
+            "stop_id": "R50-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973245",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973245",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 132,
+              "time": "1788846907",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 132,
+              "time": "1788846931",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-3"
+          },
+          {
+            "arrival": {
+              "delay": 111,
+              "time": "1788846970",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 111,
+              "time": "1788847024",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-3"
+          },
+          {
+            "arrival": {
+              "delay": 84,
+              "time": "1788847188",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 84,
+              "time": "1788847212",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-3"
+          },
+          {
+            "arrival": {
+              "delay": 77,
+              "time": "1788847349",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 77,
+              "time": "1788847367",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-1"
+          },
+          {
+            "arrival": {
+              "delay": 72,
+              "time": "1788847665",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 72,
+              "time": "1788847683",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-1"
+          },
+          {
+            "arrival": {
+              "delay": 69,
+              "time": "1788847950",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 69,
+              "time": "1788847968",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-1"
+          },
+          {
+            "arrival": {
+              "delay": 52,
+              "time": "1788848206",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 52,
+              "time": "1788848230",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-1"
+          },
+          {
+            "arrival": {
+              "delay": 45,
+              "time": "1788848376",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 45,
+              "time": "1788848394",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-1"
+          },
+          {
+            "arrival": {
+              "delay": 36,
+              "time": "1788848681",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 36,
+              "time": "1788848699",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-1"
+          },
+          {
+            "arrival": {
+              "delay": 34,
+              "time": "1788848900",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 34,
+              "time": "1788848918",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849259",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849283",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973246",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973246",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 60,
+              "time": "1788846754",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 60,
+              "time": "1788846772",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 34,
+              "time": "1788846849",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 34,
+              "time": "1788846873",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 34,
+              "time": "1788846993",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 34,
+              "time": "1788847017",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 31,
+              "time": "1788847085",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 31,
+              "time": "1788847115",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 32,
+              "time": "1788847182",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 32,
+              "time": "1788847212",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 30,
+              "time": "1788847277",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 30,
+              "time": "1788847313",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847679",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847709",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847975",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847999",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848059",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848113",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848304",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848328",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848472",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848490",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848793",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848811",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849081",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849099",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849354",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849378",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849531",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849549",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849845",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849863",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850067",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850085",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850459",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850483",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973247",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973247",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 67,
+              "time": "1788846824",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 67,
+              "time": "1788846842",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-2"
+          },
+          {
+            "arrival": {
+              "delay": 34,
+              "time": "1788846984",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 34,
+              "time": "1788847002",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-2"
+          },
+          {
+            "arrival": {
+              "delay": 31,
+              "time": "1788847167",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 31,
+              "time": "1788847203",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-2"
+          },
+          {
+            "arrival": {
+              "delay": 30,
+              "time": "1788847379",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 30,
+              "time": "1788847421",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847595",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847613",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847733",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847751",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847895",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847913",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848015",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848039",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848159",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848183",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848255",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848285",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848351",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848381",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848447",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848483",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848879",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848909",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849175",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849199",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849259",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849313",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849504",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849528",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849672",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849690",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849993",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850011",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850281",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850299",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850554",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850578",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850731",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850749",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851045",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851063",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851267",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851285",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851659",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851683",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973248",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973248",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846904",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847750",
+              "uncertainty": 30
+            },
+            "stop_id": "Y10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847958",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847976",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848150",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848168",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848336",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848372",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848549",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848591",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848795",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848813",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848933",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848951",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849095",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849113",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849215",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849239",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849359",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849383",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849455",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849485",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849551",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849581",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849647",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849683",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850079",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850109",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850375",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850399",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850459",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850513",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850704",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850728",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850872",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850890",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851193",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851211",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851481",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851499",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851754",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851778",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851931",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851949",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852245",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852263",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852467",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852485",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852859",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852883",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973166",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973166",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 23,
+              "time": "1788846796",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 23,
+              "time": "1788846814",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846911",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846929",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847160",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847196",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847412",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847430",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847592",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847610",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847784",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847802",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973249",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973249",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848072",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848950",
+              "uncertainty": 30
+            },
+            "stop_id": "Y10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849158",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849176",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849350",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849368",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849536",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849572",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849749",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849791",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849995",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850013",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850133",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850151",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850295",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850313",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850415",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850439",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850559",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850583",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850655",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850685",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850751",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850781",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850847",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850883",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851279",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851309",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851575",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851599",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851659",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851713",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851904",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851928",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-3"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852072",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852090",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852393",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852411",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852681",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852699",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852954",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852978",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853131",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853149",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853445",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853463",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853667",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853685",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788854059",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788854083",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973167",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973167",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 10,
+              "time": "1788846831",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 10,
+              "time": "1788846861",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847235",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847271",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847337",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847367",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847439",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847469",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847541",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847565",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847685",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847703",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847805",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847823",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847973",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847991",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848111",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848129",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848360",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848396",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848612",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848630",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848792",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848810",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848984",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849002",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973168",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973168",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 27,
+              "time": "1788846885",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 27,
+              "time": "1788846903",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847204",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847222",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847392",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847428",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-4"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847607",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847655",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847733",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847781",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848021",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848051",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848435",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848471",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848537",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848567",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848639",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848669",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848741",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848765",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848885",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848903",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849005",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849023",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849173",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849191",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849311",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849329",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849560",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849596",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849812",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849830",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849992",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850010",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850184",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850202",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973169",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973169",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846764",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846782",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846999",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847017",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-2"
+          },
+          {
+            "arrival": {
+              "delay": 93,
+              "time": "1788847398",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 93,
+              "time": "1788847416",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-2"
+          },
+          {
+            "arrival": {
+              "delay": 88,
+              "time": "1788847571",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 88,
+              "time": "1788847589",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-2"
+          },
+          {
+            "arrival": {
+              "delay": 75,
+              "time": "1788847839",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 75,
+              "time": "1788847857",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-2"
+          },
+          {
+            "arrival": {
+              "delay": 64,
+              "time": "1788848123",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 64,
+              "time": "1788848141",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-2"
+          },
+          {
+            "arrival": {
+              "delay": 50,
+              "time": "1788848454",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 50,
+              "time": "1788848472",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-2"
+          },
+          {
+            "arrival": {
+              "delay": 41,
+              "time": "1788848633",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 41,
+              "time": "1788848669",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-4"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848807",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848855",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848933",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848981",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849221",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849251",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849635",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849671",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849737",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849767",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849839",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849869",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849941",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849965",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850085",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850103",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850205",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850223",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850373",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850391",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850511",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850529",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850760",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850796",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851012",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851030",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851192",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851210",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851384",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851402",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-1"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973243",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973243",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 9,
+              "time": "1788846868",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 9,
+              "time": "1788846892",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973170",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973170",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847575",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847599",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847964",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847982",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848199",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848217",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848505",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848523",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848683",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848701",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848964",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848982",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849259",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849277",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849604",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849622",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849792",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849828",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-4"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850007",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850055",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850133",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850181",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850421",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850451",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850835",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850871",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850937",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850967",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851039",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851069",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851141",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851165",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851285",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851303",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851405",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851423",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851573",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851591",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851711",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851729",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851960",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851996",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852212",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852230",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852392",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852410",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852584",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852602",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973244",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973244",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 92,
+              "time": "1788846772",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 92,
+              "time": "1788846790",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-1"
+          },
+          {
+            "arrival": {
+              "delay": 66,
+              "time": "1788847020",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 66,
+              "time": "1788847044",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-1"
+          },
+          {
+            "arrival": {
+              "delay": 64,
+              "time": "1788847195",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 64,
+              "time": "1788847213",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-1"
+          },
+          {
+            "arrival": {
+              "delay": 63,
+              "time": "1788847508",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 63,
+              "time": "1788847526",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-1"
+          },
+          {
+            "arrival": {
+              "delay": 33,
+              "time": "1788847700",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 33,
+              "time": "1788847718",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848059",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848083",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973171",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973171",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848775",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848799",
+              "uncertainty": 30
+            },
+            "stop_id": "C80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849164",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849182",
+              "uncertainty": 30
+            },
+            "stop_id": "C70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849399",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849417",
+              "uncertainty": 30
+            },
+            "stop_id": "C60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849705",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849723",
+              "uncertainty": 30
+            },
+            "stop_id": "C50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849883",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849901",
+              "uncertainty": 30
+            },
+            "stop_id": "C40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850164",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850182",
+              "uncertainty": 30
+            },
+            "stop_id": "C30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850459",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850477",
+              "uncertainty": 30
+            },
+            "stop_id": "C20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850804",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850822",
+              "uncertainty": 30
+            },
+            "stop_id": "C10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850992",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851028",
+              "uncertainty": 30
+            },
+            "stop_id": "K30-4"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851207",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851255",
+              "uncertainty": 30
+            },
+            "stop_id": "K20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851333",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851381",
+              "uncertainty": 30
+            },
+            "stop_id": "K10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851621",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851651",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852035",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852071",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852137",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852167",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852239",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852269",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852341",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852365",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852485",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852503",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852605",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852623",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852773",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852791",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852911",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852929",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853160",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853196",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853412",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853430",
+              "uncertainty": 30
+            },
+            "stop_id": "W10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853592",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853610",
+              "uncertainty": 30
+            },
+            "stop_id": "W20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788853784",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788853802",
+              "uncertainty": 30
+            },
+            "stop_id": "W30-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973184",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973184",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846533",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846870",
+              "uncertainty": 30
+            },
+            "stop_id": "Y10-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973309",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973309",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847220",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847230",
+              "uncertainty": 30
+            },
+            "stop_id": "W40-3"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973185",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973185",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847610",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847620",
+              "uncertainty": 30
+            },
+            "stop_id": "Y10-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973310",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973310",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848150",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848160",
+              "uncertainty": 30
+            },
+            "stop_id": "W40-3"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973174",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973174",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848540",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848550",
+              "uncertainty": 30
+            },
+            "stop_id": "Y10-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973311",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973311",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848990",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849000",
+              "uncertainty": 30
+            },
+            "stop_id": "W40-3"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973820",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973820",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 40,
+              "time": "1788846923",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 40,
+              "time": "1788846941",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847109",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847145",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847391",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847409",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847969",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847987",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973768",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973768",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848637",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848757",
+              "uncertainty": 30
+            },
+            "stop_id": "L30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848927",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848945",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849534",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849552",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849821",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849839",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850050",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850068",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850303",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850321",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850502",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850520",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850771",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850789",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851089",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851119",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851503",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851539",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851605",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851635",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851707",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851737",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851809",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851833",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851953",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851971",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852073",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852091",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852241",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852259",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852379",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852397",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973821",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973821",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 39,
+              "time": "1788847086",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 39,
+              "time": "1788847116",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847393",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847429",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847646",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847664",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847838",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847856",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848083",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848101",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848309",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848345",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848591",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848609",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849169",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849187",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973822",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973822",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846426",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846486",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846898",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846916",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847101",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847119",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847263",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847281",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847383",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847407",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847527",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847551",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847623",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847653",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847719",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847749",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847815",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847851",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848247",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848277",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848593",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848629",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848846",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848864",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849038",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849056",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849283",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849301",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849509",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849545",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849791",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849809",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850369",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850387",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "1973823",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973823",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847899",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847959",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848163",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848181",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848301",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848319",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848463",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848481",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848583",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848607",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848727",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848751",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848823",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848853",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848919",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848949",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849015",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849051",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849447",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849477",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849793",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849829",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850046",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850064",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850238",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850256",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850483",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850501",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850709",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850745",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850991",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851009",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851569",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851587",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973764",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973764",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 35,
+              "time": "1788846738",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 35,
+              "time": "1788846774",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846805",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846835",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846907",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846937",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847009",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847033",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847153",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847171",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847273",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847291",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847441",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847459",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847579",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847597",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973824",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973824",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849099",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849159",
+              "uncertainty": 30
+            },
+            "stop_id": "M90-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849363",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849381",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849501",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849519",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849663",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849681",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849783",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849807",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849927",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849951",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850023",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850053",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850119",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850149",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850215",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850251",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850647",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850677",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850993",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851029",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851246",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851264",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851438",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851456",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851683",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851701",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851909",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851945",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852191",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852209",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788852769",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788852787",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973765",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973765",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 6,
+              "time": "1788846709",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 6,
+              "time": "1788846727",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846902",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846920",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847171",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847189",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847489",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847519",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847903",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847939",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848005",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848035",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848107",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848137",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848209",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848233",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848353",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848371",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848473",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848491",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848641",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848659",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848779",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848797",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973766",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973766",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 48,
+              "time": "1788847181",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 48,
+              "time": "1788847199",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-2"
+          },
+          {
+            "arrival": {
+              "delay": 31,
+              "time": "1788847452",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 31,
+              "time": "1788847470",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847650",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847668",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847903",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847921",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848102",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848120",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848371",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848389",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848689",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848719",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849103",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849139",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849205",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849235",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849307",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849337",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849409",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849433",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849553",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849571",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849673",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849691",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849841",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849859",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849979",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849997",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973819",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973819",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 58,
+              "time": "1788846826",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 58,
+              "time": "1788846844",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "1973767",
+      "trip_update": {
+        "trip": {
+          "trip_id": "1973767",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847437",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847557",
+              "uncertainty": 30
+            },
+            "stop_id": "L30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847727",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847745",
+              "uncertainty": 30
+            },
+            "stop_id": "L20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848334",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848352",
+              "uncertainty": 30
+            },
+            "stop_id": "L10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848621",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848639",
+              "uncertainty": 30
+            },
+            "stop_id": "A50-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848850",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848868",
+              "uncertainty": 30
+            },
+            "stop_id": "A40-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849103",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849121",
+              "uncertainty": 30
+            },
+            "stop_id": "A30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849302",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849320",
+              "uncertainty": 30
+            },
+            "stop_id": "A20-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849571",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849589",
+              "uncertainty": 30
+            },
+            "stop_id": "A10-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849889",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849919",
+              "uncertainty": 30
+            },
+            "stop_id": "M10-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850303",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850339",
+              "uncertainty": 30
+            },
+            "stop_id": "M16-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850405",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850435",
+              "uncertainty": 30
+            },
+            "stop_id": "M20-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850507",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850537",
+              "uncertainty": 30
+            },
+            "stop_id": "M30-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850609",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850633",
+              "uncertainty": 30
+            },
+            "stop_id": "M40-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850753",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850771",
+              "uncertainty": 30
+            },
+            "stop_id": "M50-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850873",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850891",
+              "uncertainty": 30
+            },
+            "stop_id": "M60-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851041",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851059",
+              "uncertainty": 30
+            },
+            "stop_id": "M70-1"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851179",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851197",
+              "uncertainty": 30
+            },
+            "stop_id": "M80-1"
+          }
+        ],
+        "vehicle": {
+          "label": "3-door"
+        }
+      }
+    },
+    {
+      "id": "710",
+      "trip_update": {
+        "trip": {
+          "trip_id": "710",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847559",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847589",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "712",
+      "trip_update": {
+        "trip": {
+          "trip_id": "712",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848759",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848789",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "713",
+      "trip_update": {
+        "trip": {
+          "trip_id": "713",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788846906",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788846936",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "714",
+      "trip_update": {
+        "trip": {
+          "trip_id": "714",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849959",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849989",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "715",
+      "trip_update": {
+        "trip": {
+          "trip_id": "715",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788847141",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788847683",
+              "uncertainty": 30
+            },
+            "stop_id": "E30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848127",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848157",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "716",
+      "trip_update": {
+        "trip": {
+          "trip_id": "716",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788851159",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788851189",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-1"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "717",
+      "trip_update": {
+        "trip": {
+          "trip_id": "717",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788848583",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788848883",
+              "uncertainty": 30
+            },
+            "stop_id": "E30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849327",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788849357",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    },
+    {
+      "id": "719",
+      "trip_update": {
+        "trip": {
+          "trip_id": "719",
+          "schedule_relationship": "SCHEDULED"
+        },
+        "stop_time_update": [
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788849783",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850083",
+              "uncertainty": 30
+            },
+            "stop_id": "E30-2"
+          },
+          {
+            "arrival": {
+              "delay": 0,
+              "time": "1788850527",
+              "uncertainty": 30
+            },
+            "departure": {
+              "delay": 0,
+              "time": "1788850557",
+              "uncertainty": 30
+            },
+            "stop_id": "E20-2"
+          }
+        ],
+        "vehicle": {
+          "label": "2-door"
+        }
+      }
+    }
+  ]
+}

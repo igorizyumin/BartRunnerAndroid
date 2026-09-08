@@ -9,6 +9,7 @@ import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
 import com.dougkeen.bart.networktasks.GtfsStaticScheduleFeed
 import com.dougkeen.bart.routing.TripPlanner
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
+import com.google.transit.realtime.GtfsRealtime
 import java.util.function.Supplier
 
 /** Builds departures for one route from the already-downloaded feed. */
@@ -44,8 +45,12 @@ class RouteDepartureProjection private constructor(
         val staticIndex = GtfsStaticScheduleFeed.indexFor(network, feedTime, lines)
         // BART's trip-update feed is not a complete schedule: it can omit a
         // future train entirely. Keep both sources in the projection, while
-        // letting a live update win whenever both describe the same trip.
-        val combinedIndex = GtfsRealtimeFeedIndex.merge(feedIndex, staticIndex)
+        // letting a fresh live update win whenever both describe the same trip.
+        val combinedIndex = GtfsRealtimeFeedIndex.merge(
+            feedIndex,
+            staticIndex,
+            staleTripIds(feedIndex, network, feedTime)
+        )
         return projectWithRouting(
             routes,
             network,
@@ -122,7 +127,50 @@ class RouteDepartureProjection private constructor(
         network
     ).getRealTimeDepartures(feedIndex, feedTime)
 
+    private fun staleTripIds(
+        feedIndex: GtfsRealtimeFeedIndex,
+        network: BartGtfsNetwork,
+        feedTime: Long,
+    ): Set<String> {
+        if (feedTime <= 0L) {
+            return emptySet()
+        }
+        return feedIndex.tripUpdateEntities.mapNotNull { entity ->
+            if (!entity.hasTripUpdate() || !entity.tripUpdate.hasTrip()) {
+                return@mapNotNull null
+            }
+            val trip = entity.tripUpdate.trip
+            if (!trip.hasTripId() || trip.tripId.isEmpty()
+                || (trip.hasScheduleRelationship()
+                && trip.scheduleRelationship ==
+                GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED)
+            ) {
+                return@mapNotNull null
+            }
+            val originTimes = entity.tripUpdate.stopTimeUpdateList
+                .filter { network.stationForStopId(it.stopId) == query.origin }
+                .mapNotNull { stopTime ->
+                    when {
+                        stopTime.hasDeparture() && stopTime.departure.hasTime() ->
+                            stopTime.departure.time * 1000L
+                        stopTime.hasArrival() && stopTime.arrival.hasTime() ->
+                            stopTime.arrival.time * 1000L
+                        else -> null
+                    }
+                }
+            if (originTimes.isEmpty()
+                || originTimes.minOrNull()!! < feedTime - STALE_DEPARTURE_TOLERANCE_MILLIS
+            ) {
+                trip.tripId
+            } else {
+                null
+            }
+        }.toSet()
+    }
+
     private companion object {
+        private const val STALE_DEPARTURE_TOLERANCE_MILLIS = 2 * 60 * 1000L
+
         fun resolveRoutes(query: StationPair, network: BartGtfsNetwork): List<Route> =
             TripPlanner.routesFor(query.origin, query.destination, network)
     }

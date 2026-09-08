@@ -322,6 +322,9 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         if (originPoint == null || originPoint.departureTime <= 0) {
             return
         }
+        if (originPoint.departureTime < feedTime - DEPARTURE_STALE_TOLERANCE_MILLIS) {
+            return
+        }
         val route = findRoute(trip) ?: return
 
         val minutes = maxOf(0L, (originPoint.departureTime - feedTime) / 60000L).toInt()
@@ -667,7 +670,13 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     }
 
     private fun lineForDestination(line: Line, trainDestination: Station?): Line =
-        if (line == Line.YELLOW && (trainDestination == Station.MLBR || origin == Station.MLBR)) {
+        if (line == Line.YELLOW && (
+                (destination == Station.MLBR && trainDestination == Station.MLBR)
+                    || (destination == null && trainDestination == Station.MLBR)
+                    || (origin == Station.SFIA && destination == Station.MLBR)
+                    || origin == Station.MLBR
+            )
+        ) {
             Line.YELLOW_LATE_NIGHT
         } else {
             line
@@ -684,6 +693,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
 
     companion object {
         private const val ESTIMATE_TOLERANCE_MILLIS = 30000L
+        private const val DEPARTURE_STALE_TOLERANCE_MILLIS = 2 * 60 * 1000L
         private const val PITT_TO_PCTR_MIN_MILLIS = 5 * 60 * 1000L
         private const val PITT_TO_PCTR_TYPICAL_MILLIS = 12 * 60 * 1000L
         private const val PITT_TO_PCTR_MAX_MILLIS = 20 * 60 * 1000L

@@ -6,6 +6,9 @@ build
 .gradle
 .android
 .gradle-home
+.gradle-user
+.kotlin
+gradle/gradle-daemon-jvm.properties
 .idea
 *.iml
 local.properties
