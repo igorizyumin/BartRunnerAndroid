@@ -1,30 +1,28 @@
 package com.dougkeen.bart.activities
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.lifecycleScope
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
-import com.dougkeen.bart.services.BoardedDepartureService
 import com.dougkeen.bart.ui.BartRunnerTheme
 import com.dougkeen.bart.ui.DeparturesScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ViewDeparturesActivity : ComponentActivity() {
-    companion object {
-        private const val POST_NOTIFICATIONS_REQUEST_CODE = 1001
-    }
-
     private lateinit var stationPair: StationPair
     private val departuresViewModel: DeparturesViewModel by viewModels()
-    private val tripActionsViewModel: TripActionsViewModel by viewModels()
+    private var routeFare by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +32,18 @@ class ViewDeparturesActivity : ComponentActivity() {
         } else {
             RouteArguments.readRoute(intent)
         } ?: run { finish(); return }
+        if (stationPair.destination != null) {
+            lifecycleScope.launch {
+                routeFare = withContext(Dispatchers.IO) {
+                    runCatching {
+                        app.gtfsStaticData.getFare(
+                            stationPair.origin!!,
+                            stationPair.destination!!,
+                        )
+                    }.getOrNull()
+                }
+            }
+        }
         departuresViewModel.setQuery(app.transitRepository, app.bartGtfsNetworkSupplier, stationPair)
         setContent {
             val state by departuresViewModel.uiState.collectAsStateWithLifecycle()
@@ -42,9 +52,9 @@ class ViewDeparturesActivity : ComponentActivity() {
                     route = stationPair,
                     state = state,
                     timeSource = app.timeSource,
+                    fare = routeFare,
                     onBack = { finish() },
                     onOpenTrip = ::openTripSchedule,
-                    onFollowTrip = { followDeparture(it, true) },
                     onMap = { startActivity(Intent(this, ViewMapActivity::class.java)) },
                 )
             }
@@ -54,18 +64,6 @@ class ViewDeparturesActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         if (::stationPair.isInitialized) RouteArguments.putRoute(outState, stationPair)
-    }
-
-    private fun followDeparture(departure: Departure, openTripScreen: Boolean) {
-        val prepared = prepareDepartureForTrip(departure)
-        val action = tripActionsViewModel.followTrip(prepared)
-        requestNotificationPermissionIfNeeded()
-        startForegroundService(Intent(this, BoardedDepartureService::class.java).setAction(action))
-        if (openTripScreen) {
-            startActivity(Intent(this, TripInProgressActivity::class.java).apply {
-                RouteArguments.putTrip(this, prepared.getStationPair(), prepared.identity, RouteArguments.MODE_FOLLOWED)
-            })
-        }
     }
 
     private fun openTripSchedule(departure: Departure) {
@@ -78,11 +76,4 @@ class ViewDeparturesActivity : ComponentActivity() {
     private fun prepareDepartureForTrip(departure: Departure): Departure =
         departure.withPassengerDestination(stationPair.destination ?: departure.trainDestination)
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), POST_NOTIFICATIONS_REQUEST_CODE)
-        }
-    }
 }

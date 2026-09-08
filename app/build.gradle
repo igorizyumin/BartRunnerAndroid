@@ -81,3 +81,11 @@ android {
         abortOnError = true
     }
 }
+
+// The exhaustive fixture audit is opt-in; keep normal unit runs focused on
+// the curated endpoint, transfer, and terminal cases.
+tasks.withType(Test).configureEach {
+    if (System.getProperty('runAllPairs') != null) {
+        systemProperty 'runAllPairs', System.getProperty('runAllPairs')
+    }
+}

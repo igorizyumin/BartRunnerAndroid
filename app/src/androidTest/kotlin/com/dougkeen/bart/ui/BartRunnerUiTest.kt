@@ -106,9 +106,9 @@ class BartRunnerUiTest {
                     route = com.dougkeen.bart.model.StationPair(Station.CAST, Station.MLPT),
                     state = DeparturesViewModel.State.empty(),
                     timeSource = timeSource,
+                    fare = null,
                     onBack = {},
                     onOpenTrip = {},
-                    onFollowTrip = {},
                     onMap = {},
                 )
             }

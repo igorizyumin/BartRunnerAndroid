@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.dougkeen.bart.model.Line;
 import com.dougkeen.bart.model.Departure;
+import com.dougkeen.bart.model.PredictionSource;
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Route;
 import com.dougkeen.bart.model.Station;
@@ -14,11 +15,13 @@ import com.dougkeen.bart.model.TripLeg;
 import com.dougkeen.bart.backend.TransitFeedSnapshot;
 import com.dougkeen.bart.backend.RouteDepartureProjection;
 import com.dougkeen.bart.backend.TripProgressProjection;
+import com.dougkeen.bart.backend.Schedule;
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler;
+import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex;
 import com.google.transit.realtime.GtfsRealtime;
-import com.dougkeen.bart.routing.TripPlanner;
 
 import org.junit.Test;
+import org.junit.Assume;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -47,6 +50,8 @@ public class LiveGtfsRoutingTest {
             BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(NIGHT_FILES));
     private static final List<Line> COLOR_LINES = Arrays.asList(
             Line.RED, Line.ORANGE, Line.YELLOW, Line.BLUE, Line.GREEN);
+    private static final Map<BartGtfsNetwork, Schedule> ROUTING_SCHEDULES =
+            new java.util.IdentityHashMap<>();
 
     @Test
     public void liveFeedSatisfiesGenericAndBartInvariants() {
@@ -101,7 +106,7 @@ public class LiveGtfsRoutingTest {
                     }
                     Station origin = representatives.get(originLine);
                     Station destination = representatives.get(destinationLine);
-                    List<Route> routes = TripPlanner.routesFor(origin,
+                    List<Route> routes = routesFor(origin,
                             destination, NETWORK);
                     assertTrue(period + " route " + originLine + " " + origin
                                     + " -> " + destinationLine + " " + destination
@@ -114,7 +119,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void castroValleyToPittsburgUsesTheExpectedThreeLegRoute() {
-        List<Route> routes = TripPlanner.routesFor(Station.CAST, Station.PITT,
+        List<Route> routes = routesFor(Station.CAST, Station.PITT,
                 NETWORK);
 
         assertFalse("routes=" + routes, routes.isEmpty());
@@ -128,7 +133,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void sfoToCastroValleyUsesRedToBlueAtBalboaPark() {
-        List<Route> routes = TripPlanner.routesFor(Station.SFIA, Station.CAST,
+        List<Route> routes = routesFor(Station.SFIA, Station.CAST,
                 NETWORK);
 
         assertFalse("routes=" + routes, routes.isEmpty());
@@ -141,7 +146,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void ashbyToBalboaParkIsRouteableOnNightSchedule() {
-        List<Route> routes = TripPlanner.routesFor(Station.ASHB, Station.BALB,
+        List<Route> routes = routesFor(Station.ASHB, Station.BALB,
                 NIGHT_NETWORK);
 
         assertFalse("routes=" + routes + " blue="
@@ -153,7 +158,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void milpitasToCastroValleyUsesGreenToBlueAtBayFair() {
-        List<Route> routes = TripPlanner.routesFor(Station.MLPT, Station.CAST,
+        List<Route> routes = routesFor(Station.MLPT, Station.CAST,
                 NETWORK);
 
         assertFalse("routes=" + routes, routes.isEmpty());
@@ -174,7 +179,7 @@ public class LiveGtfsRoutingTest {
             throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.MLPT, Station.CAST,
-                TripPlanner.routesFor(Station.MLPT, Station.CAST, NETWORK),
+                routesFor(Station.MLPT, Station.CAST, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -196,7 +201,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void castroValleyToPittsburgCenterRouteReachesTheTerminal() {
-        List<Route> routes = TripPlanner.routesFor(Station.CAST, Station.PCTR,
+        List<Route> routes = routesFor(Station.CAST, Station.PCTR,
                 NETWORK);
 
         assertFalse("routes=" + routes, routes.isEmpty());
@@ -212,7 +217,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void pleasantHillToPittsburgCenterUsesTheTerminalShuttle() {
-        List<Route> routes = TripPlanner.routesFor(Station.PHIL, Station.PCTR,
+        List<Route> routes = routesFor(Station.PHIL, Station.PCTR,
                 NETWORK);
 
         assertFalse("routes=" + routes, routes.isEmpty());
@@ -227,7 +232,7 @@ public class LiveGtfsRoutingTest {
     public void currentFeedKeepsPittsburgCenterAsTheFinalStop() throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.CAST, Station.PCTR,
-                TripPlanner.routesFor(Station.CAST, Station.PCTR, NETWORK),
+                routesFor(Station.CAST, Station.PCTR, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -241,7 +246,10 @@ public class LiveGtfsRoutingTest {
                     .get(departure.getTripLegs().size() - 2).getDestination());
             assertEquals(Station.PCTR, terminal.getDestination());
             assertEquals(Line.YELLOW_DMU, terminal.getLine());
-            assertEquals(0L, terminal.getDepartureTime());
+            assertTrue("terminal=" + terminal.getTripId() + " scheduled="
+                            + terminal.getScheduledDepartureTime() + " effective="
+                            + terminal.getDepartureTime(),
+                    terminal.getDepartureTime() > 0L);
         }
     }
 
@@ -250,7 +258,7 @@ public class LiveGtfsRoutingTest {
             throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PHIL, Station.PCTR,
-                TripPlanner.routesFor(Station.PHIL, Station.PCTR, NETWORK),
+                routesFor(Station.PHIL, Station.PCTR, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -277,7 +285,7 @@ public class LiveGtfsRoutingTest {
 
     @Test
     public void castroValleyToAntiochRouteReachesTheTerminal() {
-        List<Route> routes = TripPlanner.routesFor(Station.CAST, Station.ANTC,
+        List<Route> routes = routesFor(Station.CAST, Station.ANTC,
                 NETWORK);
 
         assertFalse("routes=" + routes, routes.isEmpty());
@@ -294,7 +302,7 @@ public class LiveGtfsRoutingTest {
     public void currentFeedKeepsAntiochAsTheFinalStop() throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.CAST, Station.ANTC,
-                TripPlanner.routesFor(Station.CAST, Station.ANTC, NETWORK),
+                routesFor(Station.CAST, Station.ANTC, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -308,7 +316,10 @@ public class LiveGtfsRoutingTest {
                     .get(departure.getTripLegs().size() - 2).getDestination());
             assertEquals(Station.ANTC, terminal.getDestination());
             assertEquals(Line.YELLOW_DMU, terminal.getLine());
-            assertEquals(0L, terminal.getDepartureTime());
+            assertTrue("terminal=" + terminal.getTripId() + " scheduled="
+                            + terminal.getScheduledDepartureTime() + " effective="
+                            + terminal.getDepartureTime(),
+                    terminal.getDepartureTime() > 0L);
         }
     }
 
@@ -316,7 +327,7 @@ public class LiveGtfsRoutingTest {
     public void currentFeedReportsPittsburgToAntiochDepartures() throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PITT, Station.ANTC,
-                TripPlanner.routesFor(Station.PITT, Station.ANTC, NETWORK),
+                routesFor(Station.PITT, Station.ANTC, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -334,7 +345,7 @@ public class LiveGtfsRoutingTest {
     public void currentFeedReportsAntiochToPittsburgDepartures() throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.ANTC, Station.PITT,
-                TripPlanner.routesFor(Station.ANTC, Station.PITT, NETWORK),
+                routesFor(Station.ANTC, Station.PITT, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -352,7 +363,7 @@ public class LiveGtfsRoutingTest {
     public void unknownDmuTripIdCanSupplyPittsburgCenterDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PITT, Station.PCTR,
-                TripPlanner.routesFor(Station.PITT, Station.PCTR, NETWORK),
+                routesFor(Station.PITT, Station.PCTR, NETWORK),
                 false, NETWORK);
         GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
@@ -376,7 +387,7 @@ public class LiveGtfsRoutingTest {
     public void separatePittsburgPlatformAndDmuUpdatesBuildAntiochDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PITT, Station.ANTC,
-                TripPlanner.routesFor(Station.PITT, Station.ANTC, NETWORK),
+                routesFor(Station.PITT, Station.ANTC, NETWORK),
                 false, NETWORK);
         GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
@@ -402,12 +413,12 @@ public class LiveGtfsRoutingTest {
     public void separateReversePlatformAndDmuUpdatesBuildPittsburgDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.ANTC, Station.PITT,
-                TripPlanner.routesFor(Station.ANTC, Station.PITT, NETWORK),
+                routesFor(Station.ANTC, Station.PITT, NETWORK),
                 false, NETWORK);
         GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                         .setGtfsRealtimeVersion("2.0")
-                        .setTimestamp(900L))
+                        .setTimestamp(790L))
                 .addEntity(trip("pitt-platform", "",
                         new String[]{"C80-2"}, new long[]{1706L}))
                 .addEntity(trip("634", "",
@@ -429,7 +440,7 @@ public class LiveGtfsRoutingTest {
     public void currentRedDepartureFromSfoUsesBlueAtBalboa() throws Exception {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.SFIA, Station.CAST,
-                TripPlanner.routesFor(Station.SFIA, Station.CAST, NETWORK),
+                routesFor(Station.SFIA, Station.CAST, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(
                 currentTripUpdates());
@@ -444,7 +455,7 @@ public class LiveGtfsRoutingTest {
         assertTrue("departures=" + departures.getDepartures(),
                 redDeparture != null);
         assertEquals("routes=" + routeLines(
-                        TripPlanner.routesFor(Station.SFIA, Station.CAST, NETWORK)),
+                        routesFor(Station.SFIA, Station.CAST, NETWORK)),
                 Arrays.asList(Line.RED, Line.BLUE),
                 linesOf(redDeparture.getTripLegs()));
         assertEquals(Arrays.asList(Station.BALB),
@@ -455,7 +466,7 @@ public class LiveGtfsRoutingTest {
     public void realtimeItineraryIncludesThePittsburgLeg() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.CAST, Station.PITT,
-                TripPlanner.routesFor(Station.CAST, Station.PITT, NETWORK),
+                routesFor(Station.CAST, Station.PITT, NETWORK),
                 false, NETWORK);
         GtfsRealtime.FeedMessage feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
@@ -490,11 +501,16 @@ public class LiveGtfsRoutingTest {
         GtfsRealtime.FeedMessage feed = currentTripUpdates();
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.CAST, Station.PITT,
-                TripPlanner.routesFor(Station.CAST, Station.PITT, NETWORK),
+                routesFor(Station.CAST, Station.PITT, NETWORK),
                 false, NETWORK);
         RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
         assertTrue(feed.getEntityCount() > 0);
-        assertEquals(3, departures.getDepartures().size());
+        assertEquals("departures=" + departures.getDepartures(),
+                Arrays.asList("1973728", "1973729", "1973730", "1973731",
+                        "1973732", "1973733", "1973734"),
+                departures.getDepartures().stream()
+                        .map(departure -> departure.getTripLegs().get(0).getTripId())
+                        .collect(java.util.stream.Collectors.toList()));
         for (com.dougkeen.bart.model.Departure departure : departures.getDepartures()) {
             assertEquals(3, departure.getTripLegs().size());
             assertEquals(Station.BAYF, departure.getTripLegs().get(0).getDestination());
@@ -514,7 +530,7 @@ public class LiveGtfsRoutingTest {
         GtfsRealtime.FeedMessage feed = currentTripUpdates();
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.CAST, Station.PITT,
-                TripPlanner.routesFor(Station.CAST, Station.PITT, NETWORK),
+                routesFor(Station.CAST, Station.PITT, NETWORK),
                 false, NETWORK);
         Departure selected = handler.getRealTimeDepartures(feed)
                 .getDepartures().get(0);
@@ -525,14 +541,18 @@ public class LiveGtfsRoutingTest {
                 .project(new com.dougkeen.bart.backend.TransitFeedSnapshot(
                         feed, emptyFeed(), System.currentTimeMillis()));
 
-        assertEquals(3, refreshed.size());
+        assertEquals("refreshed=" + refreshed.stream()
+                        .map(leg -> leg.getLine() + ":" + leg.getOrigin()
+                                + "->" + leg.getDestination() + ":" + leg.getTripId())
+                        .collect(java.util.stream.Collectors.toList()),
+                3, refreshed.size());
         assertEquals(Station.PITT, refreshed.get(2).getDestination());
     }
 
     @Test
     public void nightTripUpdatesUseStaticTerminalWhenRealtimeStopsAtBalboa()
             throws Exception {
-        List<Route> routes = TripPlanner.routesFor(Station.BALB, Station.DALY,
+        List<Route> routes = routesFor(Station.BALB, Station.DALY,
                 NIGHT_NETWORK);
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.BALB, Station.DALY, routes, false, NIGHT_NETWORK);
@@ -559,14 +579,19 @@ public class LiveGtfsRoutingTest {
                 .project(new TransitFeedSnapshot(
                         nightTripUpdates(), emptyFeed(), 0L));
 
-        assertTrue("stale Ashby departures=" + departures.getDepartures(),
+        assertFalse("expected future static Ashby departures",
                 departures.getDepartures().isEmpty());
+        long staleCutoff = 1788846725L * 1000L - 45L * 1000L;
+        for (Departure departure : departures.getDepartures()) {
+            assertTrue("stale departure=" + departure,
+                    departure.getTripLegs().get(0).getDepartureTime() >= staleCutoff);
+        }
     }
 
     @Test
     public void currentTripUpdatesProvideTwelfthStreetToSfoRouting()
             throws Exception {
-        List<Route> routes = TripPlanner.routesFor(Station._12TH, Station.SFIA,
+        List<Route> routes = routesFor(Station._12TH, Station.SFIA,
                 NETWORK);
         RealTimeDepartures departures = new RouteDepartureProjection(
                 new StationPair(Station._12TH, Station.SFIA), NETWORK)
@@ -608,7 +633,7 @@ public class LiveGtfsRoutingTest {
     @Test
     public void latestTripUpdatesRouteTwelfthStreetTo16thStreet()
             throws Exception {
-        List<Route> routes = TripPlanner.routesFor(Station._12TH, Station._16TH,
+        List<Route> routes = routesFor(Station._12TH, Station._16TH,
                 NIGHT_NETWORK);
         RealTimeDepartures departures = new RouteDepartureProjection(
                 new StationPair(Station._12TH, Station._16TH), NIGHT_NETWORK)
@@ -648,10 +673,193 @@ public class LiveGtfsRoutingTest {
     }
 
     @Test
-    public void fixtureProtobufsProduceValidRoutingForEveryStationPair()
+    public void fixtureRoutesCoverLineEndpointsTransfersAndAntioch() {
+        assertRoute(NETWORK, Station.RICH, Station.SFIA,
+                Arrays.asList(Line.RED), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.SFIA, Station.RICH,
+                Arrays.asList(Line.RED), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.BERY, Station.RICH,
+                Arrays.asList(Line.ORANGE), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.RICH, Station.BERY,
+                Arrays.asList(Line.ORANGE), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.BERY, Station.DALY,
+                Arrays.asList(Line.GREEN), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.DALY, Station.BERY,
+                Arrays.asList(Line.GREEN), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.DUBL, Station.DALY,
+                Arrays.asList(Line.BLUE), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.DALY, Station.DUBL,
+                Arrays.asList(Line.BLUE), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.SFIA, Station.PITT,
+                Arrays.asList(Line.YELLOW), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.PITT, Station.SFIA,
+                Arrays.asList(Line.YELLOW), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.PITT, Station.ANTC,
+                Arrays.asList(Line.YELLOW_DMU), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.ANTC, Station.PITT,
+                Arrays.asList(Line.YELLOW_DMU), Collections.<Station>emptyList());
+        assertRoute(NETWORK, Station.CAST, Station.PITT,
+                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW),
+                Arrays.asList(Station.BAYF, Station._19TH));
+        assertRoute(NETWORK, Station.CAST, Station.ANTC,
+                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW, Line.YELLOW_DMU),
+                Arrays.asList(Station.BAYF, Station._19TH, Station.PITT));
+        assertRoute(NIGHT_NETWORK, Station.ASHB, Station.DALY,
+                Arrays.asList(Line.RED), Collections.<Station>emptyList());
+    }
+
+    /**
+     * Exact oracle checks transcribed from the checked-in JSON and static GTFS
+     * fixture. These intentionally assert both source and epoch milliseconds:
+     * a plausible-looking route is not enough for prediction correctness.
+     */
+    @Test
+    public void fixturePredictionsMatchStaticAndRealtimeOracleAtAntioch() throws Exception {
+        Schedule correctedDay = Schedule.fromStatic(
+                NETWORK, 1788801718L * 1000L, new HashSet<>(COLOR_LINES))
+                .applyRealtime(GtfsRealtimeFeedIndex.from(currentTripUpdates()));
+        Schedule.Trip dayTrip = trip(correctedDay, "1973133");
+
+        assertScheduleStop(dayTrip, Station.ANTC,
+                1788800820L * 1000L, 1788800820L * 1000L,
+                1788800820L * 1000L, 1788800820L * 1000L,
+                PredictionSource.SCHEDULE);
+        assertScheduleStop(dayTrip, Station.PITT,
+                1788801900L * 1000L, 1788801960L * 1000L,
+                1788801975L * 1000L, 1788801999L * 1000L,
+                PredictionSource.REALTIME);
+
+        Schedule.Trip dayShuttle = trip(correctedDay, "1973207-after-dmu");
+        assertScheduleStop(dayShuttle, Station.PITT,
+                1788803580L * 1000L, 1788803640L * 1000L,
+                1788803659L * 1000L, 1788803683L * 1000L,
+                PredictionSource.REALTIME);
+        assertScheduleStop(dayShuttle, Station.PCTR,
+                1788804300L * 1000L, 1788804300L * 1000L,
+                1788804343L * 1000L, 1788804343L * 1000L,
+                PredictionSource.ESTIMATE);
+        assertScheduleStop(dayShuttle, Station.ANTC,
+                1788804720L * 1000L, 1788804780L * 1000L,
+                1788804763L * 1000L, 1788804823L * 1000L,
+                PredictionSource.ESTIMATE);
+
+        Schedule correctedNight = Schedule.fromStatic(
+                NIGHT_NETWORK, 1788846725L * 1000L,
+                new HashSet<>(COLOR_LINES))
+                .applyRealtime(GtfsRealtimeFeedIndex.from(nightTripUpdates()));
+        Schedule.Trip nightTrip = trip(correctedNight, "1973170");
+        assertScheduleStop(nightTrip, Station.PITT,
+                1788847500L * 1000L, 1788847560L * 1000L,
+                1788847575L * 1000L, 1788847599L * 1000L,
+                PredictionSource.REALTIME);
+        assertScheduleStop(nightTrip, Station.SBRN,
+                1788852540L * 1000L, 1788852540L * 1000L,
+                1788852584L * 1000L, 1788852602L * 1000L,
+                PredictionSource.REALTIME);
+    }
+
+    @Test
+    public void routeProjectionUsesExactCorrectedAntiochShuttlePrediction()
             throws Exception {
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station.PITT, Station.ANTC), NETWORK)
+                .project(new TransitFeedSnapshot(
+                        currentTripUpdates(), emptyFeed(), 0L));
+
+        TripLeg matching = null;
+        for (Departure departure : departures.getDepartures()) {
+            for (TripLeg leg : departure.getTripLegs()) {
+                if ("1973207-after-dmu".equals(leg.getTripId())) {
+                    matching = leg;
+                    break;
+                }
+            }
+        }
+        assertTrue("departures=" + departures.getDepartures(), matching != null);
+        assertEquals(Line.YELLOW_DMU, matching.getLine());
+        assertEquals(Station.PITT, matching.getOrigin());
+        assertEquals(Station.ANTC, matching.getDestination());
+        assertEquals(1788803640L * 1000L, matching.getScheduledDepartureTime());
+        assertEquals(1788803683L * 1000L, matching.getDepartureTime());
+        assertEquals(1788804720L * 1000L, matching.getScheduledArrivalTime());
+        assertEquals(1788804763L * 1000L, matching.getArrivalTime());
+        assertEquals(PredictionSource.REALTIME, matching.getDepartureSource());
+        assertEquals(PredictionSource.ESTIMATE, matching.getArrivalSource());
+    }
+
+    @Test
+    public void fixtureProtobufsProduceValidRoutingForEveryStationPair() throws Exception {
+        Assume.assumeTrue(
+                "All-pairs fixture audit is manual: run with -DrunAllPairs=true",
+                Boolean.getBoolean("runAllPairs"));
         assertFixtureRouting("day", NETWORK, currentTripUpdates());
         assertFixtureRouting("night", NIGHT_NETWORK, nightTripUpdates());
+    }
+
+    private static void assertRoute(BartGtfsNetwork network, Station origin,
+                                    Station destination, List<Line> lines,
+                                    List<Station> transfers) {
+        long feedTime = network == NIGHT_NETWORK
+                ? 1788846725L * 1000L : 1788801718L * 1000L;
+        Schedule schedule = Schedule.fromStatic(network, feedTime,
+                new HashSet<>(COLOR_LINES));
+        List<Route> routes = schedule.routesFor(origin, destination);
+        assertFalse(origin + " -> " + destination + " routes=" + routes,
+                routes.isEmpty());
+        Route route = routes.get(0);
+        assertEquals(origin, route.getOrigin());
+        assertEquals(destination, route.getDestination());
+        assertEquals(lines, route.getLines());
+        assertEquals(transfers, route.getTransferStations());
+    }
+
+    private static List<Route> routesFor(Station origin, Station destination,
+                                         BartGtfsNetwork network) {
+        Schedule schedule = ROUTING_SCHEDULES.get(network);
+        if (schedule == null) {
+            long feedTime = network == NIGHT_NETWORK
+                    ? 1788846725L * 1000L : 1788801718L * 1000L;
+            schedule = Schedule.fromStatic(network, feedTime,
+                    new HashSet<>(COLOR_LINES));
+            ROUTING_SCHEDULES.put(network, schedule);
+        }
+        return schedule.routesFor(origin, destination);
+    }
+
+    private static Schedule.Trip trip(Schedule schedule, String tripId) {
+        for (Schedule.Trip trip : schedule.getTrips()) {
+            if (trip.getKey().getTripId().equals(tripId)) {
+                return trip;
+            }
+        }
+        throw new AssertionError("missing schedule trip " + tripId);
+    }
+
+    private static void assertScheduleStop(
+            Schedule.Trip trip,
+            Station station,
+            long scheduledArrival,
+            long scheduledDeparture,
+            long arrival,
+            long departure,
+            PredictionSource source) {
+        Schedule.Stop stop = trip.getStops().stream()
+                .filter(candidate -> candidate.getStation() == station)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "missing " + station + " in " + trip.getKey()));
+        assertEquals(trip.getKey() + " " + station + " scheduled arrival",
+                scheduledArrival, stop.getScheduledArrivalTime());
+        assertEquals(trip.getKey() + " " + station + " scheduled departure",
+                scheduledDeparture, stop.getScheduledDepartureTime());
+        assertEquals(trip.getKey() + " " + station + " arrival",
+                arrival, stop.getArrivalTime());
+        assertEquals(trip.getKey() + " " + station + " departure",
+                departure, stop.getDepartureTime());
+        assertEquals(trip.getKey() + " " + station + " arrival source",
+                source, stop.getArrivalSource());
+        assertEquals(trip.getKey() + " " + station + " departure source",
+                source, stop.getDepartureSource());
     }
 
     private static void assertFixtureRouting(
@@ -664,7 +872,7 @@ public class LiveGtfsRoutingTest {
                 if (origin == destination) {
                     continue;
                 }
-                List<Route> routes = TripPlanner.routesFor(origin, destination,
+                List<Route> routes = routesFor(origin, destination,
                         network);
                 assertFalse(fixtureName + " has no static route " + origin
                                 + " -> " + destination,
@@ -693,10 +901,7 @@ public class LiveGtfsRoutingTest {
             }
         }
 
-        // Exercise each checked-in protobuf once as well as validating every
-        // static origin/destination pair above. The complete transfer case is
-        // covered separately by the Ashby -> Daly City regression test.
-        List<Route> stationRoutes = TripPlanner.routesFor(Station.ASHB, null, network);
+        List<Route> stationRoutes = routesFor(Station.ASHB, null, network);
         RealTimeDepartures departures = new GtfsRealtimeContentHandler(
                 Station.ASHB, null, stationRoutes, false, network)
                 .getRealTimeDepartures(feed);

@@ -42,8 +42,8 @@ authoritative answer for questions such as:
 
 ### 2. Select candidate routes
 
-`TripPlanner.routesFor(origin, destination, network)` selects routes in this
-order:
+`Schedule.routesFor(origin, destination)` selects routes from the same
+time-scoped graph used for predictions. It selects in this order:
 
 - direct catalog-backed routes, one for each usable direction/pattern;
 - preferred one- or two-transfer catalog routes when no direct route exists;
@@ -52,36 +52,37 @@ order:
 
 Routes contain line sequences, transfer stations, direction, and the station
 sequence for each leg. Route scoring prefers fewer transfers, with a few BART-
-specific preferences for common East Bay/San Francisco trunk journeys.
+specific preferences for common East Bay/San Francisco trunk journeys. A route
+is rejected when the corrected schedule has no usable service for one of its
+legs; a route with no static trips in the current window remains eligible
+because realtime may still supply that trip.
 
 Station-only queries use the longest useful static pattern for each line at the
 origin. They are deliberately not destination-filtered, because the board must
 show every applicable train terminal.
 
-### 3. Combine static and realtime trips
+### 3. Build and correct the Schedule
 
-`RouteDepartureProjection` creates a small synthetic GTFS-Realtime view of
-active static trips near the feed timestamp. It includes trips from the
-relevant route IDs only, normally looking 30 minutes backward and two hours
-forward.
+`Schedule` is the time-dependent source of truth. It builds a graph whose
+nodes are passenger stations and whose edges are individual scheduled train
+movements. It retains the original scheduled arrival/departure for every stop
+and derives nominal directed travel times from the static feed.
 
-The synthetic entities are merged with the live trip-update index. If the
-same `trip_id` appears in both sources, the live entity wins. Otherwise the
-static entity fills the gap. This is important for cases such as the fresh
-12th Street Oakland fixture: the realtime snapshot contained eastbound trains
-but omitted an upcoming westbound train, while the static night schedule still
-contained the valid 12th Street to 16th Street trip.
+The live trip-update index is applied as corrections to that graph. A missing
+realtime entity leaves the static trip intact; it is not treated as a
+cancellation. Static trips therefore fill omitted future trips without being
+converted into synthetic GTFS-Realtime entities.
 
 ### 4. Parse each trip into an itinerary
 
-`GtfsRealtimeContentHandler` parses the merged trip entities and:
+The projection converts corrected Schedule trips into `Departure` values and:
 
 1. resolves the route ID, falling back to the static trip catalog when the
    realtime descriptor omits it;
 2. maps platform stop IDs to passenger stations;
 3. overlays realtime times onto the static station sequence;
-4. fills absent static stations with zero-valued estimates so the train's
-   topology and terminal remain known;
+4. retains absent static stations and estimates missing downstream arrivals
+   from the previous effective departure plus nominal segment travel time;
 5. applies direction filtering for destination queries;
 6. builds one or more `TripLeg` values and validates every requested leg;
 7. converts valid trips into `Departure` values.
@@ -104,8 +105,9 @@ future trips.
 A trip update may contain only a subset of the stations, may stop before the
 terminal, or may have no usable departure event for the final station. The
 static trip sequence supplies the missing station order and terminal. Realtime
-times are used where present; missing values remain unknown rather than being
-invented.
+times are used where present; missing downstream arrivals are estimated from
+the previous effective departure plus nominal travel time for that station
+pair.
 
 This prevents the classic off-by-one destination bug: the last realtime update
 must not be treated as the train's terminal when the static trip continues past
@@ -115,9 +117,8 @@ at Balboa Park while still being a Daly City train.
 ### Arrival and departure are separate fields
 
 At a station, arrival and departure may have different delays and timestamps.
-The parser uses departure when available and falls back to arrival when it is
-not. For a station with no usable event, the static topology is retained but
-the time remains zero.
+Realtime event times take precedence, followed by delay-only corrections. Each
+effective time retains a provenance of `REALTIME`, `SCHEDULE`, or `ESTIMATE`.
 
 ### Route IDs may be absent
 
@@ -138,9 +139,12 @@ The main schedule update can describe the train to or from Pittsburg, while a
 separate DMU update describes the terminal shuttle between Pittsburg, Pittsburg
 Center, and Antioch. Their trip IDs are not necessarily joinable.
 
-BartRunner joins compatible updates using platform, direction, and a bounded
-Pittsburg-to-Pittsburg Center travel-time window. The result is a single
-complete route leg or a route with an explicit `YELLOW_DMU` terminal leg.
+The Schedule always extends a Yellow trip through the terminal shuttle when
+the main trip ends at Pittsburg. It uses static nominal Pittsburg-to-Pittsburg
+Center and Pittsburg Center-to-Antioch timings, and marks the continuation as
+estimated unless the separate DMU update can be joined using platform,
+direction, and a bounded timing window. The result is an explicit
+`YELLOW_DMU` terminal leg rather than a parser-only special case.
 
 ### The late-night SFO/Millbrae change is a transfer
 
@@ -232,8 +236,9 @@ remain unchanged in the test fixture directory.
 
 The routing tests cover:
 
-- static route validity for every distinct station pair in the day and night
-  fixture networks;
+- line endpoints, transfer points, and the Antioch terminal continuation;
+- exact static/realtime/estimated epoch and provenance checks at Pittsburg and
+  Antioch, based on the checked-in fixture JSON and static GTFS;
 - incomplete terminal updates that stop before the static terminal;
 - Ashby to Daly City routing;
 - 12th Street Oakland to SFO and station-board display;
@@ -241,6 +246,13 @@ The routing tests cover:
   schedule fallback;
 - late-night 12th Street Oakland to Millbrae through SFO;
 - Pittsburg/Antioch DMU joining and transfer timing.
+
+The exhaustive static route audit is intentionally manual because it expands
+every station pair in both fixture networks. Run it explicitly with:
+
+```text
+./gradlew -DrunAllPairs=true :app:testDebugUnitTest --tests com.dougkeen.bart.transit.gtfs.LiveGtfsRoutingTest.fixtureProtobufsProduceValidRoutingForEveryStationPair
+```
 
 When adding a new fixture, test both the station-only board and at least one
 destination query. A station board can look plausible while destination

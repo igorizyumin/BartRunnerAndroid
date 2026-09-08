@@ -2,6 +2,7 @@ package com.dougkeen.bart.data
 
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Line
+import com.dougkeen.bart.model.PredictionSource
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.TripLeg
 import com.dougkeen.bart.model.TripStop
@@ -105,6 +106,10 @@ class FollowedTripRecord constructor() {
         @JvmField var departureTime = 0L
         @JvmField var arrivalTime = 0L
         @JvmField var minimumTransferSecondsAfter = 0
+        @JvmField var scheduledDepartureTime = 0L
+        @JvmField var scheduledArrivalTime = 0L
+        @JvmField var departureSource: String? = null
+        @JvmField var arrivalSource: String? = null
         @JvmField var stops: MutableList<TripStopRecord> = mutableListOf()
 
         fun toTripLeg(): TripLeg = TripLeg(
@@ -117,6 +122,10 @@ class FollowedTripRecord constructor() {
             arrivalTime,
             stops.map { it.toTripStop() },
             minimumTransferSecondsAfter,
+            scheduledDepartureTime,
+            scheduledArrivalTime,
+            predictionSource(departureSource),
+            predictionSource(arrivalSource),
         )
 
         companion object {
@@ -130,6 +139,10 @@ class FollowedTripRecord constructor() {
                 departureTime = leg.departureTime
                 arrivalTime = leg.arrivalTime
                 minimumTransferSecondsAfter = leg.minimumTransferSecondsAfter
+                scheduledDepartureTime = leg.scheduledDepartureTime
+                scheduledArrivalTime = leg.scheduledArrivalTime
+                departureSource = leg.departureSource.name
+                arrivalSource = leg.arrivalSource.name
                 stops = leg.stops.map(TripStopRecord::fromTripStop).toMutableList()
             }
         }
@@ -139,8 +152,20 @@ class FollowedTripRecord constructor() {
         @JvmField var station: String? = null
         @JvmField var arrivalTime = 0L
         @JvmField var departureTime = 0L
+        @JvmField var scheduledArrivalTime = 0L
+        @JvmField var scheduledDepartureTime = 0L
+        @JvmField var arrivalSource: String? = null
+        @JvmField var departureSource: String? = null
 
-        fun toTripStop(): TripStop = TripStop(station(station), arrivalTime, departureTime)
+        fun toTripStop(): TripStop = TripStop(
+            station(station),
+            arrivalTime,
+            departureTime,
+            scheduledArrivalTime,
+            scheduledDepartureTime,
+            predictionSource(arrivalSource),
+            predictionSource(departureSource),
+        )
 
         companion object {
             @JvmStatic
@@ -148,10 +173,18 @@ class FollowedTripRecord constructor() {
                 station = stop.station?.abbreviation
                 arrivalTime = stop.arrivalTime
                 departureTime = stop.departureTime
+                scheduledArrivalTime = stop.scheduledArrivalTime
+                scheduledDepartureTime = stop.scheduledDepartureTime
+                arrivalSource = stop.arrivalSource.name
+                departureSource = stop.departureSource.name
             }
         }
     }
 }
+
+private fun predictionSource(value: String?): PredictionSource =
+    value?.let { runCatching { PredictionSource.valueOf(it) }.getOrNull() }
+        ?: PredictionSource.UNKNOWN
 
 private fun abbreviation(station: Station?): String? = station?.abbreviation
 

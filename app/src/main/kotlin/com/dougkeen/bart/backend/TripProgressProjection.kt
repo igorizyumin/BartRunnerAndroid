@@ -2,9 +2,9 @@ package com.dougkeen.bart.backend
 
 import com.dougkeen.bart.model.TripLeg
 import com.dougkeen.bart.model.Station
+import com.dougkeen.bart.model.Line
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
-import com.dougkeen.bart.routing.TripPlanner
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import java.util.function.Supplier
 
@@ -28,7 +28,12 @@ class TripProgressProjection(
 
     fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
         val network = networkSupplier.get()
-        val routes = TripPlanner.routesFor(origin, destination, network)
+        val schedule = Schedule.fromStatic(
+            network,
+            snapshot.getTripUpdatesTimestampMillis(),
+            Line.values().toSet(),
+        ).applyRealtime(snapshot.getTripUpdateIndex())
+        val routes = schedule.routesFor(origin, destination)
         val handler = GtfsRealtimeContentHandler(
             origin,
             destination,
@@ -39,7 +44,8 @@ class TripProgressProjection(
         return handler.updateTripLegs(
             snapshot.getTripUpdateIndex(),
             existingLegs,
-            snapshot.getTripUpdatesTimestampMillis()
+            snapshot.getTripUpdatesTimestampMillis(),
+            schedule,
         )
     }
 

@@ -3,7 +3,7 @@ package com.dougkeen.bart.transit.gtfs
 import com.dougkeen.bart.model.Line
 import com.dougkeen.bart.model.Route
 import com.dougkeen.bart.model.Station
-import com.dougkeen.bart.routing.TripPlanner
+import com.dougkeen.bart.backend.Schedule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -45,7 +45,8 @@ class BartGtfsNetworkTest {
     @Test
     fun plannerUsesAFeedPatternForAStationPair() {
         val network = BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files()))
-        val routes: List<Route> = TripPlanner.routesFor(Station.LAKE, Station.SFIA, network)
+        val routes: List<Route> = Schedule.fromStatic(network, 0L)
+            .routesFor(Station.LAKE, Station.SFIA)
         assertEquals(1, routes.size)
         assertEquals(Line.YELLOW, routes[0].directLine)
         assertEquals("s", routes[0].direction)

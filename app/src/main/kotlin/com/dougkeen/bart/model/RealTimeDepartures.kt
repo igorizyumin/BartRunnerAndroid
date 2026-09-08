@@ -1,7 +1,6 @@
 package com.dougkeen.bart.model
 
-import com.dougkeen.bart.routing.TripPlanner
-import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
+import com.dougkeen.bart.backend.Schedule
 import java.util.ArrayList
 import java.util.Collections
 
@@ -13,7 +12,7 @@ class RealTimeDepartures internal constructor(
     routes: List<Route>,
     unfilteredDepartures: List<Departure>,
     departures: List<Departure>,
-    private val bartGtfsNetwork: BartGtfsNetwork,
+    private val schedule: Schedule,
     private val transfersIncluded: Boolean = false,
 ) {
     private val routes = immutableList(routes)
@@ -21,7 +20,7 @@ class RealTimeDepartures internal constructor(
     private val departures = immutableList(departures)
 
     init {
-        requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
+        requireNotNull(schedule) { "A schedule is required" }
     }
 
     fun getOrigin(): Station? = origin
@@ -40,10 +39,9 @@ class RealTimeDepartures internal constructor(
             .minByOrNull { it.minutes }
 
     fun getEarliestTransferDeparture(): Departure? {
-        val transferRoutes = TripPlanner.preferredTransferRoutes(
+        val transferRoutes = schedule.preferredTransferRoutes(
             origin,
             destination,
-            bartGtfsNetwork
         )
         return unfilteredDepartures.asSequence()
             .filter { findRouteForDeparture(it, transferRoutes)?.hasTransfer() == true }
@@ -51,11 +49,11 @@ class RealTimeDepartures internal constructor(
     }
 
     fun includeTransferRoutes(): RealTimeDepartures = withAdditionalRoutes(
-        TripPlanner.preferredTransferRoutes(origin, destination, bartGtfsNetwork)
+        schedule.preferredTransferRoutes(origin, destination)
     )
 
     fun includeDoubleTransferRoutes(): RealTimeDepartures = withAdditionalRoutes(
-        TripPlanner.doubleTransferRoutes(origin, destination, bartGtfsNetwork)
+        schedule.doubleTransferRoutes(origin, destination)
     )
 
     fun sortDepartures(): RealTimeDepartures = copy(
@@ -73,7 +71,7 @@ class RealTimeDepartures internal constructor(
                 departure.requiresTransfer
                     && (!departure.transferScheduled
                     || (departure.trainDestination != null
-                    && bartGtfsNetwork.isBetween(
+                    && schedule.network.isBetween(
                     departure.trainDestination,
                     origin,
                     destination,
@@ -113,7 +111,7 @@ class RealTimeDepartures internal constructor(
         routes,
         unfilteredDepartures,
         departures,
-        bartGtfsNetwork,
+        schedule,
         transfersIncluded,
     )
 

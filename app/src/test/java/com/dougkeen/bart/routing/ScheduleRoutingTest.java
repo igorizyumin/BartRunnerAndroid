@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import com.dougkeen.bart.model.Line;
 import com.dougkeen.bart.model.Route;
 import com.dougkeen.bart.model.Station;
+import com.dougkeen.bart.backend.Schedule;
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork;
 import com.dougkeen.bart.transit.gtfs.GtfsNetworkCatalog;
 
@@ -24,12 +25,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
 
-public class TripPlannerTest {
+public class ScheduleRoutingTest {
     private static final BartGtfsNetwork TEST_NETWORK = testNetwork();
 
     @Test
     public void directRoutesIncludeAllUsableLinesAndPreserveEndpoints() {
-        List<Route> routes = TripPlanner.routesFor(Station.MONT,
+        List<Route> routes = routesFor(Station.MONT,
                 Station.RICH, TEST_NETWORK);
 
         assertTrue("routes=" + routes, containsDirectLine(routes, Line.RED));
@@ -51,7 +52,7 @@ public class TripPlannerTest {
                 if (origin == destination) {
                     continue;
                 }
-                for (Route route : TripPlanner.routesFor(origin, destination,
+                for (Route route : routesFor(origin, destination,
                         TEST_NETWORK)) {
                     if (route.hasTransfer()) {
                         continue;
@@ -78,7 +79,7 @@ public class TripPlannerTest {
                 if (origin == destination) {
                     continue;
                 }
-                List<Route> routes = TripPlanner.transferRoutes(origin,
+                List<Route> routes = transferRoutes(origin,
                         destination, TEST_NETWORK);
                 Set<String> signatures = new HashSet<String>();
                 for (Route route : routes) {
@@ -134,7 +135,7 @@ public class TripPlannerTest {
 
     @Test
     public void preferredEastBayRouteUsesBayFairAndNineteenthStreet() {
-        List<Route> routes = TripPlanner.preferredTransferRoutes(Station.DUBL,
+        List<Route> routes = preferredTransferRoutes(Station.DUBL,
                 Station.ANTC, TEST_NETWORK);
 
         assertFalse(routes.isEmpty());
@@ -149,11 +150,11 @@ public class TripPlannerTest {
     @Test
     public void routesForUsesDirectRoutesBeforeTransferFallback() {
         BartGtfsNetwork network = TEST_NETWORK;
-        List<Route> direct = TripPlanner.routesFor(Station.MONT, Station.RICH,
+        List<Route> direct = routesFor(Station.MONT, Station.RICH,
                 network);
         assertTrue(containsDirectLine(direct, Line.RED));
 
-        List<Route> transfer = TripPlanner.routesFor(Station.DUBL, Station.ANTC,
+        List<Route> transfer = routesFor(Station.DUBL, Station.ANTC,
                 network);
         assertFalse(transfer.isEmpty());
         assertTrue(transfer.get(0).hasTransfer());
@@ -162,7 +163,7 @@ public class TripPlannerTest {
     @Test
     public void stationOnlyAndInvalidQueriesReturnEmptyOrBoardingRoutes() {
         BartGtfsNetwork network = TEST_NETWORK;
-        List<Route> stationOnly = TripPlanner.routesFor(Station.MONT, null,
+        List<Route> stationOnly = routesFor(Station.MONT, null,
                 network);
         assertFalse(stationOnly.isEmpty());
         for (Route route : stationOnly) {
@@ -173,12 +174,12 @@ public class TripPlannerTest {
                     .contains(Station.MONT));
         }
 
-        assertTrue(TripPlanner.routesFor(null, Station.MONT, network).isEmpty());
-        assertTrue(TripPlanner.transferRoutes(Station.MONT, null, network)
+        assertTrue(routesFor(null, Station.MONT, network).isEmpty());
+        assertTrue(transferRoutes(Station.MONT, null, network)
                 .isEmpty());
-        assertTrue(TripPlanner.routesFor(Station.MONT, Station.MONT, network)
+        assertTrue(routesFor(Station.MONT, Station.MONT, network)
                 .isEmpty());
-        assertTrue(TripPlanner.transferRoutes(Station.SFIA, Station.MLBR, network)
+        assertTrue(transferRoutes(Station.SFIA, Station.MLBR, network)
                 .isEmpty());
     }
 
@@ -221,19 +222,13 @@ public class TripPlannerTest {
     }
 
     @Test
-    public void routePlanningRejectsMissingStaticNetwork() {
-        assertThrows(IllegalArgumentException.class,
-                () -> TripPlanner.routesFor(Station.MONT, Station.RICH, null));
-    }
-
-    @Test
     public void plannerResultsAreImmutable() {
-        List<Route> directRoutes = TripPlanner.routesFor(Station.MONT,
+        List<Route> directRoutes = routesFor(Station.MONT,
                 Station.RICH, TEST_NETWORK);
         assertThrows(UnsupportedOperationException.class,
                 () -> directRoutes.clear());
 
-        List<Route> transferRoutes = TripPlanner.transferRoutes(Station.DUBL,
+        List<Route> transferRoutes = transferRoutes(Station.DUBL,
                 Station.ANTC, TEST_NETWORK);
         assertThrows(UnsupportedOperationException.class,
                 () -> transferRoutes.add(transferRoutes.get(0)));
@@ -246,6 +241,28 @@ public class TripPlannerTest {
             }
         }
         return false;
+    }
+
+    private static List<Route> routesFor(Station origin, Station destination,
+                                         BartGtfsNetwork network) {
+        return Schedule.fromStatic(network, 0L,
+                new java.util.HashSet<>(java.util.Arrays.asList(Line.values())))
+                .routesFor(origin, destination);
+    }
+
+    private static List<Route> transferRoutes(Station origin, Station destination,
+                                              BartGtfsNetwork network) {
+        return Schedule.fromStatic(network, 0L,
+                new java.util.HashSet<>(java.util.Arrays.asList(Line.values())))
+                .transferRoutes(origin, destination);
+    }
+
+    private static List<Route> preferredTransferRoutes(Station origin,
+                                                       Station destination,
+                                                       BartGtfsNetwork network) {
+        return Schedule.fromStatic(network, 0L,
+                new java.util.HashSet<>(java.util.Arrays.asList(Line.values())))
+                .preferredTransferRoutes(origin, destination);
     }
 
     private static List<Line> asLines(Line... lines) {

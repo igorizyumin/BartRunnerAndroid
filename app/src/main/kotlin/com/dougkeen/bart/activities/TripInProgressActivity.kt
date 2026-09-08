@@ -20,6 +20,8 @@ import androidx.activity.viewModels
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -34,7 +36,9 @@ import com.dougkeen.bart.services.BoardedDepartureService
 import com.dougkeen.bart.ui.BartRunnerTheme
 import com.dougkeen.bart.ui.TripScreen
 import com.dougkeen.util.WakeLocker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TripInProgressActivity : ComponentActivity() {
     companion object {
@@ -46,6 +50,9 @@ class TripInProgressActivity : ComponentActivity() {
     private var isFollowing = false
     private var routeDestination: Station? = null
     private var tripRoute: StationPair? = null
+    private var tripFare by mutableStateOf<String?>(null)
+    private var fareEligible = false
+    private var fareLookupKey: String? = null
     private val alarmHandler = Handler(Looper.getMainLooper())
     private var pendingAlarmLeadTimeMinutes: Int? = null
 
@@ -84,6 +91,9 @@ class TripInProgressActivity : ComponentActivity() {
         }
         routeDestination = route.destination
         tripRoute = route
+        fareEligible = route.destination != null
+        tripFare = route.fare.takeIf { fareEligible }
+        resolveFare(app, route)
         NotificationManagerCompat.from(this)
             .cancel(com.dougkeen.bart.receivers.AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
         if (app.alarmController.isRingtoneRequested() || app.alarmController.isSounding()) {
@@ -103,7 +113,10 @@ class TripInProgressActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 tripProgressViewModel.departureState.collect { updated ->
-                    if (updated != null && isFollowing) tripActionsViewModel.updateFollowedTrip(updated)
+                    if (updated != null) {
+                        if (isFollowing) tripActionsViewModel.updateFollowedTrip(updated)
+                        resolveFare(app, updated.getStationPair())
+                    }
                 }
             }
         }
@@ -116,6 +129,7 @@ class TripInProgressActivity : ComponentActivity() {
                 TripScreen(
                     departure = departure,
                     route = tripRoute,
+                    fare = tripFare,
                     isFollowingInitially = isFollowing,
                     alarmVisible = alarmState.sounding || alarmState.ringtoneRequested,
                     timeSource = app.timeSource,
@@ -253,6 +267,23 @@ class TripInProgressActivity : ComponentActivity() {
         requestNotificationPermissionIfNeeded()
         sendServiceAction(action)
         isFollowing = true
+    }
+
+    private fun resolveFare(app: BartRunnerApplication, route: StationPair?) {
+        if (!fareEligible || tripFare != null) return
+        val origin = route?.origin ?: return
+        val destination = route.destination ?: return
+        val lookupKey = "${origin.abbreviation}>${destination.abbreviation}"
+        if (fareLookupKey == lookupKey) return
+        fareLookupKey = lookupKey
+        lifecycleScope.launch {
+            val fare = withContext(Dispatchers.IO) {
+                runCatching { app.gtfsStaticData.getFare(origin, destination) }.getOrNull()
+            }
+            if (fare != null && fareLookupKey == lookupKey) {
+                tripFare = fare
+            }
+        }
     }
 
     private fun shareArrival(departure: Departure) {

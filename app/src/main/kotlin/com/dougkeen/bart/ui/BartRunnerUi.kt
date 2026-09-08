@@ -51,7 +51,6 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -82,6 +81,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.Alignment
@@ -107,6 +107,7 @@ import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.model.TripLeg
+import com.dougkeen.bart.model.TripStop
 import com.dougkeen.bart.presentation.DepartureTextFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -181,10 +182,7 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.labelMedium)
-                    }
+                    Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold)
                 },
                 actions = {
                     IconButton(onClick = onViewMap) {
@@ -441,27 +439,20 @@ private fun FavoriteRouteCard(
     modifier: Modifier = Modifier,
     onRemove: () -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scheduleDetails = departure?.let { DepartureTextFormatter.departureSchedulePresentation(context, it) }
+    val fare = route.fare?.takeIf { route.destination != null }
+    val routeTitle = route.destination?.let { destination ->
+        stringResource(R.string.route_arrow, route.origin?.getName().orEmpty(), destination.getName())
+    } ?: route.origin?.getName().orEmpty()
     Card(modifier = modifier, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    route.origin?.getName().orEmpty(),
+                    routeTitle,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                RouteConnector(Modifier.width(24.dp))
-                Text(
-                    route.destination?.getName() ?: stringResource(R.string.any_destination),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (route.destination == null) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -475,31 +466,34 @@ private fun FavoriteRouteCard(
                     LineBadge(departure.line)
                     Column(Modifier.padding(start = 8.dp).weight(1f)) {
                         if (departure.trainDestination != null && departure.trainDestination != route.destination) {
-                            Text(
-                                stringResource(R.string.train_to, departure.getTrainDestinationName().orEmpty()),
+                            TrainDestinationLabel(
+                                destination = departure.getTrainDestinationName().orEmpty(),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(DepartureTextFormatter.countdown(androidx.compose.ui.platform.LocalContext.current, departure, tick), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Text(DepartureTextFormatter.estimatedDepartureTime(androidx.compose.ui.platform.LocalContext.current, departure), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(DepartureTextFormatter.countdown(context, departure, tick), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             } else {
                 Text(stringResource(R.string.loading_upcoming_trains), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
             }
+            if (scheduleDetails?.isNotBlank() == true || fare != null) {
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    fare?.let { CompactFareValue(it, modifier = Modifier.padding(start = 38.dp)) }
+                    Spacer(Modifier.weight(1f))
+                    if (scheduleDetails?.isNotBlank() == true) {
+                        ScheduleDetailsRow(
+                            details = scheduleDetails,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun RouteConnector(modifier: Modifier = Modifier) {
-    Box(modifier.height(24.dp), contentAlignment = Alignment.Center) {
-                Text("→", color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -590,18 +584,23 @@ fun DeparturesScreen(
     route: StationPair,
     state: DeparturesViewModel.State,
     timeSource: TimeSource,
+    fare: String? = null,
     onBack: () -> Unit,
     onOpenTrip: (Departure) -> Unit,
-    onFollowTrip: (Departure) -> Unit,
     onMap: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val tick = rememberSecondTick(timeSource)
+    val routeTitle = route.destination?.let { destination ->
+        stringResource(R.string.route_arrow, route.origin?.getName().orEmpty(), destination.getName())
+    } ?: route.origin?.getName().orEmpty()
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
-                title = { Column { Text(stringResource(R.string.departures), fontWeight = FontWeight.Bold); Text(routeTitle(context, route), style = MaterialTheme.typography.labelMedium) } },
+                title = {
+                    Text(routeTitle, fontWeight = FontWeight.Bold)
+                },
                 actions = { IconButton(onClick = onMap) { Icon(Icons.Filled.Map, stringResource(R.string.system_map)) } },
             )
         },
@@ -612,16 +611,21 @@ fun DeparturesScreen(
             DeparturesViewModel.Status.ERROR -> EmptyState(stringResource(R.string.could_not_connect), stringResource(R.string.try_again_connection), modifier = Modifier.padding(padding))
             DeparturesViewModel.Status.EMPTY -> EmptyState(stringResource(R.string.no_departures_found), stringResource(R.string.no_departures_message), modifier = Modifier.padding(padding))
             DeparturesViewModel.Status.CONTENT -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { Text(stringResource(R.string.upcoming_trains), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.upcoming_trains), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        if (route.destination != null && fare != null) {
+                            FareValue(fare)
+                        }
+                    }
+                }
                 items(state.departures, key = { it.identity }) { departure ->
                     DepartureCard(
                         departure = departure,
                         context = context,
                         timeSource = timeSource,
                         tick = tick,
-                        passengerDestination = route.destination,
                         onClick = { onOpenTrip(departure) },
-                        onFollow = { onFollowTrip(departure) },
                     )
                 }
             }
@@ -630,43 +634,48 @@ fun DeparturesScreen(
 }
 
 @Composable
-private fun DepartureCard(departure: Departure, context: Context, timeSource: TimeSource, tick: Long, passengerDestination: Station?, onClick: () -> Unit, onFollow: () -> Unit) {
+private fun DepartureCard(departure: Departure, context: Context, timeSource: TimeSource, tick: Long, onClick: () -> Unit) {
     val primary = if (departure.isCanceled()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-    val userDestination = passengerDestination ?: departure.passengerDestination
+    val scheduleDetails = DepartureTextFormatter.departureSchedulePresentation(context, departure)
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LineBadge(departure.line)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
                     Text(
-                        userDestination?.getName() ?: departure.getTrainDestinationName().orEmpty(),
+                        departure.getTrainDestinationName().orEmpty(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (userDestination != null && departure.trainDestination != null && userDestination != departure.trainDestination) {
-                        Text(
-                            stringResource(R.string.train_to, departure.getTrainDestinationName().orEmpty()),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
                     Text(DepartureTextFormatter.trainLengthAndPlatform(context, departure).ifBlank { stringResource(R.string.bart_train) }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(DepartureTextFormatter.countdown(context, departure, tick), color = primary, fontWeight = FontWeight.Bold)
-                    Text(DepartureTextFormatter.estimatedDepartureTime(context, departure), style = MaterialTheme.typography.labelMedium)
+                    if (scheduleDetails.isNotBlank()) {
+                        ScheduleDetailsRow(
+                            details = scheduleDetails,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                 }
             }
             if (departure.hasTransfers()) {
-                AssistChip(onClick = onClick, label = { Text(pluralStringResource(R.plurals.connection_count, departure.tripLegs.size - 1, departure.tripLegs.size - 1)) }, leadingIcon = { Icon(Icons.Filled.SwapVert, null, Modifier.size(16.dp)) }, modifier = Modifier.padding(top = 12.dp))
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.view_trip)) }
-                Button(onClick = onFollow, modifier = Modifier.weight(1f), enabled = !departure.isCanceled()) { Icon(Icons.Filled.Train, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.board)) }
+                Row(
+                    modifier = Modifier.padding(top = 8.dp).clickable(onClick = onClick),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.SwapVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+                    Text(
+                        pluralStringResource(R.plurals.connection_count, departure.tripLegs.size - 1, departure.tripLegs.size - 1),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
             }
         }
     }
@@ -686,6 +695,7 @@ private fun EmptyState(title: String, message: String, modifier: Modifier = Modi
 fun TripScreen(
     departure: Departure?,
     route: StationPair?,
+    fare: String? = null,
     isFollowingInitially: Boolean,
     alarmVisible: Boolean,
     timeSource: TimeSource,
@@ -724,7 +734,7 @@ fun TripScreen(
             val pair = current.getStationPair()
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
-                    TripHero(current, route ?: pair, timeSource, tick)
+                    TripHero(current, route ?: pair, fare, timeSource, tick)
                 }
                 if (!following) {
                     item { Button(onClick = { following = true; onFollow(current) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Train, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.follow_this_trip)) } }
@@ -761,7 +771,7 @@ fun TripScreen(
 }
 
 @Composable
-private fun TripHero(departure: Departure, pair: StationPair?, timeSource: TimeSource, tick: Long) {
+private fun TripHero(departure: Departure, pair: StationPair?, fare: String?, timeSource: TimeSource, tick: Long) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val origin = pair?.origin?.getName() ?: departure.origin?.getName().orEmpty()
     val destination = pair?.destination?.getName() ?: departure.trainDestination?.getName().orEmpty()
@@ -773,6 +783,9 @@ private fun TripHero(departure: Departure, pair: StationPair?, timeSource: TimeS
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Metric(Icons.Filled.AccessTime, stringResource(R.string.departs), DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
                 Metric(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.arrives), DepartureTextFormatter.estimatedArrivalTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
+                if (pair?.destination != null) {
+                    FareMetric(fare ?: pair.fare ?: "—", Modifier.weight(1f))
+                }
             }
         }
     }
@@ -783,6 +796,126 @@ private fun Metric(icon: ImageVector, label: String, value: String, modifier: Mo
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Column(Modifier.padding(start = 7.dp)) { Text(label, style = MaterialTheme.typography.labelSmall); Text(value, fontWeight = FontWeight.SemiBold) }
+    }
+}
+
+@Composable
+private fun FareValue(value: String, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Icon(
+            painter = painterResource(R.drawable.ic_credit_card),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp),
+        )
+        Text(value, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 7.dp))
+    }
+}
+
+@Composable
+private fun CompactFareValue(value: String, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Icon(
+            painter = painterResource(R.drawable.ic_credit_card),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun ScheduleDetailsRow(
+    details: DepartureTextFormatter.ScheduleDetails,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    if (!details.isNotBlank()) return
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        var hasContent = false
+        details.scheduledTime?.let { scheduledTime ->
+            Icon(
+                painter = painterResource(R.drawable.ic_scheduled_time),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(scheduledTime, style = style, color = color, maxLines = 1, modifier = Modifier.padding(start = 3.dp))
+            hasContent = true
+        }
+        val hasActualContent = details.showActualIcon
+            || details.actualTime != null
+            || details.actualLabel != null
+            || details.predictionLabel != null
+        if (hasActualContent) {
+            if (hasContent) {
+                Text("·", style = style, color = color, modifier = Modifier.padding(horizontal = 4.dp))
+            }
+            if (details.showActualIcon) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_actual_time),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            details.actualTime?.let { actualTime ->
+                Text(actualTime, style = style, color = color, maxLines = 1)
+            }
+            details.actualLabel?.let { actualLabel ->
+                Text(actualLabel, style = style, color = color, maxLines = 1, modifier = Modifier.padding(start = 3.dp))
+            }
+            details.predictionLabel?.let { predictionLabel ->
+                Text(predictionLabel, style = style, color = color, maxLines = 1, modifier = Modifier.padding(start = 3.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FareMetric(value: String, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Icon(
+            painter = painterResource(R.drawable.ic_credit_card),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp),
+        )
+        Column(Modifier.padding(start = 7.dp)) {
+            Text(stringResource(R.string.fare), style = MaterialTheme.typography.labelSmall)
+            Text(value, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun TrainDestinationLabel(
+    destination: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = painterResource(R.drawable.ic_train_destination),
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            destination,
+            style = style,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 4.dp),
+        )
     }
 }
 
@@ -806,6 +939,7 @@ private fun TripTimeline(departure: Departure, tick: Long) {
 
 @Composable
 private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val lineColor = lineColor(leg.line)
     Card(colors = CardDefaults.cardColors(containerColor = if (current) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainer), border = if (current) androidx.compose.foundation.BorderStroke(1.dp, lineColor) else null) {
         Column(Modifier.padding(16.dp)) {
@@ -823,15 +957,24 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
                 }
             }
             Text(stringResource(R.string.route_arrow, leg.origin?.getName().orEmpty(), leg.destination?.getName().orEmpty()), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
+            ScheduleDetailsRow(
+                details = DepartureTextFormatter.legSchedulePresentation(context, leg),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
             if (leg.stops.isEmpty()) {
-                Text(stringResource(R.string.departure_arrival_times, formatTime(leg.departureTime), formatTime(leg.arrivalTime)), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
+                val departure = if (leg.departureTime > 0L) formatTime(leg.departureTime)
+                else context.getString(R.string.station_time_unavailable)
+                val arrival = if (leg.arrivalTime > 0L) formatTime(leg.arrivalTime)
+                else context.getString(R.string.station_time_unavailable)
+                Text(stringResource(R.string.departure_arrival_times, departure, arrival), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
             } else {
                 Column(Modifier.padding(top = 10.dp)) {
                     leg.stops.forEachIndexed { index, stop ->
-                        val displayTime = if (stop.station == leg.origin) stop.departureTime else stop.arrivalTime
                         StationTimelineRow(
-                            name = stop.station?.getName().orEmpty(),
-                            displayTime = displayTime,
+                            stop = stop,
+                            departure = stop.station == leg.origin,
                             now = now,
                             color = lineColor,
                             isFirst = index == 0,
@@ -845,10 +988,13 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
 }
 
 @Composable
-private fun StationTimelineRow(name: String, displayTime: Long, now: Long, color: Color, isFirst: Boolean, isLast: Boolean) {
+private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, color: Color, isFirst: Boolean, isLast: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val name = stop.station?.getName().orEmpty()
+    val displayTime = if (departure) stop.departureTime else stop.arrivalTime
+    val scheduleDetails = DepartureTextFormatter.stopSchedulePresentation(context, stop, departure)
     val reached = displayTime > 0 && displayTime <= now
-    Row(Modifier.fillMaxWidth().height(42.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(24.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
             if (!isFirst) {
                 Box(Modifier.width(2.dp).height(21.dp).align(Alignment.TopCenter).background(color.copy(alpha = 0.35f)))
@@ -863,7 +1009,24 @@ private fun StationTimelineRow(name: String, displayTime: Long, now: Long, color
             }
         }
         Text(name, Modifier.weight(1f).padding(start = 10.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(stringResource(R.string.station_eta, formatTime(displayTime), etaText(context, displayTime, now)), style = MaterialTheme.typography.bodySmall, color = if (reached) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                if (displayTime > 0L) stringResource(
+                    R.string.station_eta,
+                    formatTime(displayTime),
+                    etaText(context, displayTime, now),
+                ) else context.getString(R.string.station_time_unavailable),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (reached) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (scheduleDetails.isNotBlank()) {
+                ScheduleDetailsRow(
+                    details = scheduleDetails,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+        }
     }
 }
 
@@ -972,12 +1135,6 @@ fun SystemMapScreen(onBack: () -> Unit) {
             }
         }
     }
-}
-
-private fun routeTitle(context: Context, route: StationPair): String = if (route.destination == null) {
-    context.getString(R.string.arrivals_at_station, route.origin?.getName())
-} else {
-    context.getString(R.string.route_arrow, route.origin?.getName(), route.destination?.getName())
 }
 
 private fun lineColor(line: Line?): Color = when (line) {

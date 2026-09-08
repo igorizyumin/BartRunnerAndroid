@@ -3,7 +3,10 @@ package com.dougkeen.bart.presentation
 import android.content.Context
 import com.dougkeen.bart.R
 import com.dougkeen.bart.model.Departure
+import com.dougkeen.bart.model.PredictionSource
 import com.dougkeen.bart.model.TimeSource
+import com.dougkeen.bart.model.TripLeg
+import com.dougkeen.bart.model.TripStop
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -12,6 +15,19 @@ import java.util.Locale
 
 /** Android-facing formatting for departure text shown by the UI. */
 object DepartureTextFormatter {
+    data class ScheduleDetails(
+        val scheduledTime: String? = null,
+        val actualTime: String? = null,
+        val actualLabel: String? = null,
+        val showActualIcon: Boolean = false,
+        val predictionLabel: String? = null,
+    ) {
+        fun isNotBlank(): Boolean = scheduledTime != null
+            || actualTime != null
+            || actualLabel != null
+            || predictionLabel != null
+    }
+
     @JvmStatic
     fun transferDetails(context: Context, departure: Departure): String {
         if (!departure.hasTransfers()) return ""
@@ -123,6 +139,159 @@ object DepartureTextFormatter {
     }
 
     @JvmStatic
+    fun departureScheduleDetails(context: Context, departure: Departure): String {
+        val leg = departure.tripLegs.firstOrNull() ?: return ""
+        return legScheduleDetails(context, leg)
+    }
+
+    @JvmStatic
+    fun legScheduleDetails(context: Context, leg: TripLeg): String {
+        return scheduleDetails(
+            context,
+            leg.scheduledDepartureTime,
+            leg.departureTime,
+            leg.departureSource,
+        )
+    }
+
+    @JvmStatic
+    fun stopScheduleDetails(
+        context: Context,
+        stop: TripStop,
+        departure: Boolean,
+    ): String = scheduleDetails(
+        context,
+        if (departure) stop.scheduledDepartureTime else stop.scheduledArrivalTime,
+        if (departure) stop.departureTime else stop.arrivalTime,
+        if (departure) stop.departureSource else stop.arrivalSource,
+    )
+
+    @JvmStatic
+    fun departureSchedulePresentation(context: Context, departure: Departure): ScheduleDetails {
+        val leg = departure.tripLegs.firstOrNull() ?: return ScheduleDetails()
+        return legSchedulePresentation(context, leg)
+    }
+
+    @JvmStatic
+    fun legSchedulePresentation(context: Context, leg: TripLeg): ScheduleDetails = schedulePresentation(
+        context,
+        leg.scheduledDepartureTime,
+        leg.departureTime,
+        leg.departureSource,
+    )
+
+    @JvmStatic
+    fun stopSchedulePresentation(
+        context: Context,
+        stop: TripStop,
+        departure: Boolean,
+    ): ScheduleDetails = schedulePresentation(
+        context,
+        if (departure) stop.scheduledDepartureTime else stop.scheduledArrivalTime,
+        if (departure) stop.departureTime else stop.arrivalTime,
+        if (departure) stop.departureSource else stop.arrivalSource,
+    )
+
+    private fun schedulePresentation(
+        context: Context,
+        scheduled: Long,
+        effective: Long,
+        source: PredictionSource,
+    ): ScheduleDetails {
+        if (scheduled <= 0L) {
+            return when (source) {
+                PredictionSource.ESTIMATE -> ScheduleDetails(
+                    predictionLabel = context.getString(R.string.prediction_estimated),
+                )
+                PredictionSource.REALTIME -> ScheduleDetails(
+                    showActualIcon = true,
+                    predictionLabel = context.getString(R.string.prediction_label),
+                )
+                else -> ScheduleDetails()
+            }
+        }
+        val scheduledText = formatTime(timeFormatter(context), scheduled)
+        return when (source) {
+            PredictionSource.REALTIME -> {
+                val delay = if (effective > 0L) {
+                    ((effective - scheduled) / 1000L).toInt()
+                } else {
+                    null
+                }
+                ScheduleDetails(
+                    scheduledTime = scheduledText,
+                    actualLabel = delay?.takeIf { it != 0 }?.let(::formatSignedMinutes),
+                    showActualIcon = true,
+                )
+            }
+            PredictionSource.ESTIMATE -> {
+                if (effective > 0L && effective != scheduled) {
+                    ScheduleDetails(
+                        scheduledTime = scheduledText,
+                        actualTime = formatTime(timeFormatter(context), effective),
+                        actualLabel = context.getString(R.string.estimated_label),
+                        showActualIcon = true,
+                    )
+                } else {
+                    ScheduleDetails(
+                        scheduledTime = scheduledText,
+                        actualLabel = context.getString(R.string.estimated_label),
+                    )
+                }
+            }
+            PredictionSource.SCHEDULE, PredictionSource.UNKNOWN ->
+                ScheduleDetails(scheduledTime = scheduledText)
+        }
+    }
+
+    private fun scheduleDetails(
+        context: Context,
+        scheduled: Long,
+        effective: Long,
+        source: PredictionSource,
+    ): String {
+        if (scheduled <= 0L) {
+            return when (source) {
+                PredictionSource.ESTIMATE -> context.getString(R.string.prediction_estimated)
+                PredictionSource.REALTIME -> context.getString(R.string.prediction_realtime)
+                else -> ""
+            }
+        }
+        val scheduledText = formatTime(timeFormatter(context), scheduled)
+        return when (source) {
+            PredictionSource.REALTIME -> {
+                val delay = if (effective > 0L) {
+                    ((effective - scheduled) / 1000L).toInt()
+                } else {
+                    null
+                }
+                if (delay == null || delay == 0) {
+                    context.getString(R.string.scheduled_realtime, scheduledText)
+                } else {
+                    context.getString(
+                        R.string.scheduled_delay,
+                        scheduledText,
+                        formatSignedMinutes(delay),
+                    )
+                }
+            }
+            PredictionSource.ESTIMATE -> {
+                if (effective > 0L && effective != scheduled) {
+                    context.getString(
+                        R.string.scheduled_estimated,
+                        scheduledText,
+                        formatTime(timeFormatter(context), effective),
+                    )
+                } else {
+                    context.getString(R.string.scheduled_estimated_only, scheduledText)
+                }
+            }
+            PredictionSource.SCHEDULE -> context.getString(R.string.scheduled_only, scheduledText)
+            PredictionSource.UNKNOWN -> context.getString(R.string.scheduled_only, scheduledText)
+        }
+    }
+
+    @JvmStatic
     fun countdown(context: Context, departure: Departure, timeSource: TimeSource): String =
         countdown(context, departure, timeSource.nowMillis())
 
@@ -173,6 +342,11 @@ object DepartureTextFormatter {
 
     private fun formatTime(formatter: DateTimeFormatter, millis: Long): String =
         formatter.format(Instant.ofEpochMilli(millis))
+
+    private fun formatSignedMinutes(delaySeconds: Int): String {
+        val roundedMinutes = kotlin.math.round(delaySeconds / 60.0).toInt()
+        return if (roundedMinutes >= 0) "+${roundedMinutes}m" else "${roundedMinutes}m"
+    }
 
     private fun timeFormatter(context: Context): DateTimeFormatter {
         val locale = context.resources.configuration.locales[0]

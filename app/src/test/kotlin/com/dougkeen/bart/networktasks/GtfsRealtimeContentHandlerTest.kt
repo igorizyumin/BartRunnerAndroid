@@ -5,7 +5,7 @@ import com.dougkeen.bart.model.RealTimeDepartures
 import com.dougkeen.bart.model.Route
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.TripLeg
-import com.dougkeen.bart.routing.TripPlanner
+import com.dougkeen.bart.backend.Schedule
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.dougkeen.bart.transit.gtfs.GtfsNetworkCatalog
 import com.google.transit.realtime.GtfsRealtime
@@ -18,7 +18,7 @@ class GtfsRealtimeContentHandlerTest {
     @Test
     fun staticScheduleSuppliesTerminalWhenRealtimeOmitsItsPrediction() {
         val network = network()
-        val route = TripPlanner.routesFor(Station.MONT, Station.DALY, network)[0]
+        val route = Schedule.fromStatic(network, 0L).routesFor(Station.MONT, Station.DALY)[0]
         val update = GtfsRealtime.TripUpdate.newBuilder()
             .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId("12").setTripId("blue-valid"))
@@ -54,7 +54,7 @@ class GtfsRealtimeContentHandlerTest {
     @Test
     fun keepsConnectingTripsThatDoNotMeetFeedMinimum() {
         val network = network()
-        val route: Route = TripPlanner.routesFor(Station.LAKE, Station.DALY, network)[0]
+        val route: Route = Schedule.fromStatic(network, 0L).routesFor(Station.LAKE, Station.DALY)[0]
         assertTrue(
             "route=$route lines=${route.lines} transfers=${route.transferStations} yellow=${route.getStationSequence(Line.YELLOW)}",
             route.trainDestinationIsApplicable(Station.MONT, Line.YELLOW),
@@ -74,7 +74,7 @@ class GtfsRealtimeContentHandlerTest {
     @Test
     fun dropsTripsThatLeftTheOriginLongAgo() {
         val network = network()
-        val route = TripPlanner.routesFor(Station.MONT, Station.DALY, network)[0]
+        val route = Schedule.fromStatic(network, 0L).routesFor(Station.MONT, Station.DALY)[0]
         val feed = GtfsRealtime.FeedMessage.newBuilder()
             .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
@@ -94,11 +94,34 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
+    fun dropsTripsThatLeftTheOriginMoreThan45SecondsAgo() {
+        val network = network()
+        val route = Schedule.fromStatic(network, 0L)
+            .routesFor(Station.MONT, Station.DALY)[0]
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
+            .addEntity(entity(
+                "12",
+                "blue-46-seconds-stale",
+                arrayOf("MONT", "DALY"),
+                longArrayOf(854L, 914L),
+            ))
+            .build()
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.MONT, Station.DALY, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        assertTrue(departures.getDepartures().isEmpty())
+    }
+
+    @Test
     fun returnsAnImmutableDepartureList() {
         val departures = GtfsRealtimeContentHandler(
             Station.LAKE,
             Station.DALY,
-            listOf(TripPlanner.routesFor(Station.LAKE, Station.DALY, network())[0]),
+            listOf(Schedule.fromStatic(network(), 0L).routesFor(Station.LAKE, Station.DALY)[0]),
             false,
             network(),
         ).getRealTimeDepartures(feed())
