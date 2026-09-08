@@ -1,0 +1,42 @@
+name: Android build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Verify, test, lint, and assemble
+        run: ./gradlew verifyCompatibility :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+
+  instrumentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: Pixel 2
+          script: ./gradlew connectedDebugAndroidTest

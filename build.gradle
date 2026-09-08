@@ -1,18 +1,49 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    repositories {
-        jcenter()
-        google()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:3.2.1'
-    }
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.compose.compiler) apply false
 }
 
 allprojects {
     repositories {
-        jcenter()
-        maven { url "https://jitpack.io" }
-        maven { url "https://maven.google.com" }
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+}
+
+tasks.register("verifyCompatibility") {
+    group = "verification"
+    description = "Checks the supported Gradle, Java, Kotlin, AGP, and AndroidX baseline."
+    doLast {
+        if (GradleVersion.current() < GradleVersion.version("9.7.1")) {
+            throw new GradleException("Gradle 9.7.1 or newer is required")
+        }
+        if (JavaVersion.current() < JavaVersion.VERSION_17) {
+            throw new GradleException("JDK 17 or newer is required to build this project")
+        }
+        [
+                agp: [actual: libs.versions.agp.get(), required: "9.4.0"],
+                kotlin: [actual: libs.versions.kotlin.get(), required: "2.2.10"],
+                androidxCore: [actual: libs.versions.androidxCore.get(), required: "1.16.0"],
+        ].each { name, version ->
+            if (version.actual != version.required) {
+                throw new GradleException(
+                        "Compatibility baseline for $name is ${version.required}; found ${version.actual}")
+            }
+        }
+        if (providers.gradleProperty("android.useAndroidX").orNull != "true") {
+            throw new GradleException("android.useAndroidX=true is required")
+        }
+        def android = project(":app").extensions.getByName("android")
+        if (android.compileOptions.sourceCompatibility != JavaVersion.VERSION_17
+                || android.compileOptions.targetCompatibility != JavaVersion.VERSION_17) {
+            throw new GradleException("The app must compile Java and Kotlin for JVM 17")
+        }
+    }
+}
+
+subprojects {
+    tasks.matching { it.name in ["check", "lintDebug"] }.configureEach {
+        dependsOn(rootProject.tasks.named("verifyCompatibility"))
     }
 }
