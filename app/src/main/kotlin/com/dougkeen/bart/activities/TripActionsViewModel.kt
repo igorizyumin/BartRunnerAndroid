@@ -6,12 +6,22 @@ import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.services.BoardedDepartureService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+data class TripActionsUiState(
+    val alarmPending: Boolean = false,
+    val alarmLeadTimeMinutes: Int = 0,
+)
 
 /** Owns user decisions that mutate or command the followed-trip service. */
 class TripActionsViewModel(application: Application) :
     AndroidViewModel(application) {
     private val followedTripRepository = (application as BartRunnerApplication)
         .followedTripRepository
+    private val _uiState = MutableStateFlow(readUiState())
+    val uiState: StateFlow<TripActionsUiState> = _uiState.asStateFlow()
 
     fun getFollowedDeparture(): Departure? = followedTripRepository.getFollowedDeparture()
 
@@ -22,6 +32,10 @@ class TripActionsViewModel(application: Application) :
 
     fun getAlarmLeadTimeMinutes(): Int =
         followedTripRepository.getAlarmScheduler()?.leadTimeMinutes ?: 0
+
+    fun refreshAlarmState() {
+        _uiState.value = readUiState()
+    }
 
     fun followTrip(departure: Departure, passengerDestination: Station? = null): String {
         followedTripRepository.setFollowedDeparture(
@@ -40,6 +54,7 @@ class TripActionsViewModel(application: Application) :
 
     fun cancelAlarm(): String {
         followedTripRepository.getAlarmScheduler()?.cancel()
+        refreshAlarmState()
         return BoardedDepartureService.ACTION_CANCEL_ALARM
     }
 
@@ -50,7 +65,13 @@ class TripActionsViewModel(application: Application) :
 
     fun setAlarm(leadTimeMinutes: Int) {
         followedTripRepository.getAlarmScheduler()?.setUp(leadTimeMinutes)
+        refreshAlarmState()
     }
+
+    private fun readUiState() = TripActionsUiState(
+        alarmPending = isAlarmPending(),
+        alarmLeadTimeMinutes = getAlarmLeadTimeMinutes(),
+    )
 }
 
 /** Ensures a departure followed from trip details has the destination required by notifications. */

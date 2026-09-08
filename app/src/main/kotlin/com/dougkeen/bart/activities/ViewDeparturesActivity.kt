@@ -4,11 +4,11 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.model.Departure
@@ -23,7 +23,8 @@ class ViewDeparturesActivity : ComponentActivity() {
     }
 
     private lateinit var stationPair: StationPair
-    private lateinit var departuresViewModel: DeparturesViewModel
+    private val departuresViewModel: DeparturesViewModel by viewModels()
+    private val tripActionsViewModel: TripActionsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,10 +34,9 @@ class ViewDeparturesActivity : ComponentActivity() {
         } else {
             RouteArguments.readRoute(intent)
         } ?: run { finish(); return }
-        departuresViewModel = ViewModelProvider(this)[DeparturesViewModel::class.java]
         departuresViewModel.setQuery(app.transitRepository, app.bartGtfsNetworkSupplier, stationPair)
         setContent {
-            val state by departuresViewModel.uiState.collectAsState()
+            val state by departuresViewModel.uiState.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 DeparturesScreen(
                     route = stationPair,
@@ -58,8 +58,7 @@ class ViewDeparturesActivity : ComponentActivity() {
 
     private fun followDeparture(departure: Departure, openTripScreen: Boolean) {
         val prepared = prepareDepartureForTrip(departure)
-        val actions = ViewModelProvider(this)[TripActionsViewModel::class.java]
-        val action = actions.followTrip(prepared)
+        val action = tripActionsViewModel.followTrip(prepared)
         requestNotificationPermissionIfNeeded()
         startForegroundService(Intent(this, BoardedDepartureService::class.java).setAction(action))
         if (openTripScreen) {

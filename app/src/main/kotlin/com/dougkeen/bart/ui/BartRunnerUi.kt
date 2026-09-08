@@ -82,7 +82,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,7 +109,7 @@ import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.model.TripLeg
 import com.dougkeen.bart.presentation.DepartureTextFormatter
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -173,7 +174,7 @@ fun HomeScreen(
     val favoriteListState = rememberLazyListState()
     val currentFavorites by rememberUpdatedState(state.favorites)
     val currentMoveFavorite by rememberUpdatedState(onMoveFavorite)
-    val tick = rememberSecondTick()
+    val tick = rememberSecondTick(timeSource)
     val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
@@ -181,13 +182,13 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("BART Runner", fontWeight = FontWeight.Bold)
-                         Text("Plan a smoother ride", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.labelMedium)
                     }
                 },
                 actions = {
                     IconButton(onClick = onViewMap) {
-                        Icon(Icons.Filled.Map, contentDescription = "System map")
+                        Icon(Icons.Filled.Map, contentDescription = stringResource(R.string.system_map))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -212,12 +213,12 @@ fun HomeScreen(
                     ) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.Train, "Trip in progress", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(25.dp))
+                                Icon(Icons.Filled.Train, stringResource(R.string.trip_in_progress), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(25.dp))
                             }
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text("Trip in progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.trip_in_progress), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(
-                                    "${followedTrip.origin?.getName().orEmpty()} → ${(followedTrip.passengerDestination ?: followedTrip.trainDestination)?.getName().orEmpty()}",
+                                    stringResource(R.string.route_arrow, followedTrip.origin?.getName().orEmpty(), (followedTrip.passengerDestination ?: followedTrip.trainDestination)?.getName().orEmpty()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     maxLines = 1,
@@ -234,11 +235,11 @@ fun HomeScreen(
             }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("Saved trips", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.saved_trips), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     TextButton(onClick = { pickerAddsFavorite = true; showPicker = true }) {
                         Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Add")
+                        Text(stringResource(R.string.add))
                     }
                 }
             }
@@ -258,7 +259,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "Drag to reorder",
+                                stringResource(R.string.drag_to_reorder),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f),
@@ -269,7 +270,7 @@ fun HomeScreen(
                             }) {
                                 Icon(Icons.Filled.Done, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Done")
+                                Text(stringResource(R.string.done))
                             }
                         }
                     }
@@ -352,7 +353,7 @@ fun HomeScreen(
                 ) {
                     Icon(Icons.Filled.DirectionsSubway, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Plan a trip")
+                    Text(stringResource(R.string.plan_trip))
                 }
             }
         }
@@ -360,7 +361,7 @@ fun HomeScreen(
 
     if (showPicker) {
         RoutePickerDialog(
-            title = if (pickerAddsFavorite) "Save a trip" else "Plan a trip",
+            title = stringResource(if (pickerAddsFavorite) R.string.save_trip else R.string.plan_trip),
             showReturn = pickerAddsFavorite,
             initialRoute = editingRoute,
             onDismiss = { showPicker = false },
@@ -400,7 +401,7 @@ private fun ServiceAlert(state: RoutesUiState, context: Context) {
             Icon(if (isGood) Icons.Filled.CheckCircle else Icons.Filled.Warning, null, tint = accentColor)
             Spacer(Modifier.width(10.dp))
             Text(
-                text = if (isGood) context.getString(R.string.no_delays_reported) else messages.ifBlank { "Service advisory" },
+                text = if (isGood) context.getString(R.string.no_delays_reported) else messages.ifBlank { context.getString(R.string.service_advisory) },
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = if (expanded || isGood) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis,
@@ -409,7 +410,7 @@ private fun ServiceAlert(state: RoutesUiState, context: Context) {
             if (!isGood) {
                 Icon(
                     if (expanded) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowForward,
-                    "Expand service alert",
+                    stringResource(R.string.expand_service_alert),
                     tint = accentColor,
                     modifier = Modifier.padding(start = 8.dp).size(18.dp),
                 )
@@ -423,9 +424,9 @@ private fun EmptyFavorites(onAdd: () -> Unit) {
     OutlinedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Filled.Schedule, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(38.dp))
-            Text("Your favorite trips will appear here", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
-            Text("Save the routes you ride most often for a quick departure check.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
-            TextButton(onClick = onAdd, modifier = Modifier.padding(top = 8.dp)) { Text("Save a route") }
+            Text(stringResource(R.string.favorite_trips_empty_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+            Text(stringResource(R.string.favorite_trips_empty_message), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
+            TextButton(onClick = onAdd, modifier = Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.save_a_route)) }
         }
     }
 }
@@ -453,7 +454,7 @@ private fun FavoriteRouteCard(
                 )
                 RouteConnector(Modifier.width(24.dp))
                 Text(
-                    route.destination?.getName() ?: "Any destination",
+                    route.destination?.getName() ?: stringResource(R.string.any_destination),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = if (route.destination == null) {
@@ -466,7 +467,7 @@ private fun FavoriteRouteCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (isEditing) {
-                    TextButton(onClick = onRemove) { Text("Remove") }
+                    TextButton(onClick = onRemove) { Text(stringResource(R.string.remove)) }
                 }
             }
             if (departure != null) {
@@ -475,7 +476,7 @@ private fun FavoriteRouteCard(
                     Column(Modifier.padding(start = 8.dp).weight(1f)) {
                         if (departure.trainDestination != null && departure.trainDestination != route.destination) {
                             Text(
-                                "Train to ${departure.getTrainDestinationName()}",
+                                stringResource(R.string.train_to, departure.getTrainDestinationName().orEmpty()),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -489,7 +490,7 @@ private fun FavoriteRouteCard(
                     }
                 }
             } else {
-                Text("Loading upcoming trains…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
+                Text(stringResource(R.string.loading_upcoming_trains), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
             }
         }
     }
@@ -498,7 +499,7 @@ private fun FavoriteRouteCard(
 @Composable
 private fun RouteConnector(modifier: Modifier = Modifier) {
     Box(modifier.height(24.dp), contentAlignment = Alignment.Center) {
-        Text("→", color = MaterialTheme.colorScheme.primary)
+                Text("→", color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -531,28 +532,28 @@ fun RoutePickerDialog(
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StationMenu("From", origin, stations, { origin = it }, allowAny = false)
-                IconButton(enabled = destination != null, onClick = { val old = origin; origin = destination; destination = old }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Icon(Icons.Filled.SwapVert, "Swap stations") }
-                StationMenu("To", destination, stations, { destination = it }, allowAny = true)
+                StationMenu(stringResource(R.string.from), origin, stations, { origin = it }, allowAny = false)
+                IconButton(enabled = destination != null, onClick = { val old = origin; origin = destination; destination = old }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Icon(Icons.Filled.SwapVert, stringResource(R.string.swap_stations)) }
+                StationMenu(stringResource(R.string.to), destination, stations, { destination = it }, allowAny = true)
                 if (showReturn) {
-                    CheckboxRow("Also save the return trip", addReturn) { addReturn = it }
+                    CheckboxRow(stringResource(R.string.also_save_return_trip), addReturn) { addReturn = it }
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                if (origin == null) error = "Choose an origin station."
-                else if (destination == origin) error = "Origin and destination must be different."
+                if (origin == null) error = context.getString(R.string.choose_origin_station)
+                else if (destination == origin) error = context.getString(R.string.origin_destination_must_differ)
                 else {
                     preferences.edit()
                         .putInt(LAST_SELECTED_ORIGIN, stations.indexOf(origin))
                         .apply()
                     onConfirm(StationPair(origin, destination), addReturn)
                 }
-            }) { Text("Continue") }
+            }) { Text(stringResource(R.string.continue_label)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -565,11 +566,11 @@ private fun StationMenu(label: String, selected: Station?, stations: List<Statio
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                 Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text(selected?.getName() ?: "Any destination", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(selected?.getName() ?: stringResource(R.string.any_destination), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (allowAny) DropdownMenuItem(text = { Text("Any destination") }, onClick = { onSelected(null); expanded = false })
+            if (allowAny) DropdownMenuItem(text = { Text(stringResource(R.string.any_destination)) }, onClick = { onSelected(null); expanded = false })
             stations.forEach { station -> DropdownMenuItem(text = { Text(station.getName()) }, onClick = { onSelected(station); expanded = false }) }
         }
     }
@@ -595,23 +596,23 @@ fun DeparturesScreen(
     onMap: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val tick = rememberSecondTick()
+    val tick = rememberSecondTick(timeSource)
     Scaffold(
         topBar = {
             TopAppBar(
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                title = { Column { Text("Departures", fontWeight = FontWeight.Bold); Text(routeTitle(route), style = MaterialTheme.typography.labelMedium) } },
-                actions = { IconButton(onClick = onMap) { Icon(Icons.Filled.Map, "System map") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                title = { Column { Text(stringResource(R.string.departures), fontWeight = FontWeight.Bold); Text(routeTitle(context, route), style = MaterialTheme.typography.labelMedium) } },
+                actions = { IconButton(onClick = onMap) { Icon(Icons.Filled.Map, stringResource(R.string.system_map)) } },
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { padding ->
         when (state.status) {
             DeparturesViewModel.Status.LOADING -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            DeparturesViewModel.Status.ERROR -> EmptyState("Could not connect to BART services.", "Try again when you have a connection.", modifier = Modifier.padding(padding))
-            DeparturesViewModel.Status.EMPTY -> EmptyState("No departures found", "This route may require a temporary or non-standard transfer.", modifier = Modifier.padding(padding))
+            DeparturesViewModel.Status.ERROR -> EmptyState(stringResource(R.string.could_not_connect), stringResource(R.string.try_again_connection), modifier = Modifier.padding(padding))
+            DeparturesViewModel.Status.EMPTY -> EmptyState(stringResource(R.string.no_departures_found), stringResource(R.string.no_departures_message), modifier = Modifier.padding(padding))
             DeparturesViewModel.Status.CONTENT -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { Text("Upcoming trains", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                item { Text(stringResource(R.string.upcoming_trains), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
                 items(state.departures, key = { it.identity }) { departure ->
                     DepartureCard(
                         departure = departure,
@@ -646,14 +647,14 @@ private fun DepartureCard(departure: Departure, context: Context, timeSource: Ti
                     )
                     if (userDestination != null && departure.trainDestination != null && userDestination != departure.trainDestination) {
                         Text(
-                            "Train to ${departure.getTrainDestinationName()}",
+                            stringResource(R.string.train_to, departure.getTrainDestinationName().orEmpty()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Text(DepartureTextFormatter.trainLengthAndPlatform(context, departure).ifBlank { "BART train" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(DepartureTextFormatter.trainLengthAndPlatform(context, departure).ifBlank { stringResource(R.string.bart_train) }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(DepartureTextFormatter.countdown(context, departure, tick), color = primary, fontWeight = FontWeight.Bold)
@@ -661,11 +662,11 @@ private fun DepartureCard(departure: Departure, context: Context, timeSource: Ti
                 }
             }
             if (departure.hasTransfers()) {
-                AssistChip(onClick = onClick, label = { Text("${departure.tripLegs.size - 1} connection${if (departure.tripLegs.size == 2) "" else "s"}") }, leadingIcon = { Icon(Icons.Filled.SwapVert, null, Modifier.size(16.dp)) }, modifier = Modifier.padding(top = 12.dp))
+                AssistChip(onClick = onClick, label = { Text(pluralStringResource(R.plurals.connection_count, departure.tripLegs.size - 1, departure.tripLegs.size - 1)) }, leadingIcon = { Icon(Icons.Filled.SwapVert, null, Modifier.size(16.dp)) }, modifier = Modifier.padding(top = 12.dp))
             }
             Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) { Text("View trip") }
-                Button(onClick = onFollow, modifier = Modifier.weight(1f), enabled = !departure.isCanceled()) { Icon(Icons.Filled.Train, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Board") }
+                OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.view_trip)) }
+                Button(onClick = onFollow, modifier = Modifier.weight(1f), enabled = !departure.isCanceled()) { Icon(Icons.Filled.Train, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.board)) }
             }
         }
     }
@@ -699,7 +700,7 @@ fun TripScreen(
     onSilenceAlarm: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val tick = rememberSecondTick()
+    val tick = rememberSecondTick(timeSource)
     var following by remember(isFollowingInitially) { mutableStateOf(isFollowingInitially) }
     var showAlarm by remember { mutableStateOf(false) }
     var showClear by remember { mutableStateOf(false) }
@@ -707,11 +708,11 @@ fun TripScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
-                title = { Text(if (following) "Trip in progress" else "Trip details", fontWeight = FontWeight.Bold) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+                title = { Text(stringResource(if (following) R.string.trip_in_progress else R.string.trip_details), fontWeight = FontWeight.Bold) },
                 actions = {
-                    if (current != null) IconButton(onClick = { onShare(current) }) { Icon(Icons.Filled.Share, "Share arrival") }
-                    if (following && current != null) IconButton(onClick = { showClear = true }) { Icon(Icons.Filled.Close, "Stop following") }
+                    if (current != null) IconButton(onClick = { onShare(current) }) { Icon(Icons.Filled.Share, stringResource(R.string.share_arrival)) }
+                    if (following && current != null) IconButton(onClick = { showClear = true }) { Icon(Icons.Filled.Close, stringResource(R.string.stop_following)) }
                 },
             )
         },
@@ -726,16 +727,16 @@ fun TripScreen(
                     TripHero(current, route ?: pair, timeSource, tick)
                 }
                 if (!following) {
-                    item { Button(onClick = { following = true; onFollow(current) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Train, null); Spacer(Modifier.width(8.dp)); Text("Follow this trip") } }
+                    item { Button(onClick = { following = true; onFollow(current) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Train, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.follow_this_trip)) } }
                 } else {
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             if (alarmPending) {
-                                FilledTonalButton(onClick = onCancelAlarm, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text("Alarm ${alarmLeadTimeMinutes}m") }
+                                FilledTonalButton(onClick = onCancelAlarm, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.alarm_minutes, alarmLeadTimeMinutes)) }
                             } else if (current.getMeanSecondsLeft(tick) > 60) {
-                                OutlinedButton(onClick = { showAlarm = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text("Set alarm") }
+                                OutlinedButton(onClick = { showAlarm = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.set_alarm)) }
                             }
-                            OutlinedButton(onClick = { showClear = true }, modifier = Modifier.weight(1f)) { Text("End trip") }
+                            OutlinedButton(onClick = { showClear = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.end_trip)) }
                         }
                     }
                 }
@@ -747,14 +748,14 @@ fun TripScreen(
         AlarmPickerDialog(current, timeSource, onDismiss = { showAlarm = false }) { value -> showAlarm = false; onSetAlarm(value) }
     }
     if (showClear) {
-        AlertDialog(onDismissRequest = { showClear = false }, title = { Text("Stop following this trip?") }, text = { Text("You can start following another train at any time.") }, confirmButton = { TextButton(onClick = { showClear = false; onClear() }) { Text("Stop following") } }, dismissButton = { TextButton(onClick = { showClear = false }) { Text("Cancel") } })
+        AlertDialog(onDismissRequest = { showClear = false }, title = { Text(stringResource(R.string.stop_following_title)) }, text = { Text(stringResource(R.string.stop_following_message)) }, confirmButton = { TextButton(onClick = { showClear = false; onClear() }) { Text(stringResource(R.string.stop_following)) } }, dismissButton = { TextButton(onClick = { showClear = false }) { Text(stringResource(R.string.cancel)) } })
     }
     if (alarmVisible) {
         AlertDialog(
             onDismissRequest = { },
-            title = { Text("Your train is leaving soon") },
-            text = { Text("Your departure alarm is sounding.") },
-            confirmButton = { TextButton(onClick = onSilenceAlarm) { Text("Silence alarm") } },
+            title = { Text(stringResource(R.string.your_train_leaving_soon)) },
+            text = { Text(stringResource(R.string.departure_alarm_sounding)) },
+            confirmButton = { TextButton(onClick = onSilenceAlarm) { Text(stringResource(R.string.silence_alarm)) } },
         )
     }
 }
@@ -768,10 +769,10 @@ private fun TripHero(departure: Departure, pair: StationPair?, timeSource: TimeS
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(20.dp)) {
             Text(status, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("$origin → $destination", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp))
+            Text(stringResource(R.string.route_arrow, origin, destination), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp))
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Metric(Icons.Filled.AccessTime, "Departs", DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
-                Metric(Icons.AutoMirrored.Filled.ArrowForward, "Arrives", DepartureTextFormatter.estimatedArrivalTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
+                Metric(Icons.Filled.AccessTime, stringResource(R.string.departs), DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
+                Metric(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.arrives), DepartureTextFormatter.estimatedArrivalTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
             }
         }
     }
@@ -789,13 +790,13 @@ private fun Metric(icon: ImageVector, label: String, value: String, modifier: Mo
 private fun TripTimeline(departure: Departure, tick: Long) {
     val legs = departure.tripLegs
     if (legs.isEmpty()) {
-        OutlinedCard { Text("Detailed stop times are not available for this trip yet.", modifier = Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        OutlinedCard { Text(stringResource(R.string.detailed_stop_times_unavailable), modifier = Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
     }
     val now = tick
     val currentIndex = legs.indexOfFirst { leg -> !legHasPassed(leg, now) }.let { if (it < 0) legs.lastIndex else it }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Trip timeline", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.trip_timeline), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         legs.forEachIndexed { index, leg ->
             TimelineLeg(leg, index == currentIndex, now)
             if (index < legs.lastIndex) ConnectionRow(leg, legs[index + 1], now)
@@ -812,18 +813,18 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
                 LineBadge(leg.line)
                 Column(Modifier.padding(start = 8.dp)) {
                     if (current) {
-                        Text("Current train", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.trip_current_train), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                     Text(
-                        leg.trainDestination?.getName() ?: leg.destination?.getName() ?: "Train",
+                        leg.trainDestination?.getName() ?: leg.destination?.getName() ?: stringResource(R.string.train_label),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                 }
             }
-            Text("${leg.origin?.getName().orEmpty()} → ${leg.destination?.getName().orEmpty()}", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
+            Text(stringResource(R.string.route_arrow, leg.origin?.getName().orEmpty(), leg.destination?.getName().orEmpty()), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp))
             if (leg.stops.isEmpty()) {
-                Text("Departs ${formatTime(leg.departureTime)} · arrives ${formatTime(leg.arrivalTime)}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
+                Text(stringResource(R.string.departure_arrival_times, formatTime(leg.departureTime), formatTime(leg.arrivalTime)), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
             } else {
                 Column(Modifier.padding(top = 10.dp)) {
                     leg.stops.forEachIndexed { index, stop ->
@@ -845,6 +846,7 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
 
 @Composable
 private fun StationTimelineRow(name: String, displayTime: Long, now: Long, color: Color, isFirst: Boolean, isLast: Boolean) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val reached = displayTime > 0 && displayTime <= now
     Row(Modifier.fillMaxWidth().height(42.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(24.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
@@ -861,12 +863,13 @@ private fun StationTimelineRow(name: String, displayTime: Long, now: Long, color
             }
         }
         Text(name, Modifier.weight(1f).padding(start = 10.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("${formatTime(displayTime)} · ${etaText(displayTime, now)}", style = MaterialTheme.typography.bodySmall, color = if (reached) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.station_eta, formatTime(displayTime), etaText(context, displayTime, now)), style = MaterialTheme.typography.bodySmall, color = if (reached) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val arrival = arriving.stops.lastOrNull()?.arrivalTime ?: arriving.arrivalTime
     val departure = next.stops.firstOrNull()?.departureTime ?: next.departureTime
     val margin = departure - arrival
@@ -874,8 +877,17 @@ private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
     Row(Modifier.fillMaxWidth().padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(2.dp).height(34.dp).background(if (warning) Warning else MaterialTheme.colorScheme.outline))
         Column(Modifier.padding(start = 12.dp)) {
-            Text("Transfer at ${arriving.destination?.getName().orEmpty()}", fontWeight = FontWeight.SemiBold, color = if (warning) Warning else MaterialTheme.colorScheme.primary)
-            Text(if (departure <= 0) "Next departure unavailable" else "Arrives ${formatTime(arrival)} · ${if (margin < 0) "Connection missed" else "${margin / 60000} min connection margin"}", style = MaterialTheme.typography.bodySmall, color = if (warning) Warning else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.transfer_at, arriving.destination?.getName().orEmpty()), fontWeight = FontWeight.SemiBold, color = if (warning) Warning else MaterialTheme.colorScheme.primary)
+            Text(
+                if (departure <= 0) context.getString(R.string.next_departure_unavailable)
+                else context.getString(
+                    R.string.station_eta,
+                    context.getString(R.string.arrives_at_time, formatTime(arrival)),
+                    if (margin < 0) context.getString(R.string.connection_missed) else context.getString(R.string.connection_margin, margin / 60000),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (warning) Warning else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -896,13 +908,13 @@ private fun LineBadge(line: Line?) {
 private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     val max = (departure.getMeanSecondsLeft(timeSource) / 60).coerceAtLeast(1)
     var value by remember { mutableStateOf(5.coerceAtMost(max)) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Set departure alarm") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.set_departure_alarm)) }, text = {
         Column {
-            Text("Notify me before the train leaves", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$value minutes", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+            Text(stringResource(R.string.notify_before_train_leaves), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(pluralStringResource(R.plurals.alarm_minutes_value, value, value), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
             Slider(value = value.toFloat(), onValueChange = { value = it.toInt().coerceIn(1, max) }, valueRange = 1f..max.toFloat(), steps = (max - 2).coerceAtLeast(0))
         }
-    }, confirmButton = { TextButton(onClick = { onConfirm(value) }) { Text("Set alarm") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+    }, confirmButton = { TextButton(onClick = { onConfirm(value) }) { Text(stringResource(R.string.set_alarm)) } }, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -923,11 +935,11 @@ fun SystemMapScreen(onBack: () -> Unit) {
         scale = (scale * multiplier).coerceIn(1f, 4f)
         if (scale == 1f) offset = Offset.Zero
     }
-    Scaffold(topBar = { TopAppBar(navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, title = { Text("BART system map", fontWeight = FontWeight.Bold) }) }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
+    Scaffold(topBar = { TopAppBar(navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } }, title = { Text(stringResource(R.string.system_map_title), fontWeight = FontWeight.Bold) }) }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             androidx.compose.foundation.Image(
                 androidx.compose.ui.res.painterResource(R.drawable.map),
-                "BART system map",
+                stringResource(R.string.system_map_title),
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
@@ -949,20 +961,24 @@ fun SystemMapScreen(onBack: () -> Unit) {
                     ),
             ) {
                 IconButton(onClick = { changeScale(1.5f) }) {
-                    Icon(Icons.Filled.ZoomIn, "Zoom in")
+                    Icon(Icons.Filled.ZoomIn, stringResource(R.string.zoom_in))
                 }
                 IconButton(onClick = { changeScale(1f / 1.5f) }) {
-                    Icon(Icons.Filled.ZoomOut, "Zoom out")
+                    Icon(Icons.Filled.ZoomOut, stringResource(R.string.zoom_out))
                 }
                 IconButton(onClick = { scale = 1f; offset = Offset.Zero }) {
-                    Icon(Icons.Filled.Refresh, "Reset map zoom")
+                    Icon(Icons.Filled.Refresh, stringResource(R.string.reset_map_zoom))
                 }
             }
         }
     }
 }
 
-private fun routeTitle(route: StationPair): String = if (route.destination == null) "Arrivals at ${route.origin?.getName()}" else "${route.origin?.getName()} → ${route.destination?.getName()}"
+private fun routeTitle(context: Context, route: StationPair): String = if (route.destination == null) {
+    context.getString(R.string.arrivals_at_station, route.origin?.getName())
+} else {
+    context.getString(R.string.route_arrow, route.origin?.getName(), route.destination?.getName())
+}
 
 private fun lineColor(line: Line?): Color = when (line) {
     Line.RED -> Color(0xFFFF0000)
@@ -985,31 +1001,36 @@ private fun tripStatus(context: Context, departure: Departure, timeSource: TimeS
             if (arrival in 1..now && nextDeparture > now) {
                 return context.getString(
                     R.string.trip_transfer_now,
-                    nextLeg.line?.getDisplayName() ?: "train",
-                ) + " · departs ${etaText(nextDeparture, now)}"
+                    nextLeg.line?.getDisplayName() ?: context.getString(R.string.train_label),
+                ).let { status -> context.getString(R.string.trip_transfer_status, status, etaText(context, nextDeparture, now)) }
             }
         }
     }
     val nextStop = departure.tripLegs.asSequence().flatMap { it.stops.asSequence() }.firstOrNull { it.arrivalTime > now }
-    if (nextStop != null) return context.getString(R.string.trip_next_stop, nextStop.station?.getName(), etaText(nextStop.arrivalTime, now))
+    if (nextStop != null) return context.getString(R.string.trip_next_stop, nextStop.station?.getName(), etaText(context, nextStop.arrivalTime, now))
     if (departure.getEstimatedArrivalTime() in 1..now) return context.getString(R.string.trip_arrived)
     return context.getString(R.string.trip_current_train)
 }
 
 private fun legHasPassed(leg: TripLeg, now: Long): Boolean = if (leg.stops.isNotEmpty()) leg.stops.all { it.arrivalTime > 0 && it.arrivalTime <= now } else leg.arrivalTime > 0 && leg.arrivalTime <= now
 
-private fun etaText(time: Long, now: Long): String {
-    if (time <= 0) return "ETA unavailable"
+private fun etaText(context: Context, time: Long, now: Long): String {
+    if (time <= 0) return context.getString(R.string.eta_unavailable)
     val seconds = (time - now) / 1000
-    if (seconds <= 0) return "Passed"
-    return String.format(Locale.ROOT, "in %d:%02d", seconds / 60, seconds % 60)
+    if (seconds <= 0) return context.getString(R.string.passed)
+    return context.getString(R.string.eta_in, seconds / 60, seconds % 60)
 }
 
 private fun formatTime(time: Long): String = if (time <= 0) "—" else DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(time))
 
 @Composable
-private fun rememberSecondTick(): Long {
-    var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { tick = System.currentTimeMillis(); delay(1000) } }
+internal fun rememberSecondTick(timeSource: TimeSource): Long {
+    var tick by remember(timeSource) { mutableLongStateOf(timeSource.nowMillis()) }
+    LaunchedEffect(timeSource) {
+        while (isActive) {
+            tick = timeSource.nowMillis()
+            delay(1000)
+        }
+    }
     return tick
 }

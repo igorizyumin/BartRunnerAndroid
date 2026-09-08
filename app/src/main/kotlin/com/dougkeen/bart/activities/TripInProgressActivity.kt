@@ -14,15 +14,14 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.provider.Settings
-import androidx.activity.compose.setContent
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.core.app.NotificationManagerCompat
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dougkeen.bart.BartRunnerApplication
@@ -42,10 +41,8 @@ class TripInProgressActivity : ComponentActivity() {
         private const val POST_NOTIFICATIONS_REQUEST_CODE = 1002
     }
 
-    private val alarmPendingState = mutableStateOf(false)
-    private val alarmLeadTimeState = mutableStateOf(0)
-    private lateinit var tripProgressViewModel: TripProgressViewModel
-    private lateinit var tripActionsViewModel: TripActionsViewModel
+    private val tripProgressViewModel: TripProgressViewModel by viewModels()
+    private val tripActionsViewModel: TripActionsViewModel by viewModels()
     private var isFollowing = false
     private var routeDestination: Station? = null
     private var tripRoute: StationPair? = null
@@ -54,6 +51,7 @@ class TripInProgressActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        tripActionsViewModel.refreshAlarmState()
         val pendingLeadTime = pendingAlarmLeadTimeMinutes
         if (pendingLeadTime != null && hasExactAlarmPermission()) {
             pendingAlarmLeadTimeMinutes = null
@@ -72,7 +70,6 @@ class TripInProgressActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as BartRunnerApplication
-        tripActionsViewModel = ViewModelProvider(this)[TripActionsViewModel::class.java]
         val followed = tripActionsViewModel.getFollowedDeparture()
         var route = RouteArguments.readRoute(intent)
         var identity = RouteArguments.readDepartureIdentity(intent)
@@ -96,9 +93,6 @@ class TripInProgressActivity : ComponentActivity() {
             soundTheAlarm()
         }
         isFollowing = followed != null && identity == followed.identity
-        alarmPendingState.value = tripActionsViewModel.isAlarmPending()
-        alarmLeadTimeState.value = tripActionsViewModel.getAlarmLeadTimeMinutes()
-        tripProgressViewModel = ViewModelProvider(this)[TripProgressViewModel::class.java]
         tripProgressViewModel.setQuery(
             route,
             identity,
@@ -115,10 +109,9 @@ class TripInProgressActivity : ComponentActivity() {
         }
 
         setContent {
-            val departure by tripProgressViewModel.departureState.collectAsState()
-            val alarmPending by alarmPendingState
-            val alarmLeadTime by alarmLeadTimeState
-            val alarmState by app.alarmController.state.collectAsState()
+            val departure by tripProgressViewModel.departureState.collectAsStateWithLifecycle()
+            val tripActionsState by tripActionsViewModel.uiState.collectAsStateWithLifecycle()
+            val alarmState by app.alarmController.state.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 TripScreen(
                     departure = departure,
@@ -126,14 +119,13 @@ class TripInProgressActivity : ComponentActivity() {
                     isFollowingInitially = isFollowing,
                     alarmVisible = alarmState.sounding || alarmState.ringtoneRequested,
                     timeSource = app.timeSource,
-                    alarmPending = alarmPending,
-                    alarmLeadTimeMinutes = alarmLeadTime,
+                    alarmPending = tripActionsState.alarmPending,
+                    alarmLeadTimeMinutes = tripActionsState.alarmLeadTimeMinutes,
                     onBack = { finish() },
                     onFollow = { followTrip(it) },
                     onSetAlarm = ::enableAlarm,
                     onCancelAlarm = {
                         sendServiceAction(tripActionsViewModel.cancelAlarm())
-                        alarmPendingState.value = false
                     },
                     onClear = {
                         sendServiceAction(tripActionsViewModel.clearTrip())
@@ -193,8 +185,6 @@ class TripInProgressActivity : ComponentActivity() {
         }
 
         tripActionsViewModel.setAlarm(leadTimeMinutes)
-        alarmLeadTimeState.value = leadTimeMinutes
-        alarmPendingState.value = true
         sendServiceAction(BoardedDepartureService.ACTION_REFRESH_DEPARTURE)
     }
 

@@ -17,17 +17,17 @@ This backlog records the post-Compose audit. The current app builds successfully
 
 - [x] Remove unused `RecyclerView`, PhotoView, Material Components, and AppCompat dependencies after Phase 1.
 - [x] Convert the four Compose activities from `AppCompatActivity` to `ComponentActivity`.
-- [ ] Replace `ViewModelProvider(this)[...]` with `by viewModels()` where it improves readability.
-- [ ] Remove duplicate or transitively supplied lifecycle dependencies after checking the resolved dependency graph.
-- [ ] Update the stale migration documentation so it reflects that Compose is now the production UI.
+- [x] Replace `ViewModelProvider(this)[...]` with `by viewModels()` where it improves readability.
+- [x] Remove duplicate or transitively supplied lifecycle dependencies after checking the resolved dependency graph.
+- [x] Update the stale migration documentation so it reflects that Compose is now the production UI.
 
 ## Phase 3: lifecycle-aware Compose state
 
-- [ ] Add `lifecycle-runtime-compose` and replace `collectAsState()` with `collectAsStateWithLifecycle()` in all activities.
-- [ ] Move activity-owned alarm state into a ViewModel/repository state flow where practical.
-- [ ] Replace the UI-local `rememberSecondTick()` loop with a shared, testable time/ticker abstraction; keep the injected `TimeSource` authoritative.
-- [ ] Replace remaining hardcoded user-visible text and content descriptions in `BartRunnerUi.kt` with `stringResource` and resource plurals.
-- [ ] Re-run lint and add Compose UI tests for route selection, departures, trip following, alarm controls, and map zoom.
+- [x] Add `lifecycle-runtime-compose` and replace `collectAsState()` with `collectAsStateWithLifecycle()` in all activities.
+- [x] Move activity-owned alarm state into a ViewModel/repository state flow where practical.
+- [x] Replace the UI-local `rememberSecondTick()` loop with a shared, testable time/ticker abstraction; keep the injected `TimeSource` authoritative.
+- [x] Replace remaining hardcoded user-visible text and content descriptions in `BartRunnerUi.kt` with `stringResource` and resource plurals.
+- [x] Re-run lint and add Compose UI tests for route selection, departures, trip following, alarm controls, and map zoom.
 
 ## Phase 4: persistence modernization
 
@@ -57,5 +57,5 @@ This backlog records the post-Compose audit. The current app builds successfully
 - [x] `:app:testDebugUnitTest`
 - [x] `:app:assembleDebug`
 - [x] `:app:lintDebug`
-- [ ] Instrumentation smoke tests on the connected Pixel 10
+- [x] Instrumentation smoke tests on the connected Pixel 10a emulator
 - [ ] Manual verification of route selection, live departures, trip following, map viewing, alarms, notification actions, and process-death restoration
