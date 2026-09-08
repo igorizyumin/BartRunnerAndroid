@@ -1,5 +1,8 @@
 package com.dougkeen.bart.transit.gtfs
 
+import java.time.DayOfWeek
+import java.time.LocalDate
+
 /** A canonical stop from stops.txt. */
 data class GtfsStop(
     val stopId: String,
@@ -25,6 +28,33 @@ data class GtfsTrip(
     val serviceId: String?,
     val directionId: String?,
     val headsign: String?
+)
+
+/** One ordered stop-time row from stop_times.txt. */
+data class GtfsStopTime(
+    val stopId: String,
+    val sequence: Int,
+    val arrivalSeconds: Int?,
+    val departureSeconds: Int?
+)
+
+/** A trip's static schedule for one service date. */
+data class GtfsScheduledTrip(
+    val trip: GtfsTrip,
+    val stopTimes: List<GtfsStopTime>
+)
+
+internal data class GtfsCalendar(
+    val serviceId: String,
+    val monday: Boolean,
+    val tuesday: Boolean,
+    val wednesday: Boolean,
+    val thursday: Boolean,
+    val friday: Boolean,
+    val saturday: Boolean,
+    val sunday: Boolean,
+    val startDate: LocalDate,
+    val endDate: LocalDate
 )
 
 /** A platform or route-specific transfer edge from transfers.txt. */
@@ -71,6 +101,9 @@ class GtfsNetworkCatalog private constructor(
     routesById: Map<String, GtfsRoute>,
     tripsById: Map<String, GtfsTrip>,
     stopIdsByTripId: Map<String, List<String>>,
+    stopTimesByTripId: Map<String, List<GtfsStopTime>>,
+    calendarsByServiceId: Map<String, GtfsCalendar>,
+    calendarDatesByServiceId: Map<String, Map<LocalDate, Int>>,
     patterns: List<GtfsRoutePattern>,
     transfers: List<GtfsTransfer>
 ) {
@@ -80,6 +113,13 @@ class GtfsNetworkCatalog private constructor(
     val stopIdsByTripId: Map<String, List<String>> = immutableMap(
         stopIdsByTripId.mapValues { (_, value) -> immutableList(value) }
     )
+    val stopTimesByTripId: Map<String, List<GtfsStopTime>> = immutableMap(
+        stopTimesByTripId.mapValues { (_, value) -> immutableList(value) }
+    )
+    private val calendarsByServiceId = immutableMap(calendarsByServiceId)
+    private val calendarDatesByServiceId = immutableMap(
+        calendarDatesByServiceId.mapValues { (_, value) -> immutableMap(value) }
+    )
     val patterns: List<GtfsRoutePattern> = immutableList(patterns)
     val transfers: List<GtfsTransfer> = immutableList(transfers)
 
@@ -88,6 +128,37 @@ class GtfsNetworkCatalog private constructor(
 
     fun patternsForRoute(routeId: String): List<GtfsRoutePattern> =
         patterns.filter { it.routeId == routeId }
+
+    /** Returns trips running on a service date, including GTFS exceptions. */
+    fun scheduledTripsFor(serviceDate: LocalDate): List<GtfsScheduledTrip> =
+        tripsById.values.mapNotNull { trip ->
+            val serviceId = trip.serviceId ?: return@mapNotNull null
+            if (!isServiceActive(serviceId, serviceDate)) {
+                return@mapNotNull null
+            }
+            val stopTimes = stopTimesByTripId[trip.tripId].orEmpty()
+            if (stopTimes.isEmpty()) null else GtfsScheduledTrip(trip, stopTimes)
+        }
+
+    private fun isServiceActive(serviceId: String, date: LocalDate): Boolean {
+        val exception = calendarDatesByServiceId[serviceId]?.get(date)
+        if (exception != null) {
+            return exception == 1
+        }
+        val calendar = calendarsByServiceId[serviceId] ?: return false
+        if (date < calendar.startDate || date > calendar.endDate) {
+            return false
+        }
+        return when (date.dayOfWeek) {
+            DayOfWeek.MONDAY -> calendar.monday
+            DayOfWeek.TUESDAY -> calendar.tuesday
+            DayOfWeek.WEDNESDAY -> calendar.wednesday
+            DayOfWeek.THURSDAY -> calendar.thursday
+            DayOfWeek.FRIDAY -> calendar.friday
+            DayOfWeek.SATURDAY -> calendar.saturday
+            DayOfWeek.SUNDAY -> calendar.sunday
+        }
+    }
 
     /** Returns structural feed errors without applying BART-specific policy. */
     fun validationErrors(): List<String> {
@@ -147,16 +218,23 @@ class GtfsNetworkCatalog private constructor(
         private const val TRIPS = "trips.txt"
         private const val STOP_TIMES = "stop_times.txt"
         private const val TRANSFERS = "transfers.txt"
+        private const val CALENDAR = "calendar.txt"
+        private const val CALENDAR_DATES = "calendar_dates.txt"
 
         @JvmStatic
         fun fromFiles(files: Map<String, String>): GtfsNetworkCatalog {
             val stops = parseStops(requiredFile(files, STOPS))
             val routes = parseRoutes(requiredFile(files, ROUTES))
             val trips = parseTrips(requiredFile(files, TRIPS))
-            val stopIdsByTrip = parseStopTimes(
+            val stopTimesByTrip = parseStopTimes(
                 requiredFile(files, STOP_TIMES),
                 trips.keys
             )
+            val stopIdsByTrip = stopTimesByTrip.mapValues { (_, stopTimes) ->
+                stopTimes.map { it.stopId }
+            }
+            val calendars = files[CALENDAR]?.let(::parseCalendars).orEmpty()
+            val calendarDates = files[CALENDAR_DATES]?.let(::parseCalendarDates).orEmpty()
             val transfers = files[TRANSFERS]?.let(::parseTransfers).orEmpty()
 
             val patterns = buildPatterns(trips, stopIdsByTrip)
@@ -165,6 +243,9 @@ class GtfsNetworkCatalog private constructor(
                 routesById = routes.toMap(),
                 tripsById = trips.toMap(),
                 stopIdsByTripId = stopIdsByTrip.mapValues { it.value.toList() }.toMap(),
+                stopTimesByTripId = stopTimesByTrip.mapValues { it.value.toList() }.toMap(),
+                calendarsByServiceId = calendars,
+                calendarDatesByServiceId = calendarDates,
                 patterns = patterns.toList(),
                 transfers = transfers
             )
@@ -225,8 +306,8 @@ class GtfsNetworkCatalog private constructor(
         private fun parseStopTimes(
             input: String,
             knownTripIds: Set<String>
-        ): Map<String, List<String>> {
-            data class StopTime(val stopId: String, val sequence: Int, val rowOrder: Int)
+        ): Map<String, List<GtfsStopTime>> {
+            data class StopTime(val value: GtfsStopTime, val rowOrder: Int)
 
             val byTrip = linkedMapOf<String, MutableList<StopTime>>()
             rows(input).forEachIndexed { rowOrder, row ->
@@ -235,13 +316,79 @@ class GtfsNetworkCatalog private constructor(
                 val sequence = row["stop_sequence"]?.toIntOrNull()
                 if (tripId in knownTripIds && stopId.isNotEmpty() && sequence != null) {
                     byTrip.getOrPut(tripId) { mutableListOf() }
-                        .add(StopTime(stopId, sequence, rowOrder))
+                        .add(StopTime(
+                            GtfsStopTime(
+                                stopId,
+                                sequence,
+                                parseGtfsTime(row.optional("arrival_time")),
+                                parseGtfsTime(row.optional("departure_time"))
+                            ),
+                            rowOrder
+                        ))
                 }
             }
             return byTrip.mapValues { (_, stopTimes) ->
-                stopTimes.sortedWith(compareBy<StopTime> { it.sequence }.thenBy { it.rowOrder })
-                    .map { it.stopId }
+                stopTimes.sortedWith(compareBy<StopTime> { it.value.sequence }.thenBy { it.rowOrder })
+                    .map { it.value }
             }
+        }
+
+        private fun parseCalendars(input: String): Map<String, GtfsCalendar> =
+            rows(input).mapNotNull { row ->
+                val serviceId = row["service_id"].orEmpty()
+                val startDate = parseDate(row.optional("start_date"))
+                val endDate = parseDate(row.optional("end_date"))
+                if (serviceId.isEmpty() || startDate == null || endDate == null) {
+                    null
+                } else {
+                    GtfsCalendar(
+                        serviceId,
+                        row.optional("monday") == "1",
+                        row.optional("tuesday") == "1",
+                        row.optional("wednesday") == "1",
+                        row.optional("thursday") == "1",
+                        row.optional("friday") == "1",
+                        row.optional("saturday") == "1",
+                        row.optional("sunday") == "1",
+                        startDate,
+                        endDate
+                    )
+                }
+            }.associateBy { it.serviceId }
+
+        private fun parseCalendarDates(input: String): Map<String, Map<LocalDate, Int>> =
+            rows(input).mapNotNull { row ->
+                val serviceId = row["service_id"].orEmpty()
+                val date = parseDate(row.optional("date"))
+                val exceptionType = row.optional("exception_type")?.toIntOrNull()
+                if (serviceId.isEmpty() || date == null || exceptionType == null) {
+                    null
+                } else {
+                    Triple(serviceId, date, exceptionType)
+                }
+            }.groupBy { it.first }
+                .mapValues { (_, values) -> values.associate { it.second to it.third } }
+
+        private fun parseGtfsTime(value: String?): Int? {
+            if (value.isNullOrBlank()) return null
+            val parts = value.split(':')
+            if (parts.size != 3) return null
+            val hours = parts[0].toIntOrNull() ?: return null
+            val minutes = parts[1].toIntOrNull() ?: return null
+            val seconds = parts[2].toIntOrNull() ?: return null
+            if (hours < 0 || minutes !in 0..59 || seconds !in 0..59) return null
+            return hours * 3600 + minutes * 60 + seconds
+        }
+
+        private fun parseDate(value: String?): LocalDate? = try {
+            if (value.isNullOrBlank() || value.length != 8) null
+            else LocalDate.of(
+                value.substring(0, 4).toInt(),
+                value.substring(4, 6).toInt(),
+                value.substring(6, 8).toInt()
+            )
+        } catch (_: RuntimeException) {
+            null
         }
 
         private fun parseTransfers(input: String): List<GtfsTransfer> =

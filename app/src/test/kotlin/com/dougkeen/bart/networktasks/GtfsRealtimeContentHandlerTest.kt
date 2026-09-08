@@ -16,6 +16,42 @@ import org.junit.Test
 
 class GtfsRealtimeContentHandlerTest {
     @Test
+    fun staticScheduleSuppliesTerminalWhenRealtimeOmitsItsPrediction() {
+        val network = network()
+        val route = TripPlanner.routesFor(Station.MONT, Station.DALY, network)[0]
+        val update = GtfsRealtime.TripUpdate.newBuilder()
+            .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
+                .setRouteId("12").setTripId("blue-valid"))
+            .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                .setStopId("MONT")
+                .setStopSequence(1)
+                .setArrival(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                    .setTime(1_000L))
+                .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                    .setTime(1_000L)))
+            .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                .setStopId("DALY")
+                .setStopSequence(2))
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
+            .addEntity(GtfsRealtime.FeedEntity.newBuilder()
+                .setId("blue-valid")
+                .setTripUpdate(update))
+            .build()
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.MONT, Station.DALY, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        assertEquals(1, departures.getDepartures().size)
+        val departure = departures.getDepartures()[0]
+        assertEquals(Station.DALY, departure.trainDestination)
+        assertEquals(Station.DALY, departure.tripLegs[0].destination)
+        assertEquals(0L, departure.tripLegs[0].arrivalTime)
+    }
+
+    @Test
     fun keepsConnectingTripsThatDoNotMeetFeedMinimum() {
         val network = network()
         val route: Route = TripPlanner.routesFor(Station.LAKE, Station.DALY, network)[0]

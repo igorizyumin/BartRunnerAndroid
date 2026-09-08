@@ -45,6 +45,7 @@ class TransitRepository(
 
     private var latestSnapshot: TransitFeedSnapshot? = null
     private var refreshInProgress = false
+    private var lastRefreshStartedAtMillis: Long? = null
     private var closed = false
 
     init {
@@ -59,7 +60,7 @@ class TransitRepository(
                 .collectLatest { observed ->
                     if (observed) {
                         while (isActive) {
-                            refreshNow()
+                            refreshIfStale()
                             delay(refreshIntervalMillis)
                         }
                     }
@@ -111,13 +112,41 @@ class TransitRepository(
 
     /** Synchronously fetches once. Intended for tests and explicit refresh actions. */
     fun refreshNow() {
-        synchronized(lock) {
-            if (closed || refreshInProgress) {
-                return
-            }
-            refreshInProgress = true
+        if (!beginRefresh(force = true)) {
+            return
         }
 
+        fetchAndPublish()
+    }
+
+    /** Fetches immediately only when the feed has not been fetched recently. */
+    fun refreshIfStale() {
+        if (!beginRefresh(force = false)) {
+            return
+        }
+
+        fetchAndPublish()
+    }
+
+    private fun beginRefresh(force: Boolean): Boolean {
+        synchronized(lock) {
+            if (closed || refreshInProgress) {
+                return false
+            }
+            val nowMillis = System.currentTimeMillis()
+            if (!force && lastRefreshStartedAtMillis?.let {
+                    nowMillis - it < refreshIntervalMillis
+                } == true
+            ) {
+                return false
+            }
+            refreshInProgress = true
+            lastRefreshStartedAtMillis = nowMillis
+            return true
+        }
+    }
+
+    private fun fetchAndPublish() {
         val fetchResult = try {
             feedClient.fetchFeeds()
         } catch (exception: Exception) {

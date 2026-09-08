@@ -25,7 +25,6 @@ class TripInProgressActivityTest {
     @Before
     fun setUp() {
         application = ApplicationProvider.getApplicationContext()
-        application.activityTimestamp = System.currentTimeMillis()
         application.followedTripRepository.clearFollowedDeparture()
     }
 

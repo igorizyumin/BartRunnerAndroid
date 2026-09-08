@@ -15,6 +15,7 @@ import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.provider.Settings
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationManagerCompat
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,7 +37,7 @@ import com.dougkeen.bart.ui.TripScreen
 import com.dougkeen.util.WakeLocker
 import kotlinx.coroutines.launch
 
-class TripInProgressActivity : AbstractViewActivity() {
+class TripInProgressActivity : AppCompatActivity() {
     companion object {
         private const val POST_NOTIFICATIONS_REQUEST_CODE = 1002
     }

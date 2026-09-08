@@ -156,7 +156,9 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             )
             if (currentTrip == null) {
                 if (isUnscheduledTerminalLeg(route.lines[index], legOrigin, legDestination)) {
-                    legs += unscheduledTerminalLeg(legOrigin, legDestination)
+                    legs += unscheduledTerminalLeg(
+                        route.lines[index], legOrigin, legDestination
+                    )
                     continue
                 }
                 return
@@ -184,15 +186,19 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         line: Line,
         origin: Station,
         destination: Station
-    ): Boolean = line == Line.YELLOW_DMU
+    ): Boolean = (line == Line.YELLOW_DMU
         && origin == Station.PITT
-        && (destination == Station.PCTR || destination == Station.ANTC)
+        && (destination == Station.PCTR || destination == Station.ANTC))
+        || (line == Line.YELLOW_LATE_NIGHT
+        && origin == Station.SFIA
+        && destination == Station.MLBR)
 
     private fun unscheduledTerminalLeg(
+        line: Line,
         origin: Station,
         destination: Station
     ): TripLeg = TripLeg(
-        Line.YELLOW_DMU,
+        line,
         origin,
         destination,
         destination,
@@ -320,6 +326,11 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
 
         val minutes = maxOf(0L, (originPoint.departureTime - feedTime) / 60000L).toInt()
         val legs = buildTripLegs(route, trip, allTrips)
+        if (destination != null && (legs.size != route.lines.size
+                || legs.lastOrNull()?.destination != destination)
+        ) {
+            return
+        }
         val line = lineForDestination(trip.line, trip.trainDestination)
         val departure = Departure.builder()
             .setOrigin(origin)
@@ -399,6 +410,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             line = line,
             direction = directionForLine(line, routeId)
         )
+        val scheduledStations = bartGtfsNetwork.stationsForTrip(trip.getTripId())
         var updateIndex = 0
         for (update in tripUpdate.getStopTimeUpdateList()) {
             if (isSkipped(update)) {
@@ -412,9 +424,14 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             val departure = departureTime(update)
             val arrival = arrivalTime(update)
             if (station != null && station != Station.SPCL && (departure > 0 || arrival > 0)) {
+                val scheduledOrder = scheduledStations.indexOf(station)
                 val point = StopTimePoint(
                     station = station,
-                    order = stopOrder(update, updateIndex),
+                    order = if (scheduledOrder >= 0) {
+                        scheduledOrder
+                    } else {
+                        stopOrder(update, updateIndex)
+                    },
                     departureTime = if (departure > 0) departure else arrival,
                     arrivalTime = if (arrival > 0) arrival else departure
                 )
@@ -428,6 +445,21 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 }
             }
             updateIndex++
+        }
+        if (scheduledStations.isNotEmpty()) {
+            for ((index, station) in scheduledStations.withIndex()) {
+                if (result.pointAt(station) == null) {
+                    result.points += StopTimePoint(
+                        station = station,
+                        order = index,
+                        departureTime = 0L,
+                        arrivalTime = 0L
+                    )
+                }
+            }
+            result.points.sortBy { it.order }
+            result.trainDestination = scheduledStations.last()
+            result.lastOrder = scheduledStations.lastIndex
         }
         if (result.trainDestination == null) {
             return null
@@ -494,7 +526,9 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 )
                 if (connectingTrip == null) {
                     if (isUnscheduledTerminalLeg(lines[i], legOrigin, legDestination)) {
-                        result += unscheduledTerminalLeg(legOrigin, legDestination)
+                        result += unscheduledTerminalLeg(
+                            lines[i], legOrigin, legDestination
+                        )
                         legOrigin = legDestination
                         continue
                     }

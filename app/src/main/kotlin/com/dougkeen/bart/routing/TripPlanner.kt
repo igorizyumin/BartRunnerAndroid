@@ -63,6 +63,55 @@ object TripPlanner {
         )
     }
 
+    /**
+     * Late-night BART publishes the East Bay train to SFO and represents the
+     * SFO-to-Millbrae connection as a separate shuttle, often without a
+     * realtime trip entity. Keep that scheduled shuttle as a fallback route.
+     */
+    @JvmStatic
+    fun lateNightSfoMillbraeRoutes(
+        origin: Station?,
+        destination: Station?,
+        network: BartGtfsNetwork?
+    ): List<Route> {
+        val validatedNetwork = requireNetwork(network)
+        if (origin == null || destination != Station.MLBR) {
+            return emptyList()
+        }
+        if (origin == Station.SFIA) {
+            return listOf(
+                Route.direct(
+                    origin,
+                    destination,
+                    Line.YELLOW_LATE_NIGHT,
+                    "s",
+                    listOf(Station.SFIA, Station.MLBR)
+                )
+            )
+        }
+        val pattern = validatedNetwork.routePatternsForLine(Line.YELLOW)
+            .filter { stations ->
+                val originIndex = stations.stations.indexOf(origin)
+                val sfoIndex = stations.stations.indexOf(Station.SFIA)
+                originIndex >= 0 && sfoIndex > originIndex
+            }
+            .maxByOrNull { it.stations.size }
+            ?: return emptyList()
+        return listOf(
+            Route.transfer(
+                origin,
+                destination,
+                listOf(Line.YELLOW, Line.YELLOW_LATE_NIGHT),
+                listOf(Station.SFIA),
+                pattern.direction,
+                mapOf(
+                    Line.YELLOW to pattern.stations,
+                    Line.YELLOW_LATE_NIGHT to listOf(Station.SFIA, Station.MLBR),
+                )
+            )
+        )
+    }
+
     @JvmStatic
     fun transferRoutes(
         origin: Station?,

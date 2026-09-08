@@ -6,7 +6,9 @@ import java.util.Collections
 import java.util.LinkedHashMap
 
 /** Immutable one-pass index of the entities in a GTFS realtime feed. */
-class GtfsRealtimeFeedIndex private constructor(feed: GtfsRealtime.FeedMessage) {
+class GtfsRealtimeFeedIndex private constructor(
+    entities: Iterable<GtfsRealtime.FeedEntity>
+) {
     val tripUpdateEntities: List<GtfsRealtime.FeedEntity>
     val tripUpdatesById: Map<String, GtfsRealtime.FeedEntity>
     val alertEntities: List<GtfsRealtime.FeedEntity>
@@ -17,7 +19,7 @@ class GtfsRealtimeFeedIndex private constructor(feed: GtfsRealtime.FeedMessage) 
         val trips = LinkedHashMap<String, GtfsRealtime.FeedEntity>()
         val entitiesWithAlerts = mutableListOf<GtfsRealtime.FeedEntity>()
         val alerts = LinkedHashMap<String, GtfsRealtime.FeedEntity>()
-        for (entity in feed.entityList) {
+        for (entity in entities) {
             if (entity.hasTripUpdate()) {
                 tripEntities += entity
                 val tripUpdate = entity.tripUpdate
@@ -44,7 +46,28 @@ class GtfsRealtimeFeedIndex private constructor(feed: GtfsRealtime.FeedMessage) 
     companion object {
         @JvmStatic
         fun from(feed: GtfsRealtime.FeedMessage?): GtfsRealtimeFeedIndex =
-            GtfsRealtimeFeedIndex(requireNotNull(feed) { "feed" })
+            GtfsRealtimeFeedIndex(requireNotNull(feed) { "feed" }.entityList)
+
+        /** Adds fallback entities without replacing a live update for the same trip. */
+        @JvmStatic
+        fun merge(
+            primary: GtfsRealtimeFeedIndex,
+            fallback: GtfsRealtimeFeedIndex
+        ): GtfsRealtimeFeedIndex {
+            val primaryTripIds = primary.tripUpdatesById.keys
+            return GtfsRealtimeFeedIndex(
+                primary.tripUpdateEntities + fallback.tripUpdateEntities.filter { entity ->
+                    val tripId = if (entity.hasTripUpdate() && entity.tripUpdate.hasTrip()
+                        && entity.tripUpdate.trip.hasTripId()
+                    ) {
+                        entity.tripUpdate.trip.tripId
+                    } else {
+                        null
+                    }
+                    tripId == null || tripId !in primaryTripIds
+                }
+            )
+        }
     }
 }
 

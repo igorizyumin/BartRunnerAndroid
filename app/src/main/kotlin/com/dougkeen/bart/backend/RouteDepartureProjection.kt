@@ -6,6 +6,7 @@ import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
+import com.dougkeen.bart.networktasks.GtfsStaticScheduleFeed
 import com.dougkeen.bart.routing.TripPlanner
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import java.util.function.Supplier
@@ -35,24 +36,68 @@ class RouteDepartureProjection private constructor(
     fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures {
         val network = networkSupplier.get()
         val routes = resolveRoutes(query, network)
-        val handler = GtfsRealtimeContentHandler(
-            query.origin!!,
-            query.destination,
+        val feedIndex = snapshot.getTripUpdateIndex()
+        val feedTime = snapshot.getTripUpdatesTimestampMillis()
+        val lines = routes.flatMap { route ->
+            listOf(route.directLine) + route.transferLines
+        }.filterNotNull().toSet()
+        val staticIndex = GtfsStaticScheduleFeed.indexFor(network, feedTime, lines)
+        // BART's trip-update feed is not a complete schedule: it can omit a
+        // future train entirely. Keep both sources in the projection, while
+        // letting a live update win whenever both describe the same trip.
+        val combinedIndex = GtfsRealtimeFeedIndex.merge(feedIndex, staticIndex)
+        return projectWithRouting(
             routes,
-            ignoreDirection,
-            network
+            network,
+            combinedIndex,
+            feedTime
         )
-        var result = handler.getRealTimeDepartures(
-            snapshot.getTripUpdateIndex(),
-            snapshot.getTripUpdatesTimestampMillis()
-        )
+    }
+
+    private fun projectWithRouting(
+        routes: List<Route>,
+        network: BartGtfsNetwork,
+        feedIndex: GtfsRealtimeFeedIndex,
+        feedTime: Long,
+    ): RealTimeDepartures {
+        var result = projectRoutes(routes, network, feedIndex, feedTime)
 
         if (result.getDepartures().isEmpty() && query.destination != null) {
-            result = result.includeTransferRoutes()
+            val transferRoutes = TripPlanner.preferredTransferRoutes(
+                query.origin,
+                query.destination,
+                network
+            ) + TripPlanner.lateNightSfoMillbraeRoutes(
+                query.origin,
+                query.destination,
+                network
+            )
+            val transferResult = projectRoutes(
+                routes + transferRoutes,
+                network,
+                feedIndex,
+                feedTime
+            )
+            if (transferResult.getDepartures().isNotEmpty()) {
+                result = transferResult.includeTransferRoutes()
+            }
         }
         result = result.sortDepartures()
         if (result.getDepartures().isEmpty() && query.destination != null) {
-            result = result.includeDoubleTransferRoutes()
+            val doubleTransferRoutes = TripPlanner.doubleTransferRoutes(
+                query.origin,
+                query.destination,
+                network
+            )
+            val doubleTransferResult = projectRoutes(
+                routes + doubleTransferRoutes,
+                network,
+                feedIndex,
+                feedTime
+            )
+            if (doubleTransferResult.getDepartures().isNotEmpty()) {
+                result = doubleTransferResult.includeDoubleTransferRoutes()
+            }
         }
         return result.finalizeDeparturesList()
     }
@@ -63,6 +108,19 @@ class RouteDepartureProjection private constructor(
     ): Boolean = previous != null && current != null
         && previous.areTransfersIncluded() == current.areTransfersIncluded()
         && previous.getDepartures() == current.getDepartures()
+
+    private fun projectRoutes(
+        routes: List<Route>,
+        network: BartGtfsNetwork,
+        feedIndex: GtfsRealtimeFeedIndex,
+        feedTime: Long,
+    ): RealTimeDepartures = GtfsRealtimeContentHandler(
+        query.origin!!,
+        query.destination,
+        routes,
+        ignoreDirection,
+        network
+    ).getRealTimeDepartures(feedIndex, feedTime)
 
     private companion object {
         fun resolveRoutes(query: StationPair, network: BartGtfsNetwork): List<Route> =

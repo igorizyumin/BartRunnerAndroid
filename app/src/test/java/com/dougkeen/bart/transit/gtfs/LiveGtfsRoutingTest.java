@@ -9,7 +9,10 @@ import com.dougkeen.bart.model.Departure;
 import com.dougkeen.bart.model.RealTimeDepartures;
 import com.dougkeen.bart.model.Route;
 import com.dougkeen.bart.model.Station;
+import com.dougkeen.bart.model.StationPair;
 import com.dougkeen.bart.model.TripLeg;
+import com.dougkeen.bart.backend.TransitFeedSnapshot;
+import com.dougkeen.bart.backend.RouteDepartureProjection;
 import com.dougkeen.bart.backend.TripProgressProjection;
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler;
 import com.google.transit.realtime.GtfsRealtime;
@@ -38,6 +41,10 @@ public class LiveGtfsRoutingTest {
             GtfsNetworkCatalog.fromFiles(FILES);
     private static final BartGtfsNetwork NETWORK =
             BartGtfsNetwork.fromCatalog(CATALOG);
+    private static final Map<String, String> NIGHT_FILES = loadFiles(
+            "/gtfs/bart_google_transit_night.zip");
+    private static final BartGtfsNetwork NIGHT_NETWORK =
+            BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(NIGHT_FILES));
     private static final List<Line> COLOR_LINES = Arrays.asList(
             Line.RED, Line.ORANGE, Line.YELLOW, Line.BLUE, Line.GREEN);
 
@@ -130,6 +137,18 @@ public class LiveGtfsRoutingTest {
                 route.getLines());
         assertEquals("routes=" + routes, Arrays.asList(Station.BALB),
                 route.getTransferStations());
+    }
+
+    @Test
+    public void ashbyToBalboaParkIsRouteableOnNightSchedule() {
+        List<Route> routes = TripPlanner.routesFor(Station.ASHB, Station.BALB,
+                NIGHT_NETWORK);
+
+        assertFalse("routes=" + routes + " blue="
+                        + NIGHT_NETWORK.stationPatternsForLine(Line.BLUE),
+                routes.isEmpty());
+        assertTrue(routes.get(0).getLines().contains(Line.RED)
+                || routes.get(0).getLines().contains(Line.BLUE));
     }
 
     @Test
@@ -510,10 +529,211 @@ public class LiveGtfsRoutingTest {
         assertEquals(Station.PITT, refreshed.get(2).getDestination());
     }
 
+    @Test
+    public void nightTripUpdatesUseStaticTerminalWhenRealtimeStopsAtBalboa()
+            throws Exception {
+        List<Route> routes = TripPlanner.routesFor(Station.BALB, Station.DALY,
+                NIGHT_NETWORK);
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.BALB, Station.DALY, routes, false, NIGHT_NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                nightTripUpdates());
+
+        Departure matching = null;
+        for (Departure departure : departures.getDepartures()) {
+            if ("1973764".equals(departure.getTripLegs().get(0).getTripId())) {
+                matching = departure;
+                break;
+            }
+        }
+        assertTrue("departures=" + departures.getDepartures(), matching != null);
+        assertEquals(Station.DALY, matching.getTrainDestination());
+        assertEquals(Station.DALY, matching.getTripLegs().get(0).getDestination());
+    }
+
+    @Test
+    public void nightTripUpdatesProvideAshbyToDalyCityRouting() throws Exception {
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station.ASHB, Station.DALY), NIGHT_NETWORK)
+                .project(new TransitFeedSnapshot(
+                        nightTripUpdates(), emptyFeed(), 0L));
+
+        assertFalse("Ashby -> Daly City has no complete fixture itinerary: "
+                        + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(Station.DALY,
+                    departure.getTripLegs().get(departure.getTripLegs().size() - 1)
+                            .getDestination());
+        }
+    }
+
+    @Test
+    public void currentTripUpdatesProvideTwelfthStreetToSfoRouting()
+            throws Exception {
+        List<Route> routes = TripPlanner.routesFor(Station._12TH, Station.SFIA,
+                NETWORK);
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station._12TH, Station.SFIA), NETWORK)
+                .project(new TransitFeedSnapshot(
+                        currentTripUpdates(), emptyFeed(), 0L));
+
+        assertFalse("routes=" + routes + " departures="
+                        + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        boolean hasSfo = false;
+        for (Departure departure : departures.getDepartures()) {
+            if (departure.getTrainDestination() == Station.SFIA) {
+                hasSfo = true;
+                break;
+            }
+        }
+        assertTrue("routes=" + routes + " departures="
+                        + departures.getDepartures(), hasSfo);
+    }
+
+    @Test
+    public void currentTripUpdatesShowSfoFromTwelfthStreetStationBoard()
+            throws Exception {
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station._12TH, null), NETWORK)
+                .project(new TransitFeedSnapshot(
+                        currentTripUpdates(), emptyFeed(), 0L));
+
+        boolean hasSfo = false;
+        for (Departure departure : departures.getDepartures()) {
+            if (departure.getTrainDestination() == Station.SFIA) {
+                hasSfo = true;
+                break;
+            }
+        }
+        assertTrue("departures=" + departures.getDepartures(), hasSfo);
+    }
+
+    @Test
+    public void latestTripUpdatesRouteTwelfthStreetTo16thStreet()
+            throws Exception {
+        List<Route> routes = TripPlanner.routesFor(Station._12TH, Station._16TH,
+                NIGHT_NETWORK);
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station._12TH, Station._16TH), NIGHT_NETWORK)
+                .project(new TransitFeedSnapshot(
+                        latest12th16thTripUpdates(), emptyFeed(), 0L));
+
+        assertFalse("routes=" + routes + " departures="
+                        + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(Station._16TH,
+                    departure.getTripLegs().get(departure.getTripLegs().size() - 1)
+                            .getDestination());
+        }
+    }
+
+    @Test
+    public void nightFixtureRoutesTwelfthStreetToMillbraeViaSfo()
+            throws Exception {
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station._12TH, Station.MLBR), NIGHT_NETWORK)
+                .project(new TransitFeedSnapshot(
+                        nightTripUpdates(), emptyFeed(), 0L));
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(2, departure.getTripLegs().size());
+            assertEquals(Station.SFIA,
+                    departure.getTripLegs().get(0).getDestination());
+            assertEquals(Line.YELLOW_LATE_NIGHT,
+                    departure.getTripLegs().get(1).getLine());
+            assertEquals(Station.MLBR,
+                    departure.getTripLegs().get(departure.getTripLegs().size() - 1)
+                            .getDestination());
+        }
+    }
+
+    @Test
+    public void fixtureProtobufsProduceValidRoutingForEveryStationPair()
+            throws Exception {
+        assertFixtureRouting("day", NETWORK, currentTripUpdates());
+        assertFixtureRouting("night", NIGHT_NETWORK, nightTripUpdates());
+    }
+
+    private static void assertFixtureRouting(
+            String fixtureName,
+            BartGtfsNetwork network,
+            GtfsRealtime.FeedMessage feed
+    ) {
+        for (Station origin : Station.getStationList()) {
+            for (Station destination : Station.getStationList()) {
+                if (origin == destination) {
+                    continue;
+                }
+                List<Route> routes = TripPlanner.routesFor(origin, destination,
+                        network);
+                assertFalse(fixtureName + " has no static route " + origin
+                                + " -> " + destination,
+                        routes.isEmpty());
+                for (Route route : routes) {
+                    assertEquals(fixtureName + " route origin", origin,
+                            route.getOrigin());
+                    assertEquals(fixtureName + " route destination", destination,
+                            route.getDestination());
+                    assertFalse(fixtureName + " route has no lines", route.getLines().isEmpty());
+                    Station legOrigin = origin;
+                    for (int index = 0; index < route.getLines().size(); index++) {
+                        Station legDestination = index < route.getTransferStations().size()
+                                ? route.getTransferStations().get(index)
+                                : destination;
+                        List<Station> sequence = route.getStationSequence(
+                                route.getLines().get(index));
+                        assertTrue(fixtureName + " route misses leg origin",
+                                sequence.indexOf(legOrigin) >= 0);
+                        assertTrue(fixtureName + " route has reversed leg",
+                                sequence.indexOf(legOrigin)
+                                        < sequence.indexOf(legDestination));
+                        legOrigin = legDestination;
+                    }
+                }
+            }
+        }
+
+        // Exercise each checked-in protobuf once as well as validating every
+        // static origin/destination pair above. The complete transfer case is
+        // covered separately by the Ashby -> Daly City regression test.
+        List<Route> stationRoutes = TripPlanner.routesFor(Station.ASHB, null, network);
+        RealTimeDepartures departures = new GtfsRealtimeContentHandler(
+                Station.ASHB, null, stationRoutes, false, network)
+                .getRealTimeDepartures(feed);
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(fixtureName + " departure origin", Station.ASHB,
+                    departure.getOrigin());
+            assertFalse(fixtureName + " station-only departure has no legs",
+                    departure.getTripLegs().isEmpty());
+            assertTrue(fixtureName + " station-only departure has no destination",
+                    departure.getTripLegs().get(0).getDestination() != null);
+        }
+    }
+
     private static GtfsRealtime.FeedMessage currentTripUpdates() throws Exception {
+        return tripUpdates("/gtfsrt/bart_trip_updates.pb");
+    }
+
+    private static GtfsRealtime.FeedMessage nightTripUpdates() throws Exception {
+        return tripUpdates("/gtfsrt/bart_trip_updates_night.pb");
+    }
+
+    private static GtfsRealtime.FeedMessage latest12th16thTripUpdates()
+            throws Exception {
+        return tripUpdates("/gtfsrt/bart_trip_updates_12th_16th_now.pb");
+    }
+
+    private static GtfsRealtime.FeedMessage tripUpdates(String resource)
+            throws Exception {
         try (InputStream input = LiveGtfsRoutingTest.class.getResourceAsStream(
-                "/gtfsrt/bart_trip_updates.pb")) {
-            assertTrue("current trip-update fixture is missing", input != null);
+                resource)) {
+            assertTrue("trip-update fixture is missing: " + resource,
+                    input != null);
             return GtfsRealtime.FeedMessage.parseFrom(input);
         }
     }
@@ -696,11 +916,15 @@ public class LiveGtfsRoutingTest {
     }
 
     private static Map<String, String> loadFiles() {
+        return loadFiles("/gtfs/bart_google_transit.zip");
+    }
+
+    private static Map<String, String> loadFiles(String resource) {
         Map<String, String> result = new HashMap<String, String>();
         try (InputStream input = LiveGtfsRoutingTest.class.getResourceAsStream(
-                "/gtfs/bart_google_transit.zip")) {
+                resource)) {
             if (input == null) {
-                throw new AssertionError("live GTFS fixture is missing");
+                throw new AssertionError("GTFS fixture is missing: " + resource);
             }
             try (ZipInputStream zip = new ZipInputStream(input)) {
                 ZipEntry entry;
@@ -726,6 +950,7 @@ public class LiveGtfsRoutingTest {
     private static boolean isRequired(String name) {
         return "routes.txt".equals(name) || "trips.txt".equals(name)
                 || "stops.txt".equals(name) || "stop_times.txt".equals(name)
+                || "calendar.txt".equals(name) || "calendar_dates.txt".equals(name)
                 || "transfers.txt".equals(name);
     }
 

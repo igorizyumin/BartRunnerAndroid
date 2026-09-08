@@ -56,9 +56,15 @@ class BoardedDepartureService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         hasShutDown = false
+        val initialDeparture = if (intent?.action == ACTION_FOLLOW_DEPARTURE) {
+            followedTripRepository.getFollowedDeparture()
+        } else {
+            null
+        }
+        initialDeparture?.let(::updateNotification)
         serviceScope.launch {
             serviceMutex.withLock {
-                intent?.let(::handleIntent)
+                intent?.let { handleIntent(it, initialDeparture != null) }
             }
         }
         return START_REDELIVER_INTENT
@@ -76,7 +82,7 @@ class BoardedDepartureService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun handleIntent(intent: Intent) {
+    private fun handleIntent(intent: Intent, notificationAlreadyShown: Boolean = false) {
         when (intent.action) {
             ACTION_CANCEL_ALARM -> {
                 cancelAlarm()
@@ -103,7 +109,9 @@ class BoardedDepartureService : Service() {
         }
 
         updateStationPair(boardedDeparture.getStationPair())
-        updateNotification()
+        if (!notificationAlreadyShown) {
+            updateNotification()
+        }
         startPolling()
     }
 
@@ -239,11 +247,11 @@ class BoardedDepartureService : Service() {
         stationPair = null
     }
 
-    private fun updateNotification() {
+    private fun updateNotification(initialDeparture: Departure? = null) {
         if (hasShutDown) {
             return
         }
-        val departure = followedTripRepository.getFollowedDeparture() ?: return
+        val departure = initialDeparture ?: followedTripRepository.getFollowedDeparture() ?: return
         val notification = DepartureNotificationFactory.create(
             applicationContext,
             departure,

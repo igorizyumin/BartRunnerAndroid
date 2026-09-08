@@ -107,6 +107,30 @@ class TransitRepositoryTest {
     }
 
     @Test
+    fun restartingFlowWithinRefreshIntervalReusesLatestSnapshot() = runBlocking {
+        val client = FakeFeedClient(generatedSnapshots = true)
+        repository = newRepository(client, 60_000L)
+
+        val firstCollection = launch {
+            repository!!.feed().collect()
+        }
+        withTimeout(TIMEOUT_MILLIS) {
+            while (client.fetchCount.get() < 1) {
+                delay(5L)
+            }
+        }
+        firstCollection.cancelAndJoin()
+
+        val secondCollection = launch {
+            repository!!.feed().collect()
+        }
+        delay(100L)
+
+        assertEquals(1, client.fetchCount.get())
+        secondCollection.cancelAndJoin()
+    }
+
+    @Test
     fun pollingContinuesUntilTheLastFlowCollectorIsCancelled() = runBlocking {
         val client = FakeFeedClient(generatedSnapshots = true)
         repository = newRepository(client, 25L)

@@ -1,9 +1,14 @@
 package com.dougkeen.bart.ui
 
+import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +26,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,8 +39,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsSubway
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
@@ -41,13 +48,14 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Train
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,7 +69,6 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,20 +77,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.activities.DeparturesViewModel
@@ -147,14 +159,20 @@ fun HomeScreen(
     onRouteSelected: (StationPair) -> Unit,
     onAddFavorite: (StationPair) -> Unit,
     onRemoveFavorite: (StationPair) -> Unit,
+    onMoveFavorite: (Int, Int) -> Unit,
+    onInsertFavorite: (StationPair, Int) -> Unit,
     onViewTrip: (Departure) -> Unit,
     onViewMap: () -> Unit,
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var pickerAddsFavorite by remember { mutableStateOf(false) }
-    var showDelete by remember { mutableStateOf<StationPair?>(null) }
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    var editingRoute by remember { mutableStateOf<StationPair?>(null) }
+    var isEditing by remember { mutableStateOf(false) }
+    var draggedRoute by remember { mutableStateOf<StationPair?>(null) }
+    var draggedOffset by remember { mutableFloatStateOf(0f) }
+    val favoriteListState = rememberLazyListState()
+    val currentFavorites by rememberUpdatedState(state.favorites)
+    val currentMoveFavorite by rememberUpdatedState(onMoveFavorite)
     val tick = rememberSecondTick()
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -177,21 +195,14 @@ fun HomeScreen(
                 ),
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
+            state = favoriteListState,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item {
-                Button(onClick = { pickerAddsFavorite = false; showPicker = true }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Filled.DirectionsSubway, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Plan a trip")
-                }
-            }
             if (followedTrip != null) {
                 item {
                     Card(
@@ -240,15 +251,108 @@ fun HomeScreen(
             } else if (state.favorites.isEmpty()) {
                 item { EmptyFavorites(onAdd = { pickerAddsFavorite = true; showPicker = true }) }
             } else {
-                items(state.favorites, key = { it.toString() }) { route ->
+                if (isEditing) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Drag to reorder",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = {
+                                isEditing = false
+                                draggedRoute = null
+                            }) {
+                                Icon(Icons.Filled.Done, null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Done")
+                            }
+                        }
+                    }
+                }
+                itemsIndexed(state.favorites, key = { _, route -> route.toString() }) { _, route ->
+                    val routeKey = route.toString()
                     FavoriteRouteCard(
                         route = route,
                         departure = state.firstDepartures[route],
                         timeSource = timeSource,
                         tick = tick,
-                        onClick = { onRouteSelected(route) },
-                        onDelete = { showDelete = route },
+                        isEditing = isEditing,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .zIndex(if (draggedRoute == route) 1f else 0f)
+                            .graphicsLayer {
+                                translationY = if (draggedRoute == route) draggedOffset else 0f
+                            }
+                            .then(
+                                if (isEditing) Modifier.pointerInput(Unit) {
+                                    detectDragGestures(
+                                    onDragStart = {
+                                        draggedRoute = route
+                                        draggedOffset = 0f
+                                    },
+                                    onDragCancel = {
+                                        draggedRoute = null
+                                        draggedOffset = 0f
+                                    },
+                                    onDragEnd = {
+                                        draggedRoute = null
+                                        draggedOffset = 0f
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        if (draggedRoute != route) return@detectDragGestures
+                                        draggedOffset += dragAmount.y
+                                        val source = favoriteListState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { it.key == routeKey }
+                                            ?: return@detectDragGestures
+                                        val draggedCenter = source.offset + source.size / 2 + draggedOffset
+                                        val target = favoriteListState.layoutInfo.visibleItemsInfo
+                                            .firstOrNull { item ->
+                                                item.key != routeKey &&
+                                                    draggedCenter >= item.offset &&
+                                                    draggedCenter <= item.offset + item.size
+                                            }
+                                            ?: return@detectDragGestures
+                                        val from = currentFavorites.indexOf(route)
+                                        val to = currentFavorites.indexOfFirst { it.toString() == target.key }
+                                        if (from >= 0 && to >= 0 && from != to) {
+                                            currentMoveFavorite(from, to)
+                                            draggedOffset -= target.offset - source.offset
+                                        }
+                                    },
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .combinedClickable(
+                                onClick = {
+                                    if (isEditing) {
+                                        editingRoute = route
+                                        showPicker = true
+                                        pickerAddsFavorite = false
+                                    } else {
+                                        onRouteSelected(route)
+                                    }
+                                },
+                                onLongClick = { isEditing = true },
+                            ),
+                        onRemove = { onRemoveFavorite(route) },
                     )
+                }
+            }
+            item {
+                Button(
+                    onClick = { pickerAddsFavorite = false; editingRoute = null; showPicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Filled.DirectionsSubway, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Plan a trip")
                 }
             }
         }
@@ -258,30 +362,24 @@ fun HomeScreen(
         RoutePickerDialog(
             title = if (pickerAddsFavorite) "Save a trip" else "Plan a trip",
             showReturn = pickerAddsFavorite,
+            initialRoute = editingRoute,
             onDismiss = { showPicker = false },
             onConfirm = { route, addReturn ->
                 showPicker = false
-                if (pickerAddsFavorite) {
+                val previousRoute = editingRoute
+                if (previousRoute != null) {
+                    val previousIndex = state.favorites.indexOf(previousRoute)
+                    onRemoveFavorite(previousRoute)
+                    onInsertFavorite(route, previousIndex)
+                    editingRoute = null
+                } else if (pickerAddsFavorite) {
                     onAddFavorite(route)
                     if (addReturn && route.destination != null) onAddFavorite(StationPair(route.destination, route.origin))
+                    onRouteSelected(route)
+                } else {
+                    onRouteSelected(route)
                 }
-                onRouteSelected(route)
             },
-        )
-    }
-    showDelete?.let { route ->
-        AlertDialog(
-            onDismissRequest = { showDelete = null },
-            title = { Text("Remove saved trip?") },
-            text = { Text("${route.origin?.getName()} → ${route.destination?.getName()}") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onRemoveFavorite(route)
-                    showDelete = null
-                    scope.launch { snackbar.showSnackbar("Trip removed") }
-                }) { Text("Remove") }
-            },
-            dismissButton = { TextButton(onClick = { showDelete = null }) { Text("Cancel") } },
         )
     }
 }
@@ -333,24 +431,58 @@ private fun EmptyFavorites(onAdd: () -> Unit) {
 }
 
 @Composable
-private fun FavoriteRouteCard(route: StationPair, departure: Departure?, timeSource: TimeSource, tick: Long, onClick: () -> Unit, onDelete: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp)) {
+private fun FavoriteRouteCard(
+    route: StationPair,
+    departure: Departure?,
+    timeSource: TimeSource,
+    tick: Long,
+    isEditing: Boolean,
+    modifier: Modifier = Modifier,
+    onRemove: () -> Unit,
+) {
+    Card(modifier = modifier, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(route.origin?.getName().orEmpty(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.width(24.dp).padding(vertical = 4.dp)) { HorizontalDivider(color = MaterialTheme.colorScheme.primary, thickness = 2.dp) }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                        Text(route.destination?.getName() ?: "Any destination", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+                Text(
+                    route.origin?.getName().orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                RouteConnector(Modifier.width(24.dp))
+                Text(
+                    route.destination?.getName() ?: "Any destination",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (route.destination == null) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (isEditing) {
+                    TextButton(onClick = onRemove) { Text("Remove") }
                 }
-                IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Remove saved trip", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             if (departure != null) {
                 Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     LineBadge(departure.line)
-                    Text(departure.getTrainDestinationName().orEmpty(), modifier = Modifier.padding(start = 8.dp).weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                        if (departure.trainDestination != null && departure.trainDestination != route.destination) {
+                            Text(
+                                "Train to ${departure.getTrainDestinationName()}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(DepartureTextFormatter.countdown(androidx.compose.ui.platform.LocalContext.current, departure, tick), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         Text(DepartureTextFormatter.estimatedDepartureTime(androidx.compose.ui.platform.LocalContext.current, departure), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -363,12 +495,35 @@ private fun FavoriteRouteCard(route: StationPair, departure: Departure?, timeSou
     }
 }
 
+@Composable
+private fun RouteConnector(modifier: Modifier = Modifier) {
+    Box(modifier.height(24.dp), contentAlignment = Alignment.Center) {
+        Text("→", color = MaterialTheme.colorScheme.primary)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoutePickerDialog(title: String, showReturn: Boolean, onDismiss: () -> Unit, onConfirm: (StationPair, Boolean) -> Unit) {
+fun RoutePickerDialog(
+    title: String,
+    showReturn: Boolean,
+    initialRoute: StationPair? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (StationPair, Boolean) -> Unit,
+) {
     val stations = remember { Station.getStationList() }
-    var origin by remember { mutableStateOf(stations.firstOrNull()) }
-    var destination by remember { mutableStateOf<Station?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = remember(context) {
+        (context as? Activity)?.getPreferences(Context.MODE_PRIVATE)
+            ?: context.getSharedPreferences("route_picker_preferences", Context.MODE_PRIVATE)
+    }
+    val lastOriginPosition = preferences.getInt(LAST_SELECTED_ORIGIN, 0)
+    var origin by remember(initialRoute) {
+        mutableStateOf(initialRoute?.origin ?: stations.getOrNull(lastOriginPosition) ?: stations.firstOrNull())
+    }
+    var destination by remember(initialRoute) {
+        mutableStateOf(initialRoute?.destination)
+    }
     var addReturn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
@@ -389,12 +544,19 @@ fun RoutePickerDialog(title: String, showReturn: Boolean, onDismiss: () -> Unit,
             TextButton(onClick = {
                 if (origin == null) error = "Choose an origin station."
                 else if (destination == origin) error = "Origin and destination must be different."
-                else onConfirm(StationPair(origin, destination), addReturn)
+                else {
+                    preferences.edit()
+                        .putInt(LAST_SELECTED_ORIGIN, stations.indexOf(origin))
+                        .apply()
+                    onConfirm(StationPair(origin, destination), addReturn)
+                }
             }) { Text("Continue") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
+
+private const val LAST_SELECTED_ORIGIN = "lastSelectedOrigin"
 
 @Composable
 private fun StationMenu(label: String, selected: Station?, stations: List<Station>, onSelected: (Station?) -> Unit, allowAny: Boolean) {
@@ -469,12 +631,28 @@ fun DeparturesScreen(
 @Composable
 private fun DepartureCard(departure: Departure, context: Context, timeSource: TimeSource, tick: Long, passengerDestination: Station?, onClick: () -> Unit, onFollow: () -> Unit) {
     val primary = if (departure.isCanceled()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val userDestination = passengerDestination ?: departure.passengerDestination
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LineBadge(departure.line)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text(departure.getTrainDestinationName().orEmpty(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        userDestination?.getName() ?: departure.getTrainDestinationName().orEmpty(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (userDestination != null && departure.trainDestination != null && userDestination != departure.trainDestination) {
+                        Text(
+                            "Train to ${departure.getTrainDestinationName()}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Text(DepartureTextFormatter.trainLengthAndPlatform(context, departure).ifBlank { "BART train" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -730,8 +908,57 @@ private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SystemMapScreen(onBack: () -> Unit) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, 4f)
+        val panMultiplier = scale.coerceAtLeast(1f)
+        offset = if (scale > 1f) {
+            offset + Offset(panChange.x * panMultiplier, panChange.y * panMultiplier)
+        } else {
+            Offset.Zero
+        }
+    }
+    fun changeScale(multiplier: Float) {
+        scale = (scale * multiplier).coerceIn(1f, 4f)
+        if (scale == 1f) offset = Offset.Zero
+    }
     Scaffold(topBar = { TopAppBar(navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } }, title = { Text("BART system map", fontWeight = FontWeight.Bold) }) }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
-        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(R.drawable.map), "BART system map", Modifier.fillMaxSize().padding(padding), contentScale = androidx.compose.ui.layout.ContentScale.Fit)
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            androidx.compose.foundation.Image(
+                androidx.compose.ui.res.painterResource(R.drawable.map),
+                "BART system map",
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .transformable(transformState),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        RoundedCornerShape(16.dp),
+                    ),
+            ) {
+                IconButton(onClick = { changeScale(1.5f) }) {
+                    Icon(Icons.Filled.ZoomIn, "Zoom in")
+                }
+                IconButton(onClick = { changeScale(1f / 1.5f) }) {
+                    Icon(Icons.Filled.ZoomOut, "Zoom out")
+                }
+                IconButton(onClick = { scale = 1f; offset = Offset.Zero }) {
+                    Icon(Icons.Filled.Refresh, "Reset map zoom")
+                }
+            }
+        }
     }
 }
 

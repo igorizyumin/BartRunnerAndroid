@@ -5,6 +5,7 @@ import com.dougkeen.bart.model.Station
 import java.util.ArrayList
 import java.util.Collections
 import java.util.LinkedHashMap
+import java.time.LocalDate
 
 /** BART-specific adapter from generic GTFS facts to stable app identities. */
 class BartGtfsNetwork private constructor(
@@ -85,6 +86,23 @@ class BartGtfsNetwork private constructor(
     fun stationForStopId(stopId: String?): Station? =
         stopId?.let { stationsByStopId[it] }
 
+    /** Returns the ordered passenger stations from the static schedule trip. */
+    fun stationsForTrip(tripId: String?): List<Station> {
+        if (tripId == null) {
+            return emptyList()
+        }
+        val stations = mutableListOf<Station>()
+        for (stopId in catalog.stopIdsByTripId[tripId].orEmpty()) {
+            val station = stationForStopId(stopId)
+            if (station != null && station != Station.SPCL
+                && (stations.isEmpty() || stations.last() != station)
+            ) {
+                stations += station
+            }
+        }
+        return immutableList(stations)
+    }
+
     fun lineForRouteId(routeId: String?): Line? =
         routeId?.let { linesByRouteId[it] }
 
@@ -125,6 +143,10 @@ class BartGtfsNetwork private constructor(
         return immutableList(patterns)
     }
 
+    /** Returns the static GTFS route IDs that implement a BART line. */
+    fun routeIdsForLine(line: Line?): Set<String> =
+        routePatternsForLine(line).map { it.routeId }.toSet()
+
     /** Returns the distinct station sequences supplied by GTFS for a line. */
     fun stationPatternsForLine(line: Line?): List<List<Station>> =
         immutableList(routePatternsForLine(line).map { it.stations }.distinct())
@@ -164,6 +186,10 @@ class BartGtfsNetwork private constructor(
     }
 
     fun routeIdForTrip(tripId: String?): String? = catalog.routeIdForTrip(tripId)
+
+    /** Returns static trips active on the requested GTFS service date. */
+    fun scheduledTripsFor(serviceDate: LocalDate): List<GtfsScheduledTrip> =
+        catalog.scheduledTripsFor(serviceDate)
 
     fun getTransferRules(): List<TransferRule> = transferRules
 

@@ -155,7 +155,8 @@ class GtfsStaticData @JvmOverloads constructor(
 
         private fun isRelevantFeedFile(name: String): Boolean = name in setOf(
             "routes.txt", "trips.txt",
-            "stops.txt", "stop_times.txt", "transfers.txt", "fare_attributes.txt",
+            "stops.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt",
+            "transfers.txt", "fare_attributes.txt",
             "fare_rules.txt"
         )
 

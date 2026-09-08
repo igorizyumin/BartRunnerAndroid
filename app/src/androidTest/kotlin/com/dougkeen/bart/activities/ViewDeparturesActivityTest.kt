@@ -7,24 +7,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.StationPair
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ViewDeparturesActivityTest {
-    @Before
-    fun setUp() {
-        val application: BartRunnerApplication = ApplicationProvider.getApplicationContext()
-        application.activityTimestamp = System.currentTimeMillis()
-    }
-
     @Test
     fun recreationRestoresRouteQueryWithoutDepartureSnapshot() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
