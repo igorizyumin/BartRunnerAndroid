@@ -95,7 +95,7 @@ and keep the implementation simple.
 - [x] Remove unused `ACCESS_NETWORK_STATE` and `WAKE_LOCK` permissions.
 - [x] Remove lint-reported unused strings and plurals.
 - [x] Move the map bitmap to an appropriate density-independent resource folder.
-- [x] Merge the unnecessary `mipmap-anydpi-v26` resources because `minSdk` is 31.
+- [x] Move the adaptive launcher icon to `mipmap-anydpi-v31` because `minSdk` is 31.
 - [x] Add API annotations around full-screen-intent settings access and remove
   redundant SDK guards made unnecessary by `minSdk`.
 - [x] Fix the remaining low-risk Compose lint hints.

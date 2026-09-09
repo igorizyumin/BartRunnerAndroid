@@ -94,9 +94,18 @@
     <string name="transfer_leg_arrival"> (arr %1$s)</string>
     <string name="transfer_connection_separator"> • %1$s</string>
     <string name="transfer_connection_margin">%1$s connection</string>
-    <string name="connection_margin_seconds">%1$d sec</string>
-    <string name="connection_margin_minutes">%1$d min</string>
-    <string name="connection_margin_minutes_seconds">%1$d min %2$d sec</string>
+    <plurals name="connection_margin_seconds">
+        <item quantity="one">%1$d sec</item>
+        <item quantity="other">%1$d sec</item>
+    </plurals>
+    <plurals name="connection_margin_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <plurals name="connection_margin_minutes_seconds">
+        <item quantity="one">%1$d min %2$d sec</item>
+        <item quantity="other">%1$d min %2$d sec</item>
+    </plurals>
     <string name="train_length">%1$s cars</string>
     <string name="platform">platform %1$s</string>
     <string name="train_length_platform">%1$s, platform %2$s</string>
@@ -105,7 +114,10 @@
     <string name="notification_minutes_until_departure">~%1$.1f minute until departure</string>
     <string name="notification_minutes_until_departures">~%1$.1f minutes until departure</string>
     <string name="notification_direction">%1$s to %2$s</string>
-    <string name="notification_alarm">Alarm %1$d minutes before departure</string>
+    <plurals name="notification_alarm">
+        <item quantity="one">Alarm %1$d minute before departure</item>
+        <item quantity="other">Alarm %1$d minutes before departure</item>
+    </plurals>
     <string name="notification_cancel_alarm">Cancel alarm</string>
     <string name="share_trip_subject">My BART trip</string>
     <string name="route_title_arrow">%1$s → %2$s</string>

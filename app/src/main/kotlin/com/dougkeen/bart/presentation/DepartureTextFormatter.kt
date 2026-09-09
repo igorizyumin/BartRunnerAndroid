@@ -70,16 +70,22 @@ object DepartureTextFormatter {
                     val marginMinutes = safeMargin / 60000L
                     val marginSeconds = (safeMargin % 60000L) / 1000L
                     val marginText = when {
-                        marginMinutes > 0 && marginSeconds > 0 -> context.getString(
-                            R.string.connection_margin_minutes_seconds,
+                        marginMinutes > 0 && marginSeconds > 0 -> context.resources.getQuantityString(
+                            R.plurals.connection_margin_minutes_seconds,
+                            marginMinutes.toInt(),
                             marginMinutes,
                             marginSeconds,
                         )
-                        marginMinutes > 0 -> context.getString(
-                            R.string.connection_margin_minutes,
+                        marginMinutes > 0 -> context.resources.getQuantityString(
+                            R.plurals.connection_margin_minutes,
+                            marginMinutes.toInt(),
                             marginMinutes,
                         )
-                        else -> context.getString(R.string.connection_margin_seconds, marginSeconds)
+                        else -> context.resources.getQuantityString(
+                            R.plurals.connection_margin_seconds,
+                            marginSeconds.toInt(),
+                            marginSeconds,
+                        )
                     }
                     append(context.getString(
                         R.string.transfer_connection_separator,

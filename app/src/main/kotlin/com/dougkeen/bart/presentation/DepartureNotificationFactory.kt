@@ -68,7 +68,11 @@ object DepartureNotificationFactory {
                     context.getString(R.string.notification_cancel_alarm),
                     pendingIntent,
                 )
-                .setSubText(context.getString(R.string.notification_alarm, alarmScheduler.leadTimeMinutes))
+                .setSubText(context.resources.getQuantityString(
+                    R.plurals.notification_alarm,
+                    alarmScheduler.leadTimeMinutes,
+                    alarmScheduler.leadTimeMinutes,
+                ))
         }
         return builder.build()
     }
