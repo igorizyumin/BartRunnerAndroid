@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,5 +59,25 @@ class GtfsStaticDatabaseTest {
                 maximumSeconds = 5_000,
             )
         )
+    }
+
+    @Test
+    fun staticDataFindsRoomDatabaseAfterProcessRestart() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val databasePath = context.getDatabasePath("gtfs_static_schedule.db")
+        val databasePreviouslyExisted = databasePath.isFile
+
+        try {
+            if (!databasePreviouslyExisted) {
+                databasePath.parentFile?.mkdirs()
+                databasePath.writeBytes(byteArrayOf(1))
+            }
+
+            assertTrue(GtfsStaticData(context).hasDatabaseCache())
+        } finally {
+            if (!databasePreviouslyExisted) {
+                databasePath.delete()
+            }
+        }
     }
 }
