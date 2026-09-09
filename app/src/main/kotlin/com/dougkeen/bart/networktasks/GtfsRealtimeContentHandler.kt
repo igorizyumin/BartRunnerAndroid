@@ -298,7 +298,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private fun snapshotFromSchedule(trip: Schedule.Trip): TripSnapshot {
         val result = TripSnapshot(trip.key.tripId, trip.line, trip.direction)
         result.trainDestination = trip.trainDestination
-        result.platform = trip.platform
+        result.platform = trip.stopAt(origin)?.platform
         result.canceled = trip.canceled
         trip.stops.forEachIndexed { index, stop ->
             result.points += StopTimePoint(

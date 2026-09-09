@@ -35,6 +35,7 @@ public class ScheduleRoutingTest {
 
         assertTrue("routes=" + routes, containsDirectLine(routes, Line.RED));
         for (Route route : routes) {
+            if (route.hasTransfer()) continue;
             assertEquals(Station.MONT, route.getOrigin());
             assertEquals(Station.RICH, route.getDestination());
             assertNotNull(route.getDirectLine());
@@ -161,6 +162,19 @@ public class ScheduleRoutingTest {
     }
 
     @Test
+    public void routesForIncludesTransferAlternativeAlongsideDirectRoute() {
+        List<Route> routes = routesFor(Station.DBRK, Station.POWL, TEST_NETWORK);
+
+        assertTrue("routes=" + routes,
+                containsRoute(routes, Arrays.asList(Line.RED)));
+        Route orangeYellow = routeWithLines(routes,
+                Arrays.asList(Line.ORANGE, Line.YELLOW));
+        assertNotNull("routes=" + routes, orangeYellow);
+        assertEquals(Arrays.asList(Station.MCAR),
+                orangeYellow.getTransferStations());
+    }
+
+    @Test
     public void stationOnlyAndInvalidQueriesReturnEmptyOrBoardingRoutes() {
         BartGtfsNetwork network = TEST_NETWORK;
         List<Route> stationOnly = routesFor(Station.MONT, null,
@@ -241,6 +255,17 @@ public class ScheduleRoutingTest {
             }
         }
         return false;
+    }
+
+    private static boolean containsRoute(List<Route> routes, List<Line> lines) {
+        return routeWithLines(routes, lines) != null;
+    }
+
+    private static Route routeWithLines(List<Route> routes, List<Line> lines) {
+        for (Route route : routes) {
+            if (route.getLines().equals(lines)) return route;
+        }
+        return null;
     }
 
     private static List<Route> routesFor(Station origin, Station destination,

@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -92,8 +93,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -591,15 +595,68 @@ fun DeparturesScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val tick = rememberSecondTick(timeSource)
-    val routeTitle = route.destination?.let { destination ->
-        stringResource(R.string.route_arrow, route.origin?.getName().orEmpty(), destination.getName())
-    } ?: route.origin?.getName().orEmpty()
+    val originName = route.origin?.getName().orEmpty()
+    val destinationName = route.destination?.getName()
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 title = {
-                    Text(routeTitle, fontWeight = FontWeight.Bold)
+                    val titleStyle = MaterialTheme.typography.titleMedium
+                    if (destinationName == null) {
+                        Text(
+                            originName,
+                            style = titleStyle,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else {
+                        val textMeasurer = rememberTextMeasurer()
+                        val density = LocalDensity.current
+                        BoxWithConstraints(Modifier.fillMaxWidth()) {
+                            val requiredWidth = with(density) {
+                                textMeasurer.measure(AnnotatedString(originName), style = titleStyle).size.width
+                                    + textMeasurer.measure(AnnotatedString(destinationName), style = titleStyle).size.width
+                                    + 22.dp.toPx()
+                            }
+                            if (requiredWidth <= with(density) { maxWidth.toPx() }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(originName, style = titleStyle, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(horizontal = 2.dp).size(18.dp),
+                                    )
+                                    Text(destinationName, style = titleStyle, maxLines = 1)
+                                }
+                            } else {
+                                Column(Modifier.fillMaxWidth()) {
+                                    Text(
+                                        originName,
+                                        style = titleStyle,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                        Text(
+                                            destinationName,
+                                            style = titleStyle,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(start = 4.dp).weight(1f),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
                 actions = { IconButton(onClick = onMap) { Icon(Icons.Filled.Map, stringResource(R.string.system_map)) } },
             )
@@ -637,6 +694,11 @@ fun DeparturesScreen(
 private fun DepartureCard(departure: Departure, context: Context, timeSource: TimeSource, tick: Long, onClick: () -> Unit) {
     val primary = if (departure.isCanceled()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     val scheduleDetails = DepartureTextFormatter.departureSchedulePresentation(context, departure)
+    val arrivalTime = if (departure.isCanceled()) {
+        ""
+    } else {
+        DepartureTextFormatter.estimatedArrivalTime(context, departure)
+    }
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -649,7 +711,13 @@ private fun DepartureCard(departure: Departure, context: Context, timeSource: Ti
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(DepartureTextFormatter.trainLengthAndPlatform(context, departure).ifBlank { stringResource(R.string.bart_train) }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        DepartureTextFormatter.trainLengthAndPlatform(context, departure).ifBlank { stringResource(R.string.bart_train) },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(DepartureTextFormatter.countdown(context, departure, tick), color = primary, fontWeight = FontWeight.Bold)
@@ -663,18 +731,35 @@ private fun DepartureCard(departure: Departure, context: Context, timeSource: Ti
                     }
                 }
             }
-            if (departure.hasTransfers()) {
+            if (departure.hasTransfers() || arrivalTime.isNotBlank()) {
                 Row(
-                    modifier = Modifier.padding(top = 8.dp).clickable(onClick = onClick),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.SwapVert, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
-                    Text(
-                        pluralStringResource(R.plurals.connection_count, departure.tripLegs.size - 1, departure.tripLegs.size - 1),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
+                    if (departure.hasTransfers()) {
+                        Row(
+                            modifier = Modifier.weight(1f).padding(start = 22.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.SwapVert, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Text(
+                                pluralStringResource(R.plurals.transfer_count, departure.tripLegs.size - 1, departure.tripLegs.size - 1),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    if (arrivalTime.isNotBlank()) {
+                        Text(
+                            stringResource(R.string.arrives_at_time, arrivalTime),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -835,6 +920,7 @@ private fun ScheduleDetailsRow(
     details: DepartureTextFormatter.ScheduleDetails,
     style: androidx.compose.ui.text.TextStyle,
     color: Color,
+    showActualTime: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     if (!details.isNotBlank()) return
@@ -851,7 +937,8 @@ private fun ScheduleDetailsRow(
             hasContent = true
         }
         val hasActualContent = details.showActualIcon
-            || details.actualTime != null
+            || details.showScheduleOnlyIcon
+            || (showActualTime && details.actualTime != null)
             || details.actualLabel != null
             || details.predictionLabel != null
         if (hasActualContent) {
@@ -866,7 +953,15 @@ private fun ScheduleDetailsRow(
                     modifier = Modifier.size(14.dp),
                 )
             }
-            details.actualTime?.let { actualTime ->
+            if (details.showScheduleOnlyIcon) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_schedule_only),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            details.actualTime?.takeIf { showActualTime }?.let { actualTime ->
                 Text(actualTime, style = style, color = color, maxLines = 1)
             }
             details.actualLabel?.let { actualLabel ->
@@ -961,6 +1056,7 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
                 details = DepartureTextFormatter.legSchedulePresentation(context, leg),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                showActualTime = false,
                 modifier = Modifier.padding(top = 4.dp),
             )
             if (leg.stops.isEmpty()) {
@@ -1011,11 +1107,8 @@ private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, co
         Text(name, Modifier.weight(1f).padding(start = 10.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                if (displayTime > 0L) stringResource(
-                    R.string.station_eta,
-                    formatTime(displayTime),
-                    etaText(context, displayTime, now),
-                ) else context.getString(R.string.station_time_unavailable),
+                if (displayTime > 0L) etaText(context, displayTime, now)
+                else context.getString(R.string.eta_unavailable),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (reached) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1024,6 +1117,7 @@ private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, co
                     details = scheduleDetails,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline,
+                    showActualTime = false,
                 )
             }
         }

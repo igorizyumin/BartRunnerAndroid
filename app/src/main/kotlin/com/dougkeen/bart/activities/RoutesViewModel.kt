@@ -101,7 +101,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
                             publishError(asException(exception))
                         } ?: state.getOrNull()?.let { departures ->
                             val firstDeparture = departures.getDepartures()
-                                .firstOrNull { !it.hasDeparted(timeSource) }
+                                .firstOrNull { !it.isCanceled() && !it.hasDeparted(timeSource) }
                             updateFirstDeparture(route, firstDeparture)
                             clearError()
                         }

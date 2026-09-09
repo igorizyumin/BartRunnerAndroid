@@ -25,7 +25,11 @@ class GtfsRealtimeFeedIndex private constructor(
                 val tripUpdate = entity.tripUpdate
                 val trip = if (tripUpdate.hasTrip()) tripUpdate.trip else null
                 if (trip != null && trip.hasTripId() && trip.tripId.isNotEmpty()) {
-                    trips[trip.tripId] = entity
+                    val tripId = trip.tripId
+                    val existing = trips[tripId]
+                    if (existing == null || shouldReplaceTrip(existing, entity)) {
+                        trips[tripId] = entity
+                    }
                 } else if (entity.hasId()) {
                     trips[entity.id] = entity
                 }
@@ -74,6 +78,24 @@ class GtfsRealtimeFeedIndex private constructor(
             } else {
                 null
             }
+
+        private fun shouldReplaceTrip(
+            existing: GtfsRealtime.FeedEntity,
+            candidate: GtfsRealtime.FeedEntity,
+        ): Boolean {
+            val existingUpdate = existing.tripUpdate
+            val candidateUpdate = candidate.tripUpdate
+            val existingCanceled = existingUpdate.hasTrip()
+                && existingUpdate.trip.hasScheduleRelationship()
+                && existingUpdate.trip.scheduleRelationship ==
+                GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED
+            val candidateCanceled = candidateUpdate.hasTrip()
+                && candidateUpdate.trip.hasScheduleRelationship()
+                && candidateUpdate.trip.scheduleRelationship ==
+                GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED
+            if (candidateCanceled != existingCanceled) return candidateCanceled
+            return candidateUpdate.stopTimeUpdateCount >= existingUpdate.stopTimeUpdateCount
+        }
     }
 }
 

@@ -231,6 +231,12 @@ remain unchanged in the test fixture directory.
   later night snapshot.
 - [bart_trip_updates_12th_16th_now.json](bart_trip_updates_12th_16th_now.json)
   — fresh snapshot used by the 12th Street Oakland to 16th Street regression.
+- [bart_trip_updates_current.json](bart_trip_updates_current.json) and
+  [bart_alerts_current.json](bart_alerts_current.json) — paired live snapshot
+  captured from BART at feed timestamp `1788911555` (2026-09-08 23:52:35 UTC).
+  The matching protobuf fixtures are
+  `app/src/test/resources/gtfsrt/bart_trip_updates_current.pb` and
+  `app/src/test/resources/gtfsrt/bart_alerts_current.pb`.
 
 ## Regression coverage
 

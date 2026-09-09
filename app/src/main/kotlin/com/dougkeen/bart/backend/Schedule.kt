@@ -42,6 +42,7 @@ class Schedule private constructor(
         val arrivalSource: PredictionSource = PredictionSource.SCHEDULE,
         val departureSource: PredictionSource = PredictionSource.SCHEDULE,
         val skipped: Boolean = false,
+        val platform: String? = null,
     ) {
         fun arrivalDelaySeconds(): Int? = delaySeconds(arrivalTime, scheduledArrivalTime)
 
@@ -63,7 +64,6 @@ class Schedule private constructor(
         val trainDestination: Station,
         val stops: List<Stop>,
         val canceled: Boolean = false,
-        val platform: String? = null,
         val synthetic: Boolean = false,
     ) {
         fun stopAt(station: Station?): Stop? = stops.firstOrNull { it.station == station }
@@ -140,8 +140,12 @@ class Schedule private constructor(
         }
         val direct = catalogDirectRoutes(origin, destination)
             .filter(::hasUsableService)
-        if (direct.isNotEmpty()) return immutableList(direct.map(::withTerminalShuttle))
-        return preferredTransferRoutes(origin, destination)
+        val transferAlternatives = preferredTransferRoutes(origin, destination)
+        return immutableList(
+            uniqueRoutes(
+                direct.map(::withTerminalShuttle) + transferAlternatives
+            ).sortedWith(routePreference)
+        )
     }
 
     fun preferredTransferRoutes(origin: Station?, destination: Station?): List<Route> {
@@ -254,6 +258,7 @@ class Schedule private constructor(
             val departure = updateAtStation?.let {
                 eventTime(it.departure, stop.scheduledDepartureTime)
             }
+            val platform = platformForStopId(updateAtStation?.stopId) ?: stop.platform
             val previous = correctedStops.lastOrNull()
             val propagated = if (hasRealtimeTimes && index > lastUpdatedIndex && previous != null) {
                 estimateAfter(previous, stop)
@@ -267,15 +272,21 @@ class Schedule private constructor(
                     arrivalSource = if (arrival != null) PredictionSource.REALTIME else PredictionSource.ESTIMATE,
                     departureSource = if (departure != null) PredictionSource.REALTIME else PredictionSource.ESTIMATE,
                     skipped = isSkipped(updateAtStation),
+                    platform = platform,
                 )
-                propagated != null -> propagated.copy(skipped = isSkipped(updateAtStation))
+                propagated != null -> propagated.copy(
+                    skipped = isSkipped(updateAtStation),
+                    platform = platform,
+                )
                 updateAtStation != null && isSkipped(updateAtStation) -> stop.copy(
                     arrivalTime = 0L,
                     departureTime = 0L,
                     arrivalSource = PredictionSource.UNKNOWN,
                     departureSource = PredictionSource.UNKNOWN,
                     skipped = true,
+                    platform = platform,
                 )
+                updateAtStation != null -> stop.copy(platform = platform)
                 else -> stop
             }
         }
@@ -574,27 +585,35 @@ class Schedule private constructor(
         if (samePair(first, second, Line.BLUE, Line.ORANGE)) return Station.BAYF
         if (samePair(first, second, Line.GREEN, Line.BLUE)) return Station.BAYF
         if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {
-            val orangeStart = if (first == Line.ORANGE) {
-                if (transferIndex == 0) route.origin else route.transferStations[transferIndex - 1]
-            } else {
-                route.transferStations[transferIndex]
-            }
-            val orangeEnd = if (first == Line.ORANGE) {
-                route.transferStations[transferIndex]
-            } else {
-                if (transferIndex + 1 < route.transferStations.size) {
-                    route.transferStations[transferIndex + 1]
-                } else route.destination
-            }
-            if (orangeStart != null && orangeEnd != null) {
-                val stations = route.getStationSequence(Line.ORANGE)
-                return if (stations.indexOf(orangeStart) > stations.indexOf(orangeEnd)) {
-                    Station.MCAR
-                } else {
-                    Station._19TH
+            if (first == Line.ORANGE) {
+                val orangeStart = if (transferIndex == 0) route.origin
+                else route.transferStations[transferIndex - 1]
+                val orangeEnd = route.transferStations[transferIndex]
+                val direction = network.routePatternsForLine(Line.ORANGE)
+                    .firstOrNull { pattern ->
+                        val startIndex = pattern.stations.indexOf(orangeStart)
+                        val endIndex = pattern.stations.indexOf(orangeEnd)
+                        startIndex >= 0 && endIndex > startIndex
+                    }
+                    ?.direction
+                return when (direction) {
+                    "s" -> Station.MCAR
+                    "n" -> Station._19TH
+                    else -> Station.MCAR
                 }
             }
-            return Station.MCAR
+            val orangeStart = route.transferStations[transferIndex]
+            val orangeEnd = if (transferIndex + 1 < route.transferStations.size) {
+                route.transferStations[transferIndex + 1]
+            } else {
+                route.destination
+            }
+            val stations = route.getStationSequence(Line.ORANGE)
+            return if (stations.indexOf(orangeStart) > stations.indexOf(orangeEnd)) {
+                Station.MCAR
+            } else {
+                Station._19TH
+            }
         }
         return null
     }
@@ -689,7 +708,6 @@ class Schedule private constructor(
                 network.directionForRouteId(scheduledTrip.trip.routeId),
                 stops.last().station,
                 immutableList(stops),
-                platform = platformForStop(scheduledTrip.stopTimes.firstOrNull()),
             )
         }
 
@@ -706,11 +724,17 @@ class Schedule private constructor(
                 val arrival = stopTime.arrivalSeconds?.let { epochMillis(serviceDate, it) } ?: 0L
                 val departure = stopTime.departureSeconds?.let { epochMillis(serviceDate, it) } ?: arrival
                 val existingIndex = result.indexOfFirst { it.station == station }
-                val stop = Stop(station, arrival, departure)
+                val stop = Stop(
+                    station = station,
+                    scheduledArrivalTime = arrival,
+                    scheduledDepartureTime = departure,
+                    platform = platformForStop(stopTime),
+                )
                 if (existingIndex >= 0) {
                     result[existingIndex] = result[existingIndex].copy(
                         scheduledArrivalTime = if (arrival > 0L) arrival else result[existingIndex].scheduledArrivalTime,
                         scheduledDepartureTime = if (departure > 0L) departure else result[existingIndex].scheduledDepartureTime,
+                        platform = stop.platform ?: result[existingIndex].platform,
                     )
                 } else {
                     result += stop
@@ -889,7 +913,11 @@ class Schedule private constructor(
             serviceDate.atStartOfDay(PACIFIC_ZONE).toInstant().toEpochMilli() + seconds * 1000L
 
         private fun platformForStop(stopTime: GtfsStopTime?): String? {
-            val stopId = stopTime?.stopId ?: return null
+            return platformForStopId(stopTime?.stopId)
+        }
+
+        private fun platformForStopId(stopId: String?): String? {
+            if (stopId == null) return null
             val separator = stopId.lastIndexOf('-')
             return if (separator >= 0 && separator + 1 < stopId.length) {
                 stopId.substring(separator + 1)

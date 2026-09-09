@@ -16,6 +16,63 @@ import org.junit.Test
 
 class GtfsRealtimeContentHandlerTest {
     @Test
+    fun platformsBelongToOriginStopsAndRealtimeCanOverrideStaticPlatform() {
+        val network = platformNetwork()
+        val feedTime = epoch("2026-09-07T08:00:00-07:00")
+        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.BLUE))
+        val emptyIndex = GtfsRealtimeFeedIndex.from(emptyFeed(feedTime / 1000L))
+
+        val southRoute = schedule.routesFor(Station.CAST, Station.DALY).single()
+        val southHandler = GtfsRealtimeContentHandler(
+            Station.CAST, Station.DALY, listOf(southRoute), false, network,
+        )
+        val southDeparture = southHandler
+            .getRealTimeDepartures(emptyIndex, feedTime, schedule)
+            .getDepartures()
+            .single()
+        assertEquals("2", southDeparture.platform)
+
+        val northRoute = schedule.routesFor(Station.CAST, Station.DUBL).single()
+        val northDeparture = GtfsRealtimeContentHandler(
+            Station.CAST, Station.DUBL, listOf(northRoute), false, network,
+        ).getRealTimeDepartures(emptyIndex, feedTime, schedule)
+            .getDepartures()
+            .single()
+        assertEquals("1", northDeparture.platform)
+
+        val realtimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+            .setTime(epoch("2026-09-07T08:31:00-07:00") / 1000L)
+            .build()
+        val realtimeUpdate = GtfsRealtime.TripUpdate.newBuilder()
+            .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
+                .setRouteId("11")
+                .setTripId("blue-south"))
+            .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                .setStopId("CAST-1")
+                .setArrival(realtimeEvent)
+                .setDeparture(realtimeEvent))
+            .build()
+        val realtimeFeed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0")
+                .setTimestamp(feedTime / 1000L))
+            .addEntity(GtfsRealtime.FeedEntity.newBuilder()
+                .setId("blue-south")
+                .setTripUpdate(realtimeUpdate))
+            .build()
+
+        val overriddenDeparture = southHandler
+            .getRealTimeDepartures(
+                GtfsRealtimeFeedIndex.from(realtimeFeed),
+                feedTime,
+                schedule,
+            )
+            .getDepartures()
+            .single()
+        assertEquals("1", overriddenDeparture.platform)
+    }
+
+    @Test
     fun staticScheduleSuppliesTerminalWhenRealtimeOmitsItsPrediction() {
         val network = network()
         val route = Schedule.fromStatic(network, 0L).routesFor(Station.MONT, Station.DALY)[0]
@@ -158,4 +215,41 @@ class GtfsRealtimeContentHandlerTest {
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }
+
+    private fun platformNetwork(): BartGtfsNetwork {
+        val files = mutableMapOf(
+            "stops.txt" to "stop_id,stop_name,zone_id\n" +
+                "DUBL-1,Dublin/Pleasanton,DUBL\n" +
+                "DUBL-2,Dublin/Pleasanton,DUBL\n" +
+                "CAST-1,Castro Valley,CAST\n" +
+                "CAST-2,Castro Valley,CAST\n" +
+                "DALY-1,Daly City,DALY\n" +
+                "DALY-2,Daly City,DALY\n",
+            "routes.txt" to "route_id,route_short_name\n" +
+                "11,Blue-S\n" +
+                "12,Blue-N\n",
+            "trips.txt" to "route_id,service_id,trip_id\n" +
+                "11,weekday,blue-south\n" +
+                "12,weekday,blue-north\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                "blue-south,08:00:00,08:00:00,DUBL-2,1\n" +
+                "blue-south,08:30:00,08:30:00,CAST-2,2\n" +
+                "blue-south,09:00:00,09:00:00,DALY-2,3\n" +
+                "blue-north,08:05:00,08:05:00,DALY-2,1\n" +
+                "blue-north,08:35:00,08:35:00,CAST-1,2\n" +
+                "blue-north,09:05:00,09:05:00,DUBL-1,3\n",
+            "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
+                "weekday,1,1,1,1,1,0,0,20260901,20260930\n",
+        )
+        return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
+    }
+
+    private fun emptyFeed(timestamp: Long) = GtfsRealtime.FeedMessage.newBuilder()
+        .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+            .setGtfsRealtimeVersion("2.0")
+            .setTimestamp(timestamp))
+        .build()
+
+    private fun epoch(value: String): Long =
+        java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli()
 }

@@ -613,6 +613,51 @@ public class LiveGtfsRoutingTest {
     }
 
     @Test
+    public void refreshedTripUpdatesPreserveExplicitCancellations()
+            throws Exception {
+        GtfsRealtime.FeedMessage feed = refreshedTripUpdates();
+        Schedule schedule = Schedule.fromStatic(NETWORK,
+                feed.getHeader().getTimestamp() * 1000L,
+                new HashSet<>(COLOR_LINES)).applyRealtime(
+                GtfsRealtimeFeedIndex.from(feed));
+
+        for (String tripId : Arrays.asList(
+                "1965275", "1965700", "1965654", "1965658", "1965850")) {
+            Schedule.Trip trip = trip(schedule, tripId);
+            assertTrue("trip should be canceled: " + tripId, trip.getCanceled());
+        }
+    }
+
+    @Test
+    public void refreshedTripUpdatesShowDirectAndTransferDepartures()
+            throws Exception {
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station.DBRK, Station.POWL), NETWORK)
+                .project(new TransitFeedSnapshot(
+                        refreshedTripUpdates(), emptyFeed(), 0L));
+
+        boolean hasDirectRed = false;
+        boolean hasOrangeToYellow = false;
+        for (Departure departure : departures.getDepartures()) {
+            if (departure.getLine() == Line.RED && !departure.hasTransfers()) {
+                hasDirectRed = true;
+            }
+            if (departure.getLine() == Line.ORANGE
+                    && linesOf(departure.getTripLegs()).equals(
+                    Arrays.asList(Line.ORANGE, Line.YELLOW))
+                    && transferStationsOf(departure.getTripLegs()).equals(
+                    Arrays.asList(Station.MCAR))) {
+                hasOrangeToYellow = true;
+            }
+        }
+        assertTrue("missing direct red departure: " + departures.getDepartures(),
+                hasDirectRed);
+        assertTrue("missing Orange to Yellow departure: "
+                        + departures.getDepartures(),
+                hasOrangeToYellow);
+    }
+
+    @Test
     public void currentTripUpdatesShowSfoFromTwelfthStreetStationBoard()
             throws Exception {
         RealTimeDepartures departures = new RouteDepartureProjection(
@@ -917,6 +962,11 @@ public class LiveGtfsRoutingTest {
 
     private static GtfsRealtime.FeedMessage currentTripUpdates() throws Exception {
         return tripUpdates("/gtfsrt/bart_trip_updates.pb");
+    }
+
+    private static GtfsRealtime.FeedMessage refreshedTripUpdates()
+            throws Exception {
+        return tripUpdates("/gtfsrt/bart_trip_updates_current.pb");
     }
 
     private static GtfsRealtime.FeedMessage nightTripUpdates() throws Exception {

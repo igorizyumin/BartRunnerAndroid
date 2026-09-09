@@ -64,24 +64,7 @@ class RealTimeDepartures internal constructor(
         if (destination == null) {
             return sortDepartures()
         }
-
-        val hasDirectRoute = departures.any { !it.requiresTransfer }
-        val finalized = if (hasDirectRoute) {
-            departures.filterNot { departure ->
-                departure.requiresTransfer
-                    && (!departure.transferScheduled
-                    || (departure.trainDestination != null
-                    && schedule.network.isBetween(
-                    departure.trainDestination,
-                    origin,
-                    destination,
-                    departure.line
-                )))
-            }
-        } else {
-            departures
-        }
-        return copy(departures = finalized.sortedBy { it.minutes })
+        return sortDepartures()
     }
 
     private fun withAdditionalRoutes(additionalRoutes: List<Route>): RealTimeDepartures {

@@ -12,6 +12,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import kotlin.math.abs
 
 /** Android-facing formatting for departure text shown by the UI. */
 object DepartureTextFormatter {
@@ -20,6 +21,7 @@ object DepartureTextFormatter {
         val actualTime: String? = null,
         val actualLabel: String? = null,
         val showActualIcon: Boolean = false,
+        val showScheduleOnlyIcon: Boolean = false,
         val predictionLabel: String? = null,
     ) {
         fun isNotBlank(): Boolean = scheduledTime != null
@@ -219,9 +221,11 @@ object DepartureTextFormatter {
                     null
                 }
                 ScheduleDetails(
-                    scheduledTime = scheduledText,
-                    actualLabel = delay?.takeIf { it != 0 }?.let(::formatSignedMinutes),
-                    showActualIcon = true,
+                    scheduledTime = effective.takeIf { it > 0L }
+                        ?.let { formatTime(timeFormatter(context), it) }
+                        ?: scheduledText,
+                    actualLabel = delay?.takeIf { abs(it) >= 45 }?.let(::formatSignedMinutes),
+                    showActualIcon = delay?.let { abs(it) >= 45 } == true,
                 )
             }
             PredictionSource.ESTIMATE -> {
@@ -240,7 +244,10 @@ object DepartureTextFormatter {
                 }
             }
             PredictionSource.SCHEDULE, PredictionSource.UNKNOWN ->
-                ScheduleDetails(scheduledTime = scheduledText)
+                ScheduleDetails(
+                    scheduledTime = scheduledText,
+                    showScheduleOnlyIcon = source == PredictionSource.SCHEDULE,
+                )
         }
     }
 
@@ -265,12 +272,15 @@ object DepartureTextFormatter {
                 } else {
                     null
                 }
-                if (delay == null || delay == 0) {
-                    context.getString(R.string.scheduled_realtime, scheduledText)
+                val realtimeText = effective.takeIf { it > 0L }
+                    ?.let { formatTime(timeFormatter(context), it) }
+                    ?: scheduledText
+                if (delay == null || abs(delay) < 45) {
+                    context.getString(R.string.scheduled_only, realtimeText)
                 } else {
                     context.getString(
-                        R.string.scheduled_delay,
-                        scheduledText,
+                        R.string.scheduled_realtime_adjusted,
+                        realtimeText,
                         formatSignedMinutes(delay),
                     )
                 }

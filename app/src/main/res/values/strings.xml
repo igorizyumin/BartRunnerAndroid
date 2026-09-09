@@ -47,7 +47,7 @@
     <string name="silence_alarm">Silence alarm</string>
     <string name="departs">Departs</string>
     <string name="arrives">Arrives</string>
-    <string name="arrives_at_time">Arrives %1$s</string>
+    <string name="arrives_at_time">Arrives at %1$s</string>
     <string name="detailed_stop_times_unavailable">Detailed stop times are not available for this trip yet.</string>
     <string name="trip_timeline">Trip timeline</string>
     <string name="transfer_at">Transfer at %1$s</string>
@@ -59,6 +59,10 @@
     <plurals name="connection_count">
         <item quantity="one">%d connection</item>
         <item quantity="other">%d connections</item>
+    </plurals>
+    <plurals name="transfer_count">
+        <item quantity="one">%d transfer</item>
+        <item quantity="other">%d transfers</item>
     </plurals>
     <plurals name="alarm_minutes_value">
         <item quantity="one">%d minute</item>
@@ -87,7 +91,7 @@
     <string name="train">Train</string>
     <string name="departure_canceled">Canceled</string>
     <string name="departure_at_station">At station</string>
-    <string name="departure_countdown">%1$dm, %2$ds</string>
+    <string name="departure_countdown">%1$dm %2$ds</string>
     <string name="estimated_arrival_unknown">Estimated arrival unknown</string>
     <string name="arrived_at_destination">Arrived at destination</string>
     <string name="arrives_around_minutes">Arrives ~%1$s (%2$d min)</string>
@@ -131,6 +135,7 @@
     <string name="scheduled_only">◷ %1$s</string>
     <string name="scheduled_realtime">◷ %1$s · ⏱</string>
     <string name="scheduled_delay">◷ %1$s · ⏱ %2$s</string>
+    <string name="scheduled_realtime_adjusted">◷ %1$s · ⏱ %2$s</string>
     <string name="scheduled_estimated">◷ %1$s · est. %2$s</string>
     <string name="scheduled_estimated_only">◷ %1$s · est.</string>
     <string name="prediction_realtime">⏱ Prediction</string>

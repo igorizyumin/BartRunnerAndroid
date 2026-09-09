@@ -1,0 +1,183 @@
+{
+  "header": {
+    "gtfs_realtime_version": "1.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": "1788911555"
+  },
+  "entity": [{
+    "id": "BSA_273970",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "There is currently no Red Line service. For Millbrae take the shuttle train between SFO and Millbrae and transfer to/from the Yellow line (Antioch-SFO). Millbrae riders from Richmond take the Orange/Berryessa train and transfer at MacArthur to the Yellow/SFO train.  ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }, {
+    "id": "BSA_293676",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "There is a major delay at Daly City in the SFO, Millbrae and East Bay directions due to an equipment problem on the track. ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }, {
+    "id": "BSA_293664",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "Due to a trackside equipment problem near Daly City station, trains from Berryessa will only go as far as 24th/Mission. For stations beyond 24th/Mission, off board at 24th/Mission and catch the SFO/Millbrae train. ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }, {
+    "id": "BSA_293655",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "There is a 10-minute delay on the San Francisco Line in the SFO, Millbrae, Daly City and East Bay directions due to an equipment problem on the track near Daly City. ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }, {
+    "id": "BSA_293659",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "Passengers traveling between Coliseum and Oakland Airport should expect reduced train frequency as of 10pm tonight until the end of service with an average wait time of 9-minutes due to maintenance work. ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }, {
+    "id": "BSA_293677",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "There is a major delay between Antioch and Pittsburg/Bay Point in the Antioch and SFO directions due to an equipment problem on a train. ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }, {
+    "id": "BSA_292508",
+    "alert": {
+      "informed_entity": [{
+        "agency_id": "BART"
+      }],
+      "url": {
+        "translation": [{
+          "text": "http://www.bart.gov/schedules/advisories",
+          "language": "en-US"
+        }]
+      },
+      "header_text": {
+        "translation": [{
+          "text": "BART.gov Alert",
+          "language": "en-US"
+        }]
+      },
+      "description_text": {
+        "translation": [{
+          "text": "Free buses will replace trains between Union City and Warm Springs this weekend while crews make track upgrades. Expect delays of 30-40 minutes. Green Line service will not operate between Daly City and Berryessa on these work days. Visit bart.gov for more info. ",
+          "language": "en-US"
+        }]
+      }
+    }
+  }]
+}
