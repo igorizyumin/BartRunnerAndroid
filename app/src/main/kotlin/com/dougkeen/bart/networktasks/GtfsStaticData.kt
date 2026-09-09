@@ -17,17 +17,13 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
-import java.time.Instant
 import java.nio.charset.StandardCharsets
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Collections
 import java.util.HashMap
 import java.util.Locale
 import java.util.zip.ZipInputStream
 
-/** Loads BART's static GTFS feed once per service day. */
+/** Loads BART's static GTFS feed at most once per seven days. */
 class GtfsStaticData @JvmOverloads constructor(
     context: Context,
     private val timeSource: TimeSource = SystemTimeSource,
@@ -36,7 +32,6 @@ class GtfsStaticData @JvmOverloads constructor(
     private val lock = Any()
     private var cachedData: LoadedData? = null
     private var cachedAt = 0L
-    private var cachedServiceDate: String? = null
 
     @Throws(IOException::class)
     fun getBartGtfsNetwork(): BartGtfsNetwork = load().bartGtfsNetwork
@@ -54,12 +49,7 @@ class GtfsStaticData @JvmOverloads constructor(
     private fun loadLocked(): LoadedData {
         synchronized(lock) {
             val now = timeSource.nowMillis()
-            val serviceDate = dateCode(
-                Instant.ofEpochMilli(now).atZone(PACIFIC_ZONE).toLocalDate()
-            )
-            if (cachedData != null && now - cachedAt < CACHE_MILLIS
-                && serviceDate == cachedServiceDate
-            ) {
+            if (cachedData != null && now - cachedAt < CACHE_MILLIS) {
                 return cachedData!!
             }
 
@@ -70,7 +60,7 @@ class GtfsStaticData @JvmOverloads constructor(
             )
             val lastSuccess = preferences.getLong(LAST_SUCCESS, 0L)
             if (cacheFile.isFile && now - lastSuccess < CACHE_MILLIS) {
-                readCached(cacheFile, lastSuccess, serviceDate, now)?.let { return it }
+                readCached(cacheFile, lastSuccess, now)?.let { return it }
                 preferences.edit {
                     remove(LAST_SUCCESS)
                     remove(LAST_ATTEMPT)
@@ -80,7 +70,7 @@ class GtfsStaticData @JvmOverloads constructor(
             val lastAttempt = preferences.getLong(LAST_ATTEMPT, 0L)
             if (now - lastAttempt < CACHE_MILLIS) {
                 if (cacheFile.isFile) {
-                    readCached(cacheFile, lastSuccess, serviceDate, now)?.let { return it }
+                    readCached(cacheFile, lastSuccess, now)?.let { return it }
                 }
                 throw IOException("Static GTFS refresh already attempted")
             }
@@ -99,11 +89,10 @@ class GtfsStaticData @JvmOverloads constructor(
                 preferences.edit { putLong(LAST_SUCCESS, now) }
                 cachedData = result
                 cachedAt = now
-                cachedServiceDate = serviceDate
                 return result
             } catch (exception: IOException) {
                 temporaryFile.delete()
-                readCached(cacheFile, lastSuccess, serviceDate, now)?.let { return it }
+                readCached(cacheFile, lastSuccess, now)?.let { return it }
                 throw exception
             }
         }
@@ -112,14 +101,12 @@ class GtfsStaticData @JvmOverloads constructor(
     private fun readCached(
         cacheFile: File,
         lastSuccess: Long,
-        serviceDate: String,
         now: Long,
     ): LoadedData? = PerformanceTrace.section("BART static cache parse") {
         try {
             parse(cacheFile).also {
                 cachedData = it
                 cachedAt = if (lastSuccess > 0) lastSuccess else now
-                cachedServiceDate = serviceDate
             }
         } catch (exception: Exception) {
             cacheFile.delete()
@@ -129,12 +116,12 @@ class GtfsStaticData @JvmOverloads constructor(
 
     companion object {
         private const val FEED_URL = "https://www.bart.gov/dev/schedules/google_transit.zip"
-        private const val CACHE_MILLIS = 24L * 60L * 60L * 1000L
+        // BART recommends checking the static schedule feed weekly.
+        private const val CACHE_MILLIS = 7L * 24L * 60L * 60L * 1000L
         private const val CACHE_FILE_NAME = "gtfs_static_schedule.zip"
         private const val PREFS_NAME = "gtfs_static_schedule"
         private const val LAST_ATTEMPT = "last_attempt"
         private const val LAST_SUCCESS = "last_success"
-        private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
         private val CLIENT: OkHttpClient = NetworkUtils.makeHttpClient()
 
         @Throws(IOException::class)
@@ -300,9 +287,6 @@ class GtfsStaticData @JvmOverloads constructor(
             values += value.toString()
             return values.toTypedArray()
         }
-
-        private fun dateCode(date: LocalDate): String =
-            DateTimeFormatter.BASIC_ISO_DATE.format(date)
 
         private data class FareRule(
             val fareId: String,
