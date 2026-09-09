@@ -59,7 +59,7 @@ class GtfsStaticData @JvmOverloads constructor(
 
     /** Returns true once the first normalized static-feed database exists. */
     fun hasDatabaseCache(): Boolean =
-        File(applicationContext.filesDir, DATABASE_FILE_NAME).isFile
+        applicationContext.getDatabasePath(DATABASE_FILE_NAME).isFile
 
     @Throws(IOException::class)
     private fun load(): LoadedData = PerformanceTrace.section("BART static data load") {
@@ -80,7 +80,7 @@ class GtfsStaticData @JvmOverloads constructor(
                 Context.MODE_PRIVATE
             )
             val lastSuccess = preferences.getLong(LAST_SUCCESS, 0L)
-            val databaseFile = File(applicationContext.filesDir, DATABASE_FILE_NAME)
+            val databaseFile = applicationContext.getDatabasePath(DATABASE_FILE_NAME)
             var cachedResult: LoadedData? = null
             if (databaseFile.isFile) {
                 cachedResult = readCached(lastSuccess, now)
@@ -188,7 +188,7 @@ class GtfsStaticData @JvmOverloads constructor(
     private fun invalidateDatabase() {
         database?.close()
         database = null
-        File(applicationContext.filesDir, DATABASE_FILE_NAME).delete()
+        applicationContext.getDatabasePath(DATABASE_FILE_NAME).delete()
     }
 
     private fun buildLoadedData(
