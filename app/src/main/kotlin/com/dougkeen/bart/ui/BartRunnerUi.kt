@@ -79,12 +79,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
+import androidx.core.content.edit
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -288,6 +290,7 @@ fun HomeScreen(
                     FavoriteRouteCard(
                         route = route,
                         departure = state.firstDepartures[route],
+                        fare = state.fares[route],
                         timeSource = timeSource,
                         tick = tick,
                         isEditing = isEditing,
@@ -443,6 +446,7 @@ private fun EmptyFavorites(onAdd: () -> Unit) {
 private fun FavoriteRouteCard(
     route: StationPair,
     departure: Departure?,
+    fare: String?,
     timeSource: TimeSource,
     tick: Long,
     isEditing: Boolean,
@@ -451,7 +455,6 @@ private fun FavoriteRouteCard(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scheduleDetails = departure?.let { DepartureTextFormatter.departureSchedulePresentation(context, it) }
-    val fare = route.fare?.takeIf { route.destination != null }
     val routeTitle = route.destination?.let { destination ->
         stringResource(R.string.route_arrow, route.origin?.getName().orEmpty(), destination.getName())
     } ?: route.origin?.getName().orEmpty()
@@ -550,9 +553,9 @@ fun RoutePickerDialog(
                 if (origin == null) error = context.getString(R.string.choose_origin_station)
                 else if (destination == origin) error = context.getString(R.string.origin_destination_must_differ)
                 else {
-                    preferences.edit()
-                        .putInt(LAST_SELECTED_ORIGIN, stations.indexOf(origin))
-                        .apply()
+                    preferences.edit {
+                        putInt(LAST_SELECTED_ORIGIN, stations.indexOf(origin))
+                    }
                     onConfirm(StationPair(origin, destination), addReturn)
                 }
             }) { Text(stringResource(R.string.continue_label)) }
@@ -874,7 +877,7 @@ private fun TripHero(departure: Departure, pair: StationPair?, fare: String?, ti
                 Metric(Icons.Filled.AccessTime, stringResource(R.string.departs), DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
                 Metric(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.arrives), DepartureTextFormatter.estimatedArrivalTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
                 if (pair?.destination != null) {
-                    FareMetric(fare ?: pair.fare ?: "—", Modifier.weight(1f))
+                    FareMetric(fare ?: "—", Modifier.weight(1f))
                 }
             }
         }
@@ -925,8 +928,8 @@ private fun ScheduleDetailsRow(
     details: DepartureTextFormatter.ScheduleDetails,
     style: androidx.compose.ui.text.TextStyle,
     color: Color,
-    showActualTime: Boolean = true,
     modifier: Modifier = Modifier,
+    showActualTime: Boolean = true,
 ) {
     if (!details.isNotBlank()) return
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -1174,7 +1177,7 @@ private fun LineBadge(line: Line?) {
 @Composable
 private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     val max = (departure.getMeanSecondsLeft(timeSource) / 60).coerceAtLeast(1)
-    var value by remember { mutableStateOf(5.coerceAtMost(max)) }
+    var value by remember { mutableIntStateOf(5.coerceAtMost(max)) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.set_departure_alarm)) }, text = {
         Column {
             Text(stringResource(R.string.notify_before_train_leaves), color = MaterialTheme.colorScheme.onSurfaceVariant)

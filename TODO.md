@@ -1,61 +1,136 @@
-# BART Runner modernization backlog
+# BART Runner cleanup and efficiency plan
 
-This backlog records the post-Compose audit. The current app builds successfully, but the migration still contains unreachable View/XML code and several platform seams that should be modernized in small, verifiable steps.
+This is the post-Compose cleanup backlog. The major migration work is complete;
+the remaining work should reduce duplicate computation, remove accidental state,
+and keep the implementation simple.
+
+## Working principles
+
+- Favorites persist only their origin and destination.
+- Fares and other schedule-derived values are transient UI data.
+- Prefer a small cache or shared projection over a new abstraction layer.
+- Keep the existing serialized persistence writers unless batching or coalescing
+  is needed.
+- Measure startup and rendering changes before optimizing Compose recomposition.
+- Do not migrate storage technologies merely for modernization.
 
 ## Phase 1: remove dead pre-Compose code
 
-- [x] Delete `FavoritesArrayAdapter` and `DepartureArrayAdapter`; neither had a runtime caller.
-- [x] Delete `CheckableLinearLayout` and `ScreenTicker`; neither had a runtime caller.
-- [x] Delete `AbstractRouteSelectionFragment`, `AddRouteDialogFragment`, and `QuickRouteDialogFragment`; route selection is implemented by `RoutePickerDialog` in Compose.
-- [x] Delete `TrainAlarmDialogFragment`; alarm selection is implemented by `AlarmPickerDialog` in Compose.
-- [x] Delete unused XML layouts: `main.xml`, `departures.xml`, `favorite_listing.xml`, `departure_listing.xml`, `uncertainty_textview.xml`, `trip_in_progress.xml`, `route_form.xml`, and `train_alarm_dialog.xml`.
-- [x] Delete unused XML menus and their legacy action icons.
-- [x] Remove obsolete styles, colors, dimensions, and strings left behind by those layouts.
-- [x] Remove `viewBinding = true` once the XML layer is gone.
+- [x] Delete `FavoritesArrayAdapter` and `DepartureArrayAdapter`.
+- [x] Delete `CheckableLinearLayout` and `ScreenTicker`.
+- [x] Delete the obsolete route-selection and alarm dialog fragments.
+- [x] Delete unused XML layouts, menus, and legacy action icons.
+- [x] Remove obsolete styles, colors, dimensions, and strings.
+- [x] Remove `viewBinding` after the XML layer was removed.
 
 ## Phase 2: simplify dependencies and activity plumbing
 
-- [x] Remove unused `RecyclerView`, PhotoView, Material Components, and AppCompat dependencies after Phase 1.
-- [x] Convert the four Compose activities from `AppCompatActivity` to `ComponentActivity`.
-- [x] Replace `ViewModelProvider(this)[...]` with `by viewModels()` where it improves readability.
-- [x] Remove duplicate or transitively supplied lifecycle dependencies after checking the resolved dependency graph.
-- [x] Update the stale migration documentation so it reflects that Compose is now the production UI.
+- [x] Remove unused RecyclerView, PhotoView, Material Components, and AppCompat dependencies.
+- [x] Convert Compose activities to `ComponentActivity`.
+- [x] Use `by viewModels()` where it improves readability.
+- [x] Remove duplicate or transitively supplied lifecycle dependencies.
+- [x] Update migration documentation to describe Compose as the production UI.
 
 ## Phase 3: lifecycle-aware Compose state
 
-- [x] Add `lifecycle-runtime-compose` and replace `collectAsState()` with `collectAsStateWithLifecycle()` in all activities.
-- [x] Move activity-owned alarm state into a ViewModel/repository state flow where practical.
-- [x] Replace the UI-local `rememberSecondTick()` loop with a shared, testable time/ticker abstraction; keep the injected `TimeSource` authoritative.
-- [x] Replace remaining hardcoded user-visible text and content descriptions in `BartRunnerUi.kt` with `stringResource` and resource plurals.
-- [x] Re-run lint and add Compose UI tests for route selection, departures, trip following, alarm controls, and map zoom.
+- [x] Add lifecycle-aware collection with `collectAsStateWithLifecycle()`.
+- [x] Move alarm state into repository/ViewModel state.
+- [x] Replace the UI-local clock with the shared `TimeSource`-based ticker.
+- [x] Move user-visible text and content descriptions into resources.
+- [x] Add baseline Compose UI coverage for the home screen, route picker,
+  departures, trip actions, alarm picker, and map controls.
+- [ ] Expand interaction coverage for route selection, following a trip, alarm
+  cancellation, permission denial, and process restoration.
 
-## Phase 4: persistence modernization
+## Phase 4: make favorite persistence minimal
 
-- [ ] Migrate small preference values from `SharedPreferences` to Preferences DataStore: route picker selection, static-feed timestamps, and alarm state.
-- [ ] Decide whether followed-trip JSON should remain a file-backed cache or move to a typed Proto DataStore; preserve process-death restoration and atomic writes.
-- [ ] Replace repository-owned `ExecutorService` instances with application-scoped coroutine dispatchers/scope where this does not weaken serialized writes.
-- [ ] Do not bother keeping persistence migrations backward-compatible for existing installed users (there aren't any).
+- [x] Persist favorites as records containing only `origin` and `destination`.
+- [x] Stop serializing fare, fare timestamps, average trip length, and sample
+  count as part of favorite state.
+- [x] Remove `updateFare()` from `FavoritesRepository` and `RoutesViewModel`.
+- [x] Remove `fareLastUpdated`, `averageTripLength`, and
+  `averageTripSampleCount` from `StationPair` if no remaining callers need them.
+- [x] Load fares as transient derived data from the cached static GTFS data.
+- [x] Existing persisted data is intentionally not supported during this
+  zero-user development phase; the next write uses the minimal schema.
 
-## Phase 5: alarms and background execution
+## Phase 5: remove duplicate feed and projection work
 
-- [x] Review `BoardedDepartureService`'s long-running `dataSync` foreground-service design against Android 15's time limits.
-- [x] Add `Service.onTimeout()` handling and bound foreground polling to the pending-alarm lifecycle.
-- [x] Make the full-screen alarm notification the primary background entry point; remove direct activity launches from `AlarmBroadcastReceiver`.
-- [x] Move alarm audio/vibration ownership to the standard notification channel and remove the custom `WakeLocker`/media-player lifecycle.
-- [ ] Add device tests for exact-alarm permission denial, notification permission denial, background alarm delivery, and full-screen intent denial.
+- [x] Establish a clear base-schedule versus realtime-corrected-schedule
+  contract between `Schedule` and `GtfsRealtimeContentHandler`.
+- [x] Ensure each feed snapshot applies realtime corrections only once.
+- [x] Avoid rebuilding a protobuf feed and `GtfsRealtimeFeedIndex` from an
+  already-indexed entity list during normal projection.
+- [x] Cache the corrected schedule/feed context per `TransitFeedSnapshot` so
+  multiple consumers reuse it.
+- [ ] Consolidate per-favorite projection jobs in `RoutesViewModel` where this
+  remains simpler than maintaining one full projection per favorite.
+- [x] Cache immutable GTFS-derived route patterns per line in `BartGtfsNetwork`.
+- [ ] Re-evaluate the explicit startup refresh after measuring first-render
+  latency; remove it if shared-feed subscription polling is sufficient.
 
-## Phase 6: feed and build cleanup
+## Phase 6: keep persistence efficient without adding machinery
 
-- [ ] Consolidate per-favorite projection jobs in `RoutesViewModel` into one favorites-derived projection where practical.
-- [ ] Remove the redundant explicit startup refresh if shared-feed subscription polling already covers it.
-- [ ] Upgrade the version catalog in a staged compatibility change, starting with lifecycle, coroutines, AndroidX, Compose, OkHttp, Jackson, and GTFS-RT bindings.
-- [ ] Re-evaluate compile/target SDK after device testing and update obsolete min-SDK resource folders.
-- [ ] Make lint clean after the dead-resource deletion pass, then keep lint clean in CI.
+- [ ] Keep the single-thread persistence writers for deterministic ordering.
+- [x] Coalesce pending favorite writes when several real favorite changes occur
+  in quick succession, especially drag-to-reorder operations.
+- [x] Coalesce followed-trip cache writes when successive realtime updates do
+  not materially change durable state.
+- [ ] Keep atomic temporary-file replacement for followed-trip and static-feed
+  caches, and improve replacement behavior if the platform permits a safer
+  atomic move.
+
+## Phase 7: static-feed cache reliability and derived-data caching
+
+- [x] Make a corrupt or unparsable static cache fall back to a refresh instead
+  of failing from the fresh-cache path.
+- [ ] Cache scheduled trips by service date only if snapshot-level schedule
+  caching does not eliminate the repeated full catalog scan.
+- [ ] Avoid holding the static-data lock across network I/O if profiling shows
+  contention; do not redesign this preemptively.
+
+## Phase 8: lint, resource, and manifest cleanup
+
+- [ ] Remove the stale lint suppression for deleted `train_alarm_dialog.xml`.
+- [x] Remove unused `ACCESS_NETWORK_STATE` and `WAKE_LOCK` permissions.
+- [x] Remove lint-reported unused strings and plurals.
+- [x] Move the map bitmap to an appropriate density-independent resource folder.
+- [x] Merge the unnecessary `mipmap-anydpi-v26` resources because `minSdk` is 31.
+- [x] Add API annotations around full-screen-intent settings access and remove
+  redundant SDK guards made unnecessary by `minSdk`.
+- [x] Fix the remaining low-risk Compose lint hints.
+- [ ] Keep debug lint at zero errors and eliminate warnings where practical.
+
+## Phase 9: staged dependency and SDK maintenance
+
+- [ ] Upgrade the version catalog in compatibility-sized groups, starting with
+  lifecycle, coroutines, AndroidX, Compose, OkHttp, Jackson, and GTFS-RT.
+- [ ] Run unit tests, lint, debug/release assembly, and device smoke tests after
+  each dependency group.
+- [ ] Re-evaluate compile/target SDK after device verification.
+- [ ] Remove obsolete resource qualifiers only after confirming the supported
+  device range.
 
 ## Verification checklist
 
 - [x] `:app:testDebugUnitTest`
 - [x] `:app:assembleDebug`
 - [x] `:app:lintDebug`
-- [x] Instrumentation smoke tests on the connected Pixel 10a emulator
-- [ ] Manual verification of route selection, live departures, trip following, map viewing, alarms, notification actions, and process-death restoration
+- [x] Instrumentation smoke tests on the connected Pixel 10a emulator.
+- [ ] Manually verify route selection and editing.
+- [ ] Manually verify live departures and trip following.
+- [ ] Manually verify alarm setup, cancellation, exact-alarm denial, and
+  notification/full-screen-intent denial.
+- [ ] Manually verify background alarm delivery and notification actions.
+- [ ] Manually verify process-death restoration of favorites and followed trips.
+- [ ] Decide whether connected instrumentation should run periodically in CI;
+  keep normal CI fast if emulator startup remains too expensive.
+
+## Explicitly deferred unless evidence changes
+
+- Do not migrate tiny preference values to DataStore solely for modernization.
+- Do not move followed-trip JSON to Proto DataStore unless the current schema or
+  file-backed cache becomes a real maintenance problem.
+- Do not replace the serialized executors with application coroutine scopes
+  unless it simplifies the code or fixes a measured issue.
+- Do not redesign the Compose ticker unless profiling shows meaningful UI cost.

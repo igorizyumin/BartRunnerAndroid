@@ -4,14 +4,16 @@ import android.Manifest
 import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,7 +94,7 @@ class TripInProgressActivity : ComponentActivity() {
         routeDestination = route.destination
         tripRoute = route
         fareEligible = route.destination != null
-        tripFare = route.fare.takeIf { fareEligible }
+        tripFare = null
         resolveFare(app, route)
         alarmVisible = intent.getBooleanExtra(
             AlarmBroadcastReceiver.EXTRA_ALARM_TRIGGERED,
@@ -173,7 +175,9 @@ class TripInProgressActivity : ComponentActivity() {
         }
         if (!hasFullScreenIntentPermission()) {
             pendingAlarmLeadTimeMinutes = leadTimeMinutes
-            openFullScreenIntentSettings()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                openFullScreenIntentSettings()
+            }
             return
         }
 
@@ -182,9 +186,6 @@ class TripInProgressActivity : ComponentActivity() {
     }
 
     private fun hasExactAlarmPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            return true
-        }
         return getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
     }
 
@@ -199,7 +200,7 @@ class TripInProgressActivity : ComponentActivity() {
     private fun openExactAlarmSettings() {
         val settingsIntent = Intent(
             Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-            Uri.parse("package:$packageName"),
+            "package:$packageName".toUri(),
         )
         try {
             startActivity(settingsIntent)
@@ -207,16 +208,17 @@ class TripInProgressActivity : ComponentActivity() {
             startActivity(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:$packageName"),
+                    "package:$packageName".toUri(),
                 ),
             )
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun openFullScreenIntentSettings() {
         val settingsIntent = Intent(
             Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
-            Uri.parse("package:$packageName"),
+            "package:$packageName".toUri(),
         )
         try {
             startActivity(settingsIntent)
@@ -224,7 +226,7 @@ class TripInProgressActivity : ComponentActivity() {
             startActivity(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:$packageName"),
+                    "package:$packageName".toUri(),
                 ),
             )
         }

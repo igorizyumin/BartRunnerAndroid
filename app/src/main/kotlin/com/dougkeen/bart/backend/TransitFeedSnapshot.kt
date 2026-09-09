@@ -1,7 +1,10 @@
 package com.dougkeen.bart.backend
 
+import com.dougkeen.bart.model.Line
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
+import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
+import java.util.IdentityHashMap
 
 /** One coherent read of the realtime feeds. */
 class TransitFeedSnapshot(
@@ -14,6 +17,8 @@ class TransitFeedSnapshot(
 
     @Volatile
     private var alertIndex: GtfsRealtimeFeedIndex? = null
+
+    private val correctedSchedules = IdentityHashMap<BartGtfsNetwork, Schedule>()
 
     init {
         requireNotNull(tripUpdates) { "tripUpdates" }
@@ -44,6 +49,19 @@ class TransitFeedSnapshot(
             alertIndex?.let { return it }
             return GtfsRealtimeFeedIndex.from(alerts).also {
                 alertIndex = it
+            }
+        }
+    }
+
+    /** Builds the corrected schedule once for each static network consumer. */
+    fun getCorrectedSchedule(network: BartGtfsNetwork): Schedule {
+        synchronized(correctedSchedules) {
+            return correctedSchedules[network] ?: Schedule.fromStatic(
+                network,
+                getTripUpdatesTimestampMillis(),
+                Line.values().toSet(),
+            ).applyRealtime(getTripUpdateIndex()).also {
+                correctedSchedules[network] = it
             }
         }
     }

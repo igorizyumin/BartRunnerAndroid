@@ -11,6 +11,7 @@ import java.util.HashMap
 class RoutesUiState(
     favorites: List<StationPair> = emptyList(),
     firstDepartures: Map<StationPair, Departure> = emptyMap(),
+    fares: Map<StationPair, String> = emptyMap(),
     val alerts: Alert.AlertList? = null,
     val alertKind: AlertKind = AlertKind.HIDDEN,
     val isLoading: Boolean = true,
@@ -20,10 +21,13 @@ class RoutesUiState(
         Collections.unmodifiableList(ArrayList(favorites))
     val firstDepartures: Map<StationPair, Departure> =
         Collections.unmodifiableMap(HashMap(firstDepartures))
+    val fares: Map<StationPair, String> =
+        Collections.unmodifiableMap(HashMap(fares))
 
     fun copy(
         favorites: List<StationPair> = this.favorites,
         firstDepartures: Map<StationPair, Departure> = this.firstDepartures,
+        fares: Map<StationPair, String> = this.fares,
         alerts: Alert.AlertList? = this.alerts,
         alertKind: AlertKind = this.alertKind,
         isLoading: Boolean = this.isLoading,
@@ -31,6 +35,7 @@ class RoutesUiState(
     ): RoutesUiState = RoutesUiState(
         favorites,
         firstDepartures,
+        fares,
         alerts,
         alertKind,
         isLoading,

@@ -26,6 +26,9 @@ class FollowedTripRepository @JvmOverloads constructor(
     private val store = FollowedTripStore(storageFile)
     private val persistenceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val stateLock = Any()
+    private var pendingDeparture: Departure? = null
+    private var hasPendingPersistence = false
+    private var persistenceWriteQueued = false
     private var followedDeparture: Departure? = restore()
     private var alarmScheduler: DepartureAlarmScheduler? = followedDeparture?.let {
         DepartureAlarmScheduler(applicationContext, it)
@@ -103,11 +106,29 @@ class FollowedTripRepository @JvmOverloads constructor(
     private fun restore(): Departure? = store.load()
 
     private fun persist(departure: Departure?) {
+        synchronized(stateLock) {
+            pendingDeparture = departure
+            hasPendingPersistence = true
+            if (persistenceWriteQueued) {
+                return
+            }
+            persistenceWriteQueued = true
+        }
         persistenceExecutor.execute {
-            try {
-                store.save(departure)
-            } catch (exception: Exception) {
-                // Persistence is best effort; the in-memory state remains authoritative.
+            while (true) {
+                val nextDeparture = synchronized(stateLock) {
+                    if (!hasPendingPersistence) {
+                        persistenceWriteQueued = false
+                        return@execute
+                    }
+                    hasPendingPersistence = false
+                    pendingDeparture
+                }
+                try {
+                    store.save(nextDeparture)
+                } catch (exception: Exception) {
+                    // Persistence is best effort; the in-memory state remains authoritative.
+                }
             }
         }
     }

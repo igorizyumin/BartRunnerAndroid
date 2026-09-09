@@ -1,7 +1,6 @@
 package com.dougkeen.bart.backend
 
 import com.dougkeen.bart.model.RealTimeDepartures
-import com.dougkeen.bart.model.Line
 import com.dougkeen.bart.model.Route
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.StationPair
@@ -40,8 +39,7 @@ class RouteDepartureProjection private constructor(
         // A later fallback may add transfer routes whose lines are not present
         // in the first route set. Build one complete time-scoped graph so the
         // fallback cannot accidentally lose its static connecting trains.
-        val schedule = Schedule.fromStatic(network, feedTime, Line.values().toSet())
-            .applyRealtime(feedIndex)
+        val schedule = snapshot.getCorrectedSchedule(network)
         val routes = schedule.routesFor(query.origin, query.destination)
         return projectWithRouting(
             routes,

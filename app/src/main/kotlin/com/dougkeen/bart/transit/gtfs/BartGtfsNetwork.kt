@@ -4,6 +4,7 @@ import com.dougkeen.bart.model.Line
 import com.dougkeen.bart.model.Station
 import java.util.ArrayList
 import java.util.Collections
+import java.util.EnumMap
 import java.util.LinkedHashMap
 import java.time.LocalDate
 
@@ -17,6 +18,7 @@ class BartGtfsNetwork private constructor(
     private val stationsByStopId = immutableMap(stationsByStopId)
     private val linesByRouteId = immutableMap(linesByRouteId)
     private val transferRules = immutableList(transferRules)
+    private val routePatternsByLine = EnumMap<Line, List<StationPattern>>(Line::class.java)
 
     /** Immutable GTFS station pattern mapped to a BART line and direction. */
     class StationPattern private constructor(
@@ -125,22 +127,25 @@ class BartGtfsNetwork private constructor(
         if (line == null) {
             return emptyList()
         }
-        val patterns = LinkedHashSet<StationPattern>()
-        for (pattern in catalog.patterns) {
-            if (line != linesByRouteId[pattern.routeId]) {
-                continue
+        synchronized(routePatternsByLine) {
+            routePatternsByLine[line]?.let { return it }
+            val patterns = LinkedHashSet<StationPattern>()
+            for (pattern in catalog.patterns) {
+                if (line != linesByRouteId[pattern.routeId]) {
+                    continue
+                }
+                val stations = stationsForPattern(pattern)
+                if (stations.size >= 2) {
+                    patterns += StationPattern.create(
+                        pattern.routeId,
+                        directionForRouteId(pattern.routeId),
+                        stations,
+                        pattern.tripIds.toList()
+                    )
+                }
             }
-            val stations = stationsForPattern(pattern)
-            if (stations.size >= 2) {
-                patterns += StationPattern.create(
-                    pattern.routeId,
-                    directionForRouteId(pattern.routeId),
-                    stations,
-                    pattern.tripIds.toList()
-                )
-            }
+            return immutableList(patterns).also { routePatternsByLine[line] = it }
         }
-        return immutableList(patterns)
     }
 
     /** Returns the static GTFS route IDs that implement a BART line. */

@@ -20,8 +20,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Collections
-import java.time.Instant
-import java.time.ZoneId
 
 /** Owns all state and coordination for the favorite-routes screen. */
 class RoutesViewModel(application: Application) : AndroidViewModel(application) {
@@ -30,6 +28,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
     private val transitRepository = app.transitRepository
     private val timeSource: TimeSource = app.timeSource
     private val routeJobs = mutableMapOf<StationPair, Job>()
+    private var fareJob: Job? = null
     private val _uiState = MutableStateFlow(RoutesUiState())
 
     val uiState: StateFlow<RoutesUiState> = _uiState.asStateFlow()
@@ -38,15 +37,17 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             favoritesRepository.uiState.collectLatest { favoritesState ->
                 val favorites = immutableList(favoritesState.favorites)
+                fareJob?.cancel()
                 _uiState.update {
                     it.copy(
                         favorites = favorites,
+                        fares = it.fares.filterKeys(favorites.toSet()::contains),
                         isLoading = favoritesState.isLoading,
                     )
                 }
                 syncRouteJobs(favorites)
                 if (!favoritesState.isLoading) {
-                    refreshFares(favorites)
+                    loadFares(favorites)
                 }
             }
         }
@@ -73,9 +74,6 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
 
     fun insertFavorite(favorite: StationPair, index: Int) =
         favoritesRepository.insertFavorite(favorite, index)
-
-    fun updateFare(favorite: StationPair, fare: String, updatedAt: Long) =
-        favoritesRepository.updateFare(favorite, fare, updatedAt)
 
     private fun syncRouteJobs(favorites: List<StationPair>) {
         val desired = favorites.toSet()
@@ -151,20 +149,18 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun refreshFares(favorites: List<StationPair>) {
-        val routesNeedingFares = favorites.filter { needsFareRefresh(it) }
-        if (routesNeedingFares.isEmpty()) return
-
-        viewModelScope.launch(Dispatchers.IO) {
+    private fun loadFares(favorites: List<StationPair>) {
+        fareJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val staticData = app.gtfsStaticData
-                val now = timeSource.nowMillis()
-                routesNeedingFares.forEach { route ->
-                    val origin = route.origin ?: return@forEach
-                    val destination = route.destination ?: return@forEach
-                    staticData.getFare(origin, destination)?.let { fare ->
-                        updateFare(route, fare, now)
-                    }
+                val fares = favorites.mapNotNull { route ->
+                    val origin = route.origin ?: return@mapNotNull null
+                    val destination = route.destination ?: return@mapNotNull null
+                    staticData.getFare(origin, destination)?.let { fare -> route to fare }
+                }.toMap()
+                _uiState.update { current ->
+                    val currentFavorites = current.favorites.toSet()
+                    current.copy(fares = immutableMap(fares.filterKeys { it in currentFavorites }))
                 }
             } catch (exception: Exception) {
                 publishError(exception)
@@ -172,19 +168,10 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun needsFareRefresh(route: StationPair): Boolean {
-        if (route.destination == null) return false
-        val timeZone = ZoneId.of("America/Los_Angeles")
-        val now = Instant.ofEpochMilli(timeSource.nowMillis()).atZone(timeZone).toLocalDate()
-        val lastUpdate = Instant.ofEpochMilli(route.fareLastUpdated)
-            .atZone(timeZone).toLocalDate()
-        return now != lastUpdate
-    }
-
     private fun immutableList(values: List<StationPair>): List<StationPair> =
         Collections.unmodifiableList(ArrayList(values))
 
-    private fun immutableMap(values: Map<StationPair, Departure>): Map<StationPair, Departure> =
+    private fun <T> immutableMap(values: Map<StationPair, T>): Map<StationPair, T> =
         Collections.unmodifiableMap(HashMap(values))
 
     private fun asException(error: Throwable): Exception =

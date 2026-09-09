@@ -65,7 +65,7 @@ class GtfsRealtimeContentHandlerTest {
             .getRealTimeDepartures(
                 GtfsRealtimeFeedIndex.from(realtimeFeed),
                 feedTime,
-                schedule,
+                schedule.applyRealtime(GtfsRealtimeFeedIndex.from(realtimeFeed)),
             )
             .getDepartures()
             .single()
@@ -160,7 +160,9 @@ class GtfsRealtimeContentHandlerTest {
             GtfsRealtimeFeedIndex.from(delayedFeed),
             initialLegs,
             900_000L,
-            Schedule.fromStatic(network, 0L),
+            Schedule.fromStatic(network, 0L).applyRealtime(
+                GtfsRealtimeFeedIndex.from(delayedFeed)
+            ),
         )
 
         assertEquals(2, refreshed.size)

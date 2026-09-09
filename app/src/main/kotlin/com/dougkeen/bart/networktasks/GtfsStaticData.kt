@@ -1,6 +1,7 @@
 package com.dougkeen.bart.networktasks
 
 import android.content.Context
+import androidx.core.content.edit
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.SystemTimeSource
 import com.dougkeen.bart.model.TimeSource
@@ -63,24 +64,22 @@ class GtfsStaticData @JvmOverloads constructor(
             )
             val lastSuccess = preferences.getLong(LAST_SUCCESS, 0L)
             if (cacheFile.isFile && now - lastSuccess < CACHE_MILLIS) {
-                cachedData = parse(cacheFile)
-                cachedAt = if (lastSuccess > 0) lastSuccess else now
-                cachedServiceDate = serviceDate
-                return cachedData!!
+                readCached(cacheFile, lastSuccess, serviceDate, now)?.let { return it }
+                preferences.edit {
+                    remove(LAST_SUCCESS)
+                    remove(LAST_ATTEMPT)
+                }
             }
 
             val lastAttempt = preferences.getLong(LAST_ATTEMPT, 0L)
             if (now - lastAttempt < CACHE_MILLIS) {
                 if (cacheFile.isFile) {
-                    cachedData = parse(cacheFile)
-                    cachedAt = if (lastSuccess > 0) lastSuccess else now
-                    cachedServiceDate = serviceDate
-                    return cachedData!!
+                    readCached(cacheFile, lastSuccess, serviceDate, now)?.let { return it }
                 }
                 throw IOException("Static GTFS refresh already attempted")
             }
 
-            preferences.edit().putLong(LAST_ATTEMPT, now).apply()
+            preferences.edit { putLong(LAST_ATTEMPT, now) }
             val temporaryFile = File(applicationContext.filesDir, "$CACHE_FILE_NAME.tmp")
             try {
                 download(temporaryFile)
@@ -91,22 +90,33 @@ class GtfsStaticData @JvmOverloads constructor(
                 if (!temporaryFile.renameTo(cacheFile)) {
                     throw IOException("Could not save static GTFS cache")
                 }
-                preferences.edit().putLong(LAST_SUCCESS, now).apply()
+                preferences.edit { putLong(LAST_SUCCESS, now) }
                 cachedData = result
                 cachedAt = now
                 cachedServiceDate = serviceDate
                 return result
             } catch (exception: IOException) {
                 temporaryFile.delete()
-                if (cacheFile.isFile) {
-                    cachedData = parse(cacheFile)
-                    cachedAt = if (lastSuccess > 0) lastSuccess else now
-                    cachedServiceDate = serviceDate
-                    return cachedData!!
-                }
+                readCached(cacheFile, lastSuccess, serviceDate, now)?.let { return it }
                 throw exception
             }
         }
+    }
+
+    private fun readCached(
+        cacheFile: File,
+        lastSuccess: Long,
+        serviceDate: String,
+        now: Long,
+    ): LoadedData? = try {
+        parse(cacheFile).also {
+            cachedData = it
+            cachedAt = if (lastSuccess > 0) lastSuccess else now
+            cachedServiceDate = serviceDate
+        }
+    } catch (exception: Exception) {
+        cacheFile.delete()
+        null
     }
 
     companion object {

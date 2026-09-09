@@ -31,8 +31,6 @@
     <string name="try_again_connection">Try again when you have a connection.</string>
     <string name="upcoming_trains">Upcoming trains</string>
     <string name="bart_train">BART train</string>
-    <string name="view_trip">View trip</string>
-    <string name="board">Board</string>
     <string name="trip_details">Trip details</string>
     <string name="share_arrival">Share arrival</string>
     <string name="stop_following">Stop following</string>
@@ -55,10 +53,6 @@
     <string name="connection_margin">%1$d min connection margin</string>
     <string name="set_departure_alarm">Set departure alarm</string>
     <string name="notify_before_train_leaves">Notify me before the train leaves</string>
-    <plurals name="connection_count">
-        <item quantity="one">%d connection</item>
-        <item quantity="other">%d connections</item>
-    </plurals>
     <plurals name="transfer_count">
         <item quantity="one">%d transfer</item>
         <item quantity="other">%d transfers</item>
@@ -67,7 +61,6 @@
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
-    <string name="arrivals_at_station">Arrivals at %1$s</string>
     <string name="fare">Fare</string>
     <string name="route_arrow">%1$s → %2$s</string>
     <string name="departure_arrival_times">Departs %1$s · arrives %2$s</string>
@@ -132,8 +125,6 @@
     <string name="trip_leaves_in">Leaves in %1$s</string>
     <string name="trip_no_departure_scheduled">No departure is currently scheduled</string>
     <string name="scheduled_only">◷ %1$s</string>
-    <string name="scheduled_realtime">◷ %1$s · ⏱</string>
-    <string name="scheduled_delay">◷ %1$s · ⏱ %2$s</string>
     <string name="scheduled_realtime_adjusted">◷ %1$s · ⏱ %2$s</string>
     <string name="scheduled_estimated">◷ %1$s · est. %2$s</string>
     <string name="scheduled_estimated_only">◷ %1$s · est.</string>

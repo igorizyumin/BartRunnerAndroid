@@ -33,12 +33,15 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
     }
 
-    fun getRealTimeDepartures(feed: GtfsRealtime.FeedMessage): RealTimeDepartures =
-        getRealTimeDepartures(
-            GtfsRealtimeFeedIndex.from(feed),
-            feedTime(feed),
-            Schedule.fromStatic(bartGtfsNetwork, feedTime(feed), Line.values().toSet()),
+    fun getRealTimeDepartures(feed: GtfsRealtime.FeedMessage): RealTimeDepartures {
+        val feedIndex = GtfsRealtimeFeedIndex.from(feed)
+        val feedTime = feedTime(feed)
+        return getRealTimeDepartures(
+            feedIndex,
+            feedTime,
+            correctedSchedule(feedIndex, feedTime),
         )
+    }
 
     fun getRealTimeDepartures(
         feedIndex: GtfsRealtimeFeedIndex,
@@ -46,9 +49,10 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     ): RealTimeDepartures = getRealTimeDepartures(
         feedIndex,
         feedTime,
-        Schedule.fromStatic(bartGtfsNetwork, feedTime, Line.values().toSet()),
+        correctedSchedule(feedIndex, feedTime),
     )
 
+    /** Uses a schedule that has already had this feed's realtime corrections applied. */
     fun getRealTimeDepartures(
         feedIndex: GtfsRealtimeFeedIndex,
         feedTime: Long,
@@ -79,12 +83,15 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         feed: GtfsRealtime.FeedMessage,
         existingLegs: List<TripLeg>,
         feedTime: Long
-    ): List<TripLeg> = updateTripLegs(
-        GtfsRealtimeFeedIndex.from(feed),
-        existingLegs,
-        feedTime,
-        Schedule.fromStatic(bartGtfsNetwork, feedTime, Line.values().toSet()),
-    )
+    ): List<TripLeg> {
+        val feedIndex = GtfsRealtimeFeedIndex.from(feed)
+        return updateTripLegs(
+            feedIndex,
+            existingLegs,
+            feedTime,
+            correctedSchedule(feedIndex, feedTime),
+        )
+    }
 
     fun updateTripLegs(
         feedIndex: GtfsRealtimeFeedIndex,
@@ -94,9 +101,10 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         feedIndex,
         existingLegs,
         feedTime,
-        Schedule.fromStatic(bartGtfsNetwork, feedTime, Line.values().toSet()),
+        correctedSchedule(feedIndex, feedTime),
     )
 
+    /** Uses a schedule that has already had this feed's realtime corrections applied. */
     fun updateTripLegs(
         feedIndex: GtfsRealtimeFeedIndex,
         existingLegs: List<TripLeg>,
@@ -331,18 +339,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         feedTime: Long,
         schedule: Schedule
     ): List<TripSnapshot> {
-        val scheduledTrips = schedule.applyRealtime(
-            GtfsRealtimeFeedIndex.from(
-                GtfsRealtime.FeedMessage.newBuilder()
-                    .setHeader(
-                        GtfsRealtime.FeedHeader.newBuilder()
-                            .setGtfsRealtimeVersion("2.0")
-                            .build()
-                    )
-                    .addAllEntity(entities)
-                    .build()
-            )
-        ).trips.map(::snapshotFromSchedule).toMutableList()
+        val scheduledTrips = schedule.trips.map(::snapshotFromSchedule).toMutableList()
         val scheduledIds = scheduledTrips.mapNotNull { it.tripId }.toSet()
         val realtimeOnly = entities.mapNotNull { entity ->
             if (!entity.hasTripUpdate()) null else parseTrip(entity.tripUpdate, feedTime)
@@ -375,6 +372,15 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         }
         return scheduledTrips.also(::mergePittsburgTerminalTrips)
     }
+
+    private fun correctedSchedule(
+        feedIndex: GtfsRealtimeFeedIndex,
+        feedTime: Long,
+    ): Schedule = Schedule.fromStatic(
+        bartGtfsNetwork,
+        feedTime,
+        Line.values().toSet(),
+    ).applyRealtime(feedIndex)
 
     private fun snapshotFromSchedule(trip: Schedule.Trip): TripSnapshot {
         val result = TripSnapshot(trip.key.tripId, trip.line, trip.direction)

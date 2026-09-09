@@ -31,6 +31,8 @@ class FavoritesRepository(context: Context) : AutoCloseable {
     private var currentFavorites: List<StationPair> = emptyList()
     private var loaded = false
     private val pendingChanges = mutableListOf<(MutableList<StationPair>) -> Unit>()
+    private var pendingSnapshot: List<StationPair>? = null
+    private var persistenceWriteQueued = false
 
     private val _uiState = MutableStateFlow(
         FavoritesUiState(emptyList(), isLoading = true)
@@ -66,18 +68,25 @@ class FavoritesRepository(context: Context) : AutoCloseable {
         }
     }
 
-    fun updateFare(favorite: StationPair, fare: String, updatedAt: Long) {
-        updateFavorites { favorites ->
-            val index = favorites.indexOf(favorite)
-            if (index >= 0) {
-                favorites[index] = favorite.withFare(fare, updatedAt)
-            }
-        }
-    }
-
     private fun persistSnapshot(snapshot: List<StationPair>) {
+        synchronized(stateLock) {
+            pendingSnapshot = snapshot
+            if (persistenceWriteQueued) {
+                return
+            }
+            persistenceWriteQueued = true
+        }
         persistenceExecutor.execute {
-            writeSnapshot(snapshot)
+            while (true) {
+                val nextSnapshot = synchronized(stateLock) {
+                    pendingSnapshot?.also { pendingSnapshot = null }
+                        ?: run {
+                            persistenceWriteQueued = false
+                            return@execute
+                        }
+                }
+                writeSnapshot(nextSnapshot)
+            }
         }
     }
 

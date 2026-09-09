@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.edit
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -155,10 +156,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
 
     private fun updateState(leadTimeMinutes: Int, pending: Boolean) {
         _state.value = DepartureAlarmState(leadTimeMinutes, pending)
-        preferences.edit()
-            .putInt(stateKey + LEAD_TIME_SUFFIX, leadTimeMinutes)
-            .putBoolean(stateKey + PENDING_SUFFIX, pending)
-            .apply()
+        preferences.edit {
+            putInt(stateKey + LEAD_TIME_SUFFIX, leadTimeMinutes)
+            putBoolean(stateKey + PENDING_SUFFIX, pending)
+        }
     }
 
     private fun buildStateKey(departure: Departure): String = buildString {
