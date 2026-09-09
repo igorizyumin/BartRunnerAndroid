@@ -690,8 +690,12 @@ class Schedule private constructor(
             val routeIds = lines.flatMap { network.routeIdsForLine(it) }.toSet()
             val staticTrips = mutableListOf<Trip>()
             listOf(currentDate.minusDays(1), currentDate).forEach { serviceDate ->
-                network.scheduledTripsFor(serviceDate)
-                    .filter { it.trip.routeId in routeIds }
+                network.scheduledTripsFor(
+                    serviceDate,
+                    routeIds,
+                    feedTime - LOOK_BEHIND_MILLIS,
+                    feedTime + LOOK_AHEAD_MILLIS,
+                )
                     .filter { scheduledTrip ->
                         scheduledTrip.stopTimes.any { stopTime ->
                             epochMillis(serviceDate, stopTime) in

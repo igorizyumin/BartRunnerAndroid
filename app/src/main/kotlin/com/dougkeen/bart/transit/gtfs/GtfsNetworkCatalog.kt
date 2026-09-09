@@ -121,8 +121,8 @@ class GtfsNetworkCatalog private constructor(
     val stopTimesByTripId: Map<String, List<GtfsStopTime>> = immutableMap(
         stopTimesByTripId.mapValues { (_, value) -> immutableList(value) }
     )
-    private val calendarsByServiceId = immutableMap(calendarsByServiceId)
-    private val calendarDatesByServiceId = immutableMap(
+    internal val calendarsByServiceId = immutableMap(calendarsByServiceId)
+    internal val calendarDatesByServiceId = immutableMap(
         calendarDatesByServiceId.mapValues { (_, value) -> immutableMap(value) }
     )
     val patterns: List<GtfsRoutePattern> = immutableList(patterns)
@@ -145,6 +145,12 @@ class GtfsNetworkCatalog private constructor(
                 val stopTimes = stopTimesByTripId[trip.tripId].orEmpty()
                 if (stopTimes.isEmpty()) null else GtfsScheduledTrip(trip, stopTimes)
             }
+        }
+
+    /** Returns the GTFS services active on a date without scanning trip rows. */
+    internal fun activeServiceIdsFor(serviceDate: LocalDate): Set<String> =
+        calendarsByServiceId.keys.filterTo(LinkedHashSet()) { serviceId ->
+            isServiceActive(serviceId, serviceDate)
         }
 
     private fun isServiceActive(serviceId: String, date: LocalDate): Boolean {
@@ -277,6 +283,27 @@ class GtfsNetworkCatalog private constructor(
                 )
             }
         }
+
+        internal fun fromPersisted(
+            stops: Map<String, GtfsStop>,
+            routes: Map<String, GtfsRoute>,
+            trips: Map<String, GtfsTrip>,
+            stopIdsByTripId: Map<String, List<String>>,
+            calendars: Map<String, GtfsCalendar>,
+            calendarDates: Map<String, Map<LocalDate, Int>>,
+            patterns: List<GtfsRoutePattern>,
+            transfers: List<GtfsTransfer>,
+        ): GtfsNetworkCatalog = GtfsNetworkCatalog(
+            stopsById = stops,
+            routesById = routes,
+            tripsById = trips,
+            stopIdsByTripId = stopIdsByTripId,
+            stopTimesByTripId = emptyMap(),
+            calendarsByServiceId = calendars,
+            calendarDatesByServiceId = calendarDates,
+            patterns = patterns,
+            transfers = transfers,
+        )
 
         private fun requiredFile(files: Map<String, String>, name: String): String =
             files[name] ?: throw IllegalArgumentException("GTFS file is missing: $name")

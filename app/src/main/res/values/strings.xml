@@ -2,6 +2,7 @@
 <resources>
 
     <string name="app_name">BART Runner</string>
+    <string name="static_data_loading">Preparing schedule data…</string>
     <string name="back">Back</string>
     <string name="saved_trips">Saved trips</string>
     <string name="add">Add</string>

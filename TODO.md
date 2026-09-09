@@ -84,8 +84,8 @@ and keep the implementation simple.
 
 - [x] Make a corrupt or unparsable static cache fall back to a refresh instead
   of failing from the fresh-cache path.
-- [ ] Cache scheduled trips by service date only if snapshot-level schedule
-  caching does not eliminate the repeated full catalog scan.
+- [x] Persist normalized static GTFS data in Room/SQLite so process restarts
+  load topology from the database and query only active, time-windowed trips.
 - [ ] Avoid holding the static-data lock across network I/O if profiling shows
   contention; do not redesign this preemptively.
 

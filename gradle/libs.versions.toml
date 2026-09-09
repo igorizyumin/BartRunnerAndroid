@@ -16,10 +16,12 @@ commonsCsv = "1.14.1"
 composeBom = "2026.08.00"
 activityCompose = "1.13.0"
 composeCompiler = "2.4.20"
+room = "2.8.4"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "composeCompiler" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.10" }
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -37,6 +39,8 @@ lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-com
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commonsCsv" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }

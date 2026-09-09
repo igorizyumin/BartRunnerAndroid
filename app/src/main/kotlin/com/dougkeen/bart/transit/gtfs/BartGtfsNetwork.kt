@@ -13,7 +13,8 @@ class BartGtfsNetwork private constructor(
     private val catalog: GtfsNetworkCatalog,
     stationsByStopId: Map<String, Station>,
     linesByRouteId: Map<String, Line>,
-    transferRules: List<TransferRule>
+    transferRules: List<TransferRule>,
+    private val scheduledTripsLoader: ScheduledTripsLoader?,
 ) {
     private val stationsByStopId = immutableMap(stationsByStopId)
     private val linesByRouteId = immutableMap(linesByRouteId)
@@ -196,6 +197,27 @@ class BartGtfsNetwork private constructor(
     fun scheduledTripsFor(serviceDate: LocalDate): List<GtfsScheduledTrip> =
         catalog.scheduledTripsFor(serviceDate)
 
+    /** Returns only candidate trips in a projection's time window when supported. */
+    fun scheduledTripsFor(
+        serviceDate: LocalDate,
+        routeIds: Set<String>,
+        windowStartMillis: Long,
+        windowEndMillis: Long,
+    ): List<GtfsScheduledTrip> = scheduledTripsLoader?.invoke(
+        serviceDate,
+        routeIds,
+        windowStartMillis,
+        windowEndMillis,
+    ) ?: catalog.scheduledTripsFor(serviceDate).filter { scheduledTrip ->
+        scheduledTrip.trip.routeId in routeIds
+            && scheduledTrip.stopTimes.any { stopTime ->
+                val time = stopTime.departureSeconds ?: stopTime.arrivalSeconds ?: return@any false
+                val epoch = serviceDate.atStartOfDay(java.time.ZoneId.of("America/Los_Angeles"))
+                    .toInstant().toEpochMilli() + time * 1000L
+                epoch in windowStartMillis..windowEndMillis
+            }
+    }
+
     fun getTransferRules(): List<TransferRule> = transferRules
 
     /**
@@ -298,6 +320,13 @@ class BartGtfsNetwork private constructor(
     companion object {
         @JvmStatic
         fun fromCatalog(catalog: GtfsNetworkCatalog?): BartGtfsNetwork {
+            return fromCatalog(catalog, null)
+        }
+
+        fun fromCatalog(
+            catalog: GtfsNetworkCatalog?,
+            scheduledTripsLoader: ScheduledTripsLoader?,
+        ): BartGtfsNetwork {
             requireNotNull(catalog) { "A GTFS catalog is required" }
 
             val stationsByStopId = LinkedHashMap<String, Station>()
@@ -311,7 +340,8 @@ class BartGtfsNetwork private constructor(
                 catalog,
                 stationsByStopId,
                 linesByRouteId,
-                transferRules(catalog, stationsByStopId, linesByRouteId)
+                transferRules(catalog, stationsByStopId, linesByRouteId),
+                scheduledTripsLoader,
             )
         }
 
@@ -408,6 +438,13 @@ class BartGtfsNetwork private constructor(
                 .any { it.equals("OAKL", ignoreCase = true) }
     }
 }
+
+typealias ScheduledTripsLoader = (
+    serviceDate: LocalDate,
+    routeIds: Set<String>,
+    windowStartMillis: Long,
+    windowEndMillis: Long,
+) -> List<GtfsScheduledTrip>
 
 private fun <T> immutableList(values: Collection<T>): List<T> =
     Collections.unmodifiableList(ArrayList(values))
