@@ -534,6 +534,8 @@ fun RoutePickerDialog(
     }
     var addReturn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    val chooseOriginError = stringResource(R.string.choose_origin_station)
+    val sameStationError = stringResource(R.string.origin_destination_must_differ)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -550,8 +552,8 @@ fun RoutePickerDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if (origin == null) error = context.getString(R.string.choose_origin_station)
-                else if (destination == origin) error = context.getString(R.string.origin_destination_must_differ)
+                if (origin == null) error = chooseOriginError
+                else if (destination == origin) error = sameStationError
                 else {
                     preferences.edit {
                         putInt(LAST_SELECTED_ORIGIN, stations.indexOf(origin))
@@ -1043,6 +1045,7 @@ private fun TripTimeline(departure: Departure, tick: Long) {
 @Composable
 private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val unavailableTime = stringResource(R.string.station_time_unavailable)
     val lineColor = lineColor(leg.line)
     val tileColor = when {
         current -> MaterialTheme.colorScheme.surfaceContainerHighest
@@ -1074,9 +1077,9 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
             )
             if (leg.stops.isEmpty()) {
                 val departure = if (leg.departureTime > 0L) formatTime(leg.departureTime)
-                else context.getString(R.string.station_time_unavailable)
+                else unavailableTime
                 val arrival = if (leg.arrivalTime > 0L) formatTime(leg.arrivalTime)
-                else context.getString(R.string.station_time_unavailable)
+                else unavailableTime
                 Text(stringResource(R.string.departure_arrival_times, departure, arrival), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
             } else {
                 Column(Modifier.padding(top = 10.dp)) {
@@ -1099,6 +1102,7 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
 @Composable
 private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, color: Color, isFirst: Boolean, isLast: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val unavailableEta = stringResource(R.string.eta_unavailable)
     val name = stop.station?.getName().orEmpty()
     val displayTime = if (departure) stop.departureTime else stop.arrivalTime
     val scheduleDetails = DepartureTextFormatter.stopSchedulePresentation(context, stop, departure)
@@ -1121,7 +1125,7 @@ private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, co
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 if (displayTime > 0L) etaText(context, displayTime, now)
-                else context.getString(R.string.eta_unavailable),
+                else unavailableEta,
                 style = MaterialTheme.typography.bodySmall,
                 color = if (reached) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1139,22 +1143,28 @@ private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, co
 
 @Composable
 private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val arrival = arriving.stops.lastOrNull()?.arrivalTime ?: arriving.arrivalTime
     val departure = next.stops.firstOrNull()?.departureTime ?: next.departureTime
     val margin = departure - arrival
     val warning = margin < 0 || (arriving.minimumTransferSecondsAfter > 0 && margin < arriving.minimumTransferSecondsAfter * 1000L)
+    val unavailableDeparture = stringResource(R.string.next_departure_unavailable)
+    val connectionText = if (departure <= 0) {
+        unavailableDeparture
+    } else {
+        val arrivalText = stringResource(R.string.arrives_at_time, formatTime(arrival))
+        val marginText = if (margin < 0) {
+            stringResource(R.string.connection_missed)
+        } else {
+            stringResource(R.string.connection_margin, margin / 60000)
+        }
+        stringResource(R.string.station_eta, arrivalText, marginText)
+    }
     Row(Modifier.fillMaxWidth().padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(2.dp).height(34.dp).background(if (warning) Warning else MaterialTheme.colorScheme.outline))
         Column(Modifier.padding(start = 12.dp)) {
             Text(stringResource(R.string.transfer_at, arriving.destination?.getName().orEmpty()), fontWeight = FontWeight.SemiBold, color = if (warning) Warning else MaterialTheme.colorScheme.primary)
             Text(
-                if (departure <= 0) context.getString(R.string.next_departure_unavailable)
-                else context.getString(
-                    R.string.station_eta,
-                    context.getString(R.string.arrives_at_time, formatTime(arrival)),
-                    if (margin < 0) context.getString(R.string.connection_missed) else context.getString(R.string.connection_margin, margin / 60000),
-                ),
+                connectionText,
                 style = MaterialTheme.typography.bodySmall,
                 color = if (warning) Warning else MaterialTheme.colorScheme.onSurfaceVariant,
             )
