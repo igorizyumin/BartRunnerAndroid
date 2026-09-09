@@ -269,7 +269,7 @@ The exhaustive static route audit is intentionally manual because it expands
 every station pair in both fixture networks. Run it explicitly with:
 
 ```text
-./gradlew -DrunAllPairs=true :app:testDebugUnitTest --tests com.dougkeen.bart.transit.gtfs.LiveGtfsRoutingTest.fixtureProtobufsProduceValidRoutingForEveryStationPair
+./gradlew -DrunAllPairs=true :app:testDebugUnitTest --tests in.izyum.bart.transit.gtfs.LiveGtfsRoutingTest.fixtureProtobufsProduceValidRoutingForEveryStationPair
 ```
 
 When adding a new fixture, test both the station-only board and at least one

@@ -99,7 +99,7 @@ android {
         }
     }
 
-    namespace = 'com.dougkeen.bart'
+    namespace = 'in.izyum.bart'
     lint {
         abortOnError = true
     }
