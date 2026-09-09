@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -22,7 +23,10 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
 
 data class TransitFeedState(
     val snapshot: TransitFeedSnapshot? = null,
@@ -34,9 +38,11 @@ data class TransitFeedState(
 class TransitRepository(
     private val feedClient: TransitFeedClient,
     private val refreshIntervalMillis: Long,
+    private val backgroundPollingNeeded: StateFlow<Boolean> = MutableStateFlow(false),
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
+    private val appInForeground = MutableStateFlow(false)
     private val _state = MutableStateFlow(TransitFeedState())
     private val feedUpdates = MutableSharedFlow<TransitFeedState>(
         replay = 1,
@@ -54,13 +60,18 @@ class TransitRepository(
         }
         feedUpdates.tryEmit(_state.value)
         scope.launch {
-            feedUpdates.subscriptionCount
-                .map { count -> count > 0 }
+            combine(
+                feedUpdates.subscriptionCount.map { count -> count > 0 },
+                appInForeground,
+                backgroundPollingNeeded,
+            ) { hasSubscribers, foreground, backgroundAllowed ->
+                hasSubscribers && (foreground || backgroundAllowed)
+            }
                 .distinctUntilChanged()
-                .collectLatest { observed ->
-                    if (observed) {
+                .collectLatest { shouldPoll ->
+                    if (shouldPoll) {
                         while (isActive) {
-                            refreshIfStale()
+                            refreshIfStaleCancellable()
                             delay(refreshIntervalMillis)
                         }
                     }
@@ -70,6 +81,11 @@ class TransitRepository(
 
     /** Latest complete feed and its most recent refresh error, if any. */
     val state: StateFlow<TransitFeedState> = _state.asStateFlow()
+
+    /** Updates whether an activity is currently visible in the app process. */
+    fun setAppInForeground(inForeground: Boolean) {
+        appInForeground.value = inForeground
+    }
 
     /**
      * Replays the latest state and holds one polling lease for the collector.
@@ -128,6 +144,28 @@ class TransitRepository(
         fetchAndPublish()
     }
 
+    private suspend fun refreshIfStaleCancellable() {
+        if (!beginRefresh(force = false)) {
+            return
+        }
+
+        try {
+            val fetchResult = runInterruptible(Dispatchers.IO) {
+                try {
+                    feedClient.fetchFeeds()
+                } catch (exception: Exception) {
+                    TransitFeedFetchResult.failed(exception)
+                }
+            }
+            currentCoroutineContext().ensureActive()
+            publishFetchResult(fetchResult)
+        } finally {
+            synchronized(lock) {
+                refreshInProgress = false
+            }
+        }
+    }
+
     private fun beginRefresh(force: Boolean): Boolean {
         synchronized(lock) {
             if (closed || refreshInProgress) {
@@ -152,6 +190,11 @@ class TransitRepository(
         } catch (exception: Exception) {
             TransitFeedFetchResult.failed(exception)
         }
+
+        publishFetchResult(fetchResult)
+    }
+
+    private fun publishFetchResult(fetchResult: TransitFeedFetchResult) {
 
         val refreshErrors = mutableListOf<Exception>()
         var stateToPublish: TransitFeedState? = null

@@ -61,8 +61,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
 
         postAlarmNotification(context, targetIntent, boardedDeparture)
 
-        application.followedTripRepository.getAlarmScheduler()
-            ?.notifyAlarmHasBeenHandled()
+        application.followedTripRepository.notifyAlarmHasBeenHandled()
         context.startForegroundService(
             Intent(context, BoardedDepartureService::class.java)
                 .setAction(BoardedDepartureService.ACTION_REFRESH_DEPARTURE),

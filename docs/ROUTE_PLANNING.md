@@ -168,6 +168,10 @@ earlier destination such as 16th Street. `YELLOW_LATE_NIGHT` is applied to the
 Millbrae leg or to a station-board train being shown as Millbrae-bound; it is
 not applied merely because the train eventually continues to Millbrae.
 
+The special topology is selected from the feed timestamp during the local
+21:00–05:00 service window. During the day, a direct Yellow trip to Millbrae
+remains a normal single `YELLOW` leg.
+
 ### Direction is a route property, not just a train destination
 
 The route direction is derived from the static GTFS route name (`-N` or `-S`)
@@ -237,6 +241,14 @@ remain unchanged in the test fixture directory.
   The matching protobuf fixtures are
   `app/src/test/resources/gtfsrt/bart_trip_updates_current.pb` and
   `app/src/test/resources/gtfsrt/bart_alerts_current.pb`.
+- `bart_trip_updates_live_20260908_194746.pb` and
+  `bart_alerts_live_20260908_194746.pb` — earlier paired live snapshot captured
+  from BART at 2026-09-08 19:47:46 PDT for the Castro Valley to SFO regression.
+- `bart_trip_updates_live_20260908_202339.pb` and
+  `bart_alerts_live_20260908_202339.pb` — latest paired live snapshot captured
+  from BART at 2026-09-08 20:23:39 PDT for the Castro Valley to SFO regression.
+  The matching test fixtures are in
+  `app/src/test/resources/gtfsrt/`.
 
 ## Regression coverage
 

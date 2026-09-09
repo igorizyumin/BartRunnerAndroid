@@ -141,10 +141,23 @@ class Schedule private constructor(
         val direct = catalogDirectRoutes(origin, destination)
             .filter(::hasUsableService)
         val transferAlternatives = preferredTransferRoutes(origin, destination)
+        val lateNightSfoMillbrae = if (isLateNightSfoMillbraeService()
+            && destination == Station.MLBR
+        ) {
+            lateNightSfoMillbraeRoutes(origin, destination)
+        } else {
+            emptyList()
+        }
+        val normalRoutes = uniqueRoutes(
+            direct.map(::withTerminalShuttle) + transferAlternatives
+        ).sortedWith(routePreference)
         return immutableList(
-            uniqueRoutes(
-                direct.map(::withTerminalShuttle) + transferAlternatives
-            ).sortedWith(routePreference)
+            lateNightSfoMillbrae + normalRoutes.filterNot { normal ->
+                lateNightSfoMillbrae.any { special ->
+                    special.lines == normal.lines
+                        && special.transferStations == normal.transferStations
+                }
+            }
         )
     }
 
@@ -211,6 +224,13 @@ class Schedule private constructor(
             )
         )
         return if (hasUsableService(route)) listOf(route) else emptyList()
+    }
+
+    /** Whether the feed represents BART's late-night SFO/Millbrae service. */
+    fun isLateNightSfoMillbraeService(): Boolean {
+        if (feedTime <= 0L) return false
+        val hour = Instant.ofEpochMilli(feedTime).atZone(PACIFIC_ZONE).hour
+        return hour >= LATE_NIGHT_START_HOUR || hour < LATE_NIGHT_END_HOUR
     }
 
     private val routePreference = compareBy<Route> { routeScore(it) }
@@ -654,6 +674,8 @@ class Schedule private constructor(
         private const val LOOK_BEHIND_MILLIS = 30L * 60L * 1000L
         private const val DEFAULT_PITT_TO_PCTR_MILLIS = 12L * 60L * 1000L
         private const val DEFAULT_PCTR_TO_ANTC_MILLIS = 7L * 60L * 1000L
+        private const val LATE_NIGHT_START_HOUR = 21
+        private const val LATE_NIGHT_END_HOUR = 5
 
         @JvmStatic
         fun fromStatic(

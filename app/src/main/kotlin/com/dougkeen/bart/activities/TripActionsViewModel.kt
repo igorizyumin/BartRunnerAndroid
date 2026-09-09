@@ -53,7 +53,7 @@ class TripActionsViewModel(application: Application) :
     }
 
     fun cancelAlarm(): String {
-        followedTripRepository.getAlarmScheduler()?.cancel()
+        followedTripRepository.cancelAlarm()
         refreshAlarmState()
         return BoardedDepartureService.ACTION_CANCEL_ALARM
     }
@@ -64,7 +64,7 @@ class TripActionsViewModel(application: Application) :
     }
 
     fun setAlarm(leadTimeMinutes: Int) {
-        followedTripRepository.getAlarmScheduler()?.setUp(leadTimeMinutes)
+        followedTripRepository.setAlarm(leadTimeMinutes)
         refreshAlarmState()
     }
 

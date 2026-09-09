@@ -32,7 +32,11 @@ class FollowedTripRepository @JvmOverloads constructor(
     }
 
     private val _state = MutableStateFlow(toState(followedDeparture))
+    private val _backgroundPollingNeeded = MutableStateFlow(
+        alarmScheduler?.isPending == true,
+    )
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
+    val backgroundPollingNeeded: StateFlow<Boolean> = _backgroundPollingNeeded.asStateFlow()
 
     fun getFollowedDeparture(): Departure? {
         val departure = synchronized(stateLock) { followedDeparture }
@@ -61,6 +65,7 @@ class FollowedTripRepository @JvmOverloads constructor(
                 DepartureAlarmScheduler(applicationContext, it)
             }
             _state.value = toState(departure)
+            _backgroundPollingNeeded.value = alarmScheduler?.isPending == true
         }
 
         persist(departure)
@@ -72,6 +77,27 @@ class FollowedTripRepository @JvmOverloads constructor(
 
     fun getAlarmScheduler(): DepartureAlarmScheduler? {
         return synchronized(stateLock) { alarmScheduler }
+    }
+
+    fun setAlarm(leadTimeMinutes: Int) {
+        synchronized(stateLock) { alarmScheduler }?.setUp(leadTimeMinutes)
+        refreshBackgroundPollingState()
+    }
+
+    fun cancelAlarm() {
+        synchronized(stateLock) { alarmScheduler }?.cancel()
+        refreshBackgroundPollingState()
+    }
+
+    fun notifyAlarmHasBeenHandled() {
+        synchronized(stateLock) { alarmScheduler }?.notifyAlarmHasBeenHandled()
+        refreshBackgroundPollingState()
+    }
+
+    private fun refreshBackgroundPollingState() {
+        _backgroundPollingNeeded.value = synchronized(stateLock) {
+            alarmScheduler?.isPending == true
+        }
     }
 
     private fun restore(): Departure? = store.load()

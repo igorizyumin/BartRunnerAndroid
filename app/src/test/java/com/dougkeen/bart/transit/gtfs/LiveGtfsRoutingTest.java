@@ -603,6 +603,7 @@ public class LiveGtfsRoutingTest {
                 departures.getDepartures().isEmpty());
         boolean hasSfo = false;
         for (Departure departure : departures.getDepartures()) {
+            assertFeasibleItinerary(departure, Station._12TH, Station.SFIA);
             if (departure.getTrainDestination() == Station.SFIA) {
                 hasSfo = true;
                 break;
@@ -610,6 +611,34 @@ public class LiveGtfsRoutingTest {
         }
         assertTrue("routes=" + routes + " departures="
                         + departures.getDepartures(), hasSfo);
+    }
+
+    @Test
+    public void liveSnapshotRetriesAnAlternativeLineWhenThePreferredTransferMisses()
+            throws Exception {
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station.CAST, Station.SFIA), NETWORK)
+                .project(new TransitFeedSnapshot(
+                        liveCastroSfoTripUpdates(), emptyFeed(), 0L));
+
+        boolean hasBlueToYellow = false;
+        for (Departure departure : departures.getDepartures()) {
+            assertFeasibleItinerary(departure, Station.CAST, Station.SFIA);
+            if (linesOf(departure.getTripLegs()).equals(
+                    Arrays.asList(Line.BLUE, Line.YELLOW))
+                    && departure.getTripLegs().get(
+                            departure.getTripLegs().size() - 1).getDestination()
+                            == Station.SFIA) {
+                hasBlueToYellow = true;
+                break;
+            }
+        }
+        assertTrue("expected Blue to Yellow fallback: "
+                        + departures.getDepartures().stream()
+                        .map(departure -> linesOf(departure.getTripLegs())
+                                + ":" + departure.getTrainDestination())
+                        .collect(java.util.stream.Collectors.toList()),
+                hasBlueToYellow);
     }
 
     @Test
@@ -639,6 +668,7 @@ public class LiveGtfsRoutingTest {
         boolean hasDirectRed = false;
         boolean hasOrangeToYellow = false;
         for (Departure departure : departures.getDepartures()) {
+            assertFeasibleItinerary(departure, Station.DBRK, Station.POWL);
             if (departure.getLine() == Line.RED && !departure.hasTransfers()) {
                 hasDirectRed = true;
             }
@@ -689,6 +719,7 @@ public class LiveGtfsRoutingTest {
                         + departures.getDepartures(),
                 departures.getDepartures().isEmpty());
         for (Departure departure : departures.getDepartures()) {
+            assertFeasibleItinerary(departure, Station._12TH, Station._16TH);
             assertEquals(Station._16TH,
                     departure.getTripLegs().get(departure.getTripLegs().size() - 1)
                             .getDestination());
@@ -706,9 +737,14 @@ public class LiveGtfsRoutingTest {
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty());
         for (Departure departure : departures.getDepartures()) {
-            assertEquals(2, departure.getTripLegs().size());
+            assertFeasibleItinerary(departure, Station._12TH, Station.MLBR);
+            assertEquals("departure=" + linesOf(departure.getTripLegs())
+                            + ":" + departure.getTrainDestination(),
+                    2, departure.getTripLegs().size());
             assertEquals(Station.SFIA,
                     departure.getTripLegs().get(0).getDestination());
+            assertEquals(Line.YELLOW,
+                    departure.getTripLegs().get(0).getLine());
             assertEquals(Line.YELLOW_LATE_NIGHT,
                     departure.getTripLegs().get(1).getLine());
             assertEquals(Station.MLBR,
@@ -969,6 +1005,11 @@ public class LiveGtfsRoutingTest {
         return tripUpdates("/gtfsrt/bart_trip_updates_current.pb");
     }
 
+    private static GtfsRealtime.FeedMessage liveCastroSfoTripUpdates()
+            throws Exception {
+        return tripUpdates("/gtfsrt/bart_trip_updates_live_20260908_202339.pb");
+    }
+
     private static GtfsRealtime.FeedMessage nightTripUpdates() throws Exception {
         return tripUpdates("/gtfsrt/bart_trip_updates_night.pb");
     }
@@ -1001,6 +1042,43 @@ public class LiveGtfsRoutingTest {
             result.add(leg.getLine());
         }
         return result;
+    }
+
+    private static void assertFeasibleItinerary(
+            Departure departure, Station expectedOrigin, Station expectedDestination) {
+        List<TripLeg> legs = departure.getTripLegs();
+        assertFalse("departure has no legs: " + describe(departure), legs.isEmpty());
+        assertEquals("wrong itinerary origin: " + describe(departure),
+                expectedOrigin, legs.get(0).getOrigin());
+        assertEquals("wrong itinerary destination: " + describe(departure),
+                expectedDestination, legs.get(legs.size() - 1).getDestination());
+        for (int index = 0; index < legs.size(); index++) {
+            TripLeg leg = legs.get(index);
+            assertTrue("leg departs after it arrives: " + describe(departure),
+                    leg.getArrivalTime() <= 0L
+                            || leg.getDepartureTime() <= leg.getArrivalTime());
+            if (index == 0) {
+                continue;
+            }
+            TripLeg previous = legs.get(index - 1);
+            assertEquals("legs do not meet: " + describe(departure),
+                    previous.getDestination(), leg.getOrigin());
+            if (previous.getArrivalTime() > 0L && leg.getDepartureTime() > 0L) {
+                assertTrue("connection goes backwards in time: "
+                                + describe(departure),
+                        leg.getDepartureTime() >= previous.getArrivalTime());
+            }
+        }
+    }
+
+    private static String describe(Departure departure) {
+        return linesOf(departure.getTripLegs()) + " trips="
+                + departure.getTripLegs().stream()
+                .map(TripLeg::getTripId)
+                .collect(java.util.stream.Collectors.toList())
+                + " times=" + departure.getTripLegs().stream()
+                .map(leg -> leg.getDepartureTime() + "->" + leg.getArrivalTime())
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private static List<Station> transferStationsOf(List<TripLeg> legs) {

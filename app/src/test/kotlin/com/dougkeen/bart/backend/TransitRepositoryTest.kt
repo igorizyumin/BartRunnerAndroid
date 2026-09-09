@@ -5,6 +5,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
@@ -107,6 +108,68 @@ class TransitRepositoryTest {
     }
 
     @Test
+    fun pollingWaitsForTheAppToBecomeForeground() = runBlocking {
+        val client = FakeFeedClient(generatedSnapshots = true)
+        repository = newInactiveRepository(client, 25L)
+
+        val collection = launch {
+            repository!!.feed().collect()
+        }
+        delay(100L)
+        assertEquals(0, client.fetchCount.get())
+
+        repository!!.setAppInForeground(true)
+        withTimeout(TIMEOUT_MILLIS) {
+            while (client.fetchCount.get() < 1) {
+                delay(5L)
+            }
+        }
+        collection.cancelAndJoin()
+    }
+
+    @Test
+    fun backgroundPollingMayContinueWhenAnAlarmIsPending() = runBlocking {
+        val client = FakeFeedClient(generatedSnapshots = true)
+        val alarmPending = MutableStateFlow(false)
+        repository = TransitRepository(client, 25L, alarmPending)
+
+        val collection = launch {
+            repository!!.feed().collect()
+        }
+        delay(100L)
+        assertEquals(0, client.fetchCount.get())
+
+        alarmPending.value = true
+        withTimeout(TIMEOUT_MILLIS) {
+            while (client.fetchCount.get() < 1) {
+                delay(5L)
+            }
+        }
+        collection.cancelAndJoin()
+    }
+
+    @Test
+    fun pollingStopsWhenTheAppLeavesTheForegroundWithoutAnAlarm() = runBlocking {
+        val client = FakeFeedClient(generatedSnapshots = true)
+        repository = newRepository(client, 25L)
+
+        val collection = launch {
+            repository!!.feed().collect()
+        }
+        withTimeout(TIMEOUT_MILLIS) {
+            while (client.fetchCount.get() < 1) {
+                delay(5L)
+            }
+        }
+        repository!!.setAppInForeground(false)
+        val countAfterStop = client.fetchCount.get()
+        delay(100L)
+
+        assertEquals(countAfterStop, client.fetchCount.get())
+        collection.cancelAndJoin()
+    }
+
+    @Test
     fun restartingFlowWithinRefreshIntervalReusesLatestSnapshot() = runBlocking {
         val client = FakeFeedClient(generatedSnapshots = true)
         repository = newRepository(client, 60_000L)
@@ -179,6 +242,11 @@ class TransitRepositoryTest {
     }
 
     private fun newRepository(client: TransitFeedClient, intervalMillis: Long) =
+        newInactiveRepository(client, intervalMillis).also {
+            it.setAppInForeground(true)
+        }
+
+    private fun newInactiveRepository(client: TransitFeedClient, intervalMillis: Long) =
         TransitRepository(client, intervalMillis)
 
     private fun snapshot(id: Long, timestampMillis: Long): TransitFeedSnapshot {

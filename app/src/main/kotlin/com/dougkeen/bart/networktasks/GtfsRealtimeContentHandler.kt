@@ -114,11 +114,79 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         }.toMutableList()
 
         val route = routes.firstOrNull { matchesExistingLegs(it, updatedLegs) }
-        if (route != null && updatedLegs.size < route.lines.size) {
-            appendConnectingLegs(route, updatedLegs, trips)
+        if (route != null) {
+            refreshConnectingLegs(route, updatedLegs, trips)
         }
         return updatedLegs
     }
+
+    /**
+     * Revalidates connections after each leg has been independently refreshed.
+     * A delay can invalidate the previously selected next train, so replace it
+     * with the first feasible later train or remove the unusable suffix.
+     */
+    private fun refreshConnectingLegs(
+        route: Route,
+        legs: MutableList<TripLeg>,
+        trips: List<TripSnapshot>,
+    ) {
+        var index = 1
+        while (index < route.lines.size) {
+            val previous = legs.getOrNull(index - 1) ?: return
+            val legOrigin = previous.destination ?: return
+            val legDestination = if (index < route.transferStations.size) {
+                route.transferStations[index]
+            } else {
+                destination ?: return
+            }
+            val existing = legs.getOrNull(index)
+            if (existing != null
+                && existing.line == route.lines[index]
+                && existing.origin == legOrigin
+                && existing.destination == legDestination
+                && !isCanceled(existing, trips)
+                && connectionIsFeasible(previous, existing)
+            ) {
+                index++
+                continue
+            }
+
+            val connectingTrip = findConnectingTrip(
+                route.lines[index],
+                legOrigin,
+                legDestination,
+                previous,
+                trips,
+            )
+            if (connectingTrip != null) {
+                val replacement = tripLegFor(
+                    route, index, legOrigin, legDestination, connectingTrip
+                )
+                if (existing == null) legs += replacement else legs[index] = replacement
+                index++
+                continue
+            }
+
+            if (isUnscheduledTerminalLeg(route.lines[index], legOrigin, legDestination)) {
+                val replacement = unscheduledTerminalLeg(
+                    route.lines[index], legOrigin, legDestination
+                )
+                if (existing == null) legs += replacement else legs[index] = replacement
+                index++
+                continue
+            }
+
+            while (legs.size > index) legs.removeAt(legs.lastIndex)
+            return
+        }
+    }
+
+    private fun connectionIsFeasible(previous: TripLeg, next: TripLeg): Boolean =
+        previous.arrivalTime <= 0L || next.departureTime <= 0L
+            || next.departureTime >= previous.arrivalTime
+
+    private fun isCanceled(leg: TripLeg, trips: List<TripSnapshot>): Boolean =
+        leg.tripId != null && trips.any { it.tripId == leg.tripId && it.canceled }
 
     private fun matchesExistingLegs(route: Route, legs: List<TripLeg>): Boolean {
         if (legs.isEmpty() || legs.size > route.lines.size) {
@@ -196,27 +264,40 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 }
                 return
             }
-            val departure = currentTrip.pointAt(legOrigin) ?: return
-            val arrival = currentTrip.pointAt(legDestination)
-            val stops = currentTrip.pointsBetween(legOrigin, legDestination).map {
-                tripStop(it)
-            }
-            legs += TripLeg(
-                lineForDestination(currentTrip.line, currentTrip.trainDestination),
-                legOrigin,
-                legDestination,
-                currentTrip.trainDestination,
-                currentTrip.tripId,
-                departure.departureTime,
-                arrival?.arrivalTime ?: 0L,
-                stops,
-                minimumTransferSecondsAfter(route, index, legOrigin, currentTrip.line),
-                departure.scheduledDepartureTime,
-                arrival?.scheduledArrivalTime ?: 0L,
-                departure.departureSource,
-                arrival?.arrivalSource ?: PredictionSource.UNKNOWN,
+            if (currentTrip.pointAt(legOrigin) == null) return
+            legs += tripLegFor(
+                route, index, legOrigin, legDestination, currentTrip
             )
         }
+    }
+
+    private fun tripLegFor(
+        route: Route,
+        index: Int,
+        legOrigin: Station,
+        legDestination: Station,
+        trip: TripSnapshot,
+    ): TripLeg {
+        val departure = trip.pointAt(legOrigin)
+        val arrival = trip.pointAt(legDestination)
+        val stops = trip.pointsBetween(legOrigin, legDestination).map {
+            tripStop(it)
+        }
+        return TripLeg(
+            lineForLeg(trip.line, legOrigin, legDestination, trip.trainDestination),
+            legOrigin,
+            legDestination,
+            trip.trainDestination,
+            trip.tripId,
+            departure?.departureTime ?: 0L,
+            arrival?.arrivalTime ?: 0L,
+            stops,
+            minimumTransferSecondsAfter(route, index, legOrigin, trip.line),
+            departure?.scheduledDepartureTime ?: 0L,
+            arrival?.scheduledArrivalTime ?: 0L,
+            departure?.departureSource ?: PredictionSource.UNKNOWN,
+            arrival?.arrivalSource ?: PredictionSource.UNKNOWN,
+        )
     }
 
     private fun isUnscheduledTerminalLeg(
@@ -397,7 +478,8 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
 
     private fun findMatchingTrip(leg: TripLeg, trips: List<TripSnapshot>): TripSnapshot? =
         trips.firstOrNull { trip ->
-            trip.line == leg.line
+            !trip.canceled
+                && trip.line == leg.line
                 && trip.trainDestination == leg.trainDestination
                 && trip.canServe(leg.origin, leg.destination)
         }
@@ -426,7 +508,12 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             }
         }
         return TripLeg(
-            lineForDestination(trip.line, trip.trainDestination),
+            lineForLeg(
+                trip.line,
+                existing.origin,
+                existing.destination,
+                trip.trainDestination,
+            ),
             existing.origin,
             existing.destination,
             trip.trainDestination,
@@ -460,63 +547,58 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         if (originPoint.departureTime < feedTime - DEPARTURE_STALE_TOLERANCE_MILLIS) {
             return
         }
-        val route = findRoute(trip) ?: return
-
         val minutes = maxOf(0L, (originPoint.departureTime - feedTime) / 60000L).toInt()
-        val legs = buildTripLegs(route, trip, allTrips)
-        if (destination != null && (legs.size != route.lines.size
-                || legs.lastOrNull()?.destination != destination)
-        ) {
-            return
-        }
-        val line = lineForDestination(trip.line, trip.trainDestination)
-        val departure = Departure.builder()
-            .setOrigin(origin)
-            .setTrainDestination(trip.trainDestination)
-            .setLine(line)
-            .setDirection(trip.direction)
-            .setPlatform(trip.platform)
-            .setLimited(false)
-            .setCanceled(trip.canceled)
-            .setTrainDestinationColorText(line.name)
-            .setTrainDestinationColorHex(colorForLine(line))
-            .setMinutes(minutes)
-            .setMinEstimate(originPoint.departureTime - ESTIMATE_TOLERANCE_MILLIS)
-            .setMaxEstimate(originPoint.departureTime + ESTIMATE_TOLERANCE_MILLIS)
-            .setTripLegs(legs)
-            .let { builder ->
-                if (legs.isNotEmpty() && legs.last().hasArrivalTime()) {
-                    builder.setEstimatedTripTime(
-                        (legs.last().arrivalTime - originPoint.departureTime).toInt()
-                    )
-                } else {
-                    builder
-                }
+        // A train can match several route alternatives because they share the
+        // same first leg. Choose the first complete timed itinerary instead of
+        // committing to the first topology match before validating transfers.
+        routes.asSequence()
+            .filter { it.trainDestinationIsApplicable(trip.trainDestination, trip.line) }
+            .map { route -> route to buildTripLegs(route, trip, allTrips) }
+            .filter { (route, legs) ->
+                destination == null || (legs.size == route.lines.size
+                    && legs.lastOrNull()?.destination == destination)
             }
-            .build()
-        addDeparture(departures, departure)
+            .firstOrNull()
+            ?.let { (route, legs) ->
+                val line = lineForDeparture(trip, legs)
+                val departure = Departure.builder()
+                    .setOrigin(origin)
+                    .setTrainDestination(trip.trainDestination)
+                    .setLine(line)
+                    .setDirection(trip.direction)
+                    .setPlatform(trip.platform)
+                    .setLimited(false)
+                    .setCanceled(trip.canceled)
+                    .setTrainDestinationColorText(line.name)
+                    .setTrainDestinationColorHex(colorForLine(line))
+                    .setMinutes(minutes)
+                    .setMinEstimate(originPoint.departureTime - ESTIMATE_TOLERANCE_MILLIS)
+                    .setMaxEstimate(originPoint.departureTime + ESTIMATE_TOLERANCE_MILLIS)
+                    .setTripLegs(legs)
+                    .let { builder ->
+                        if (legs.isNotEmpty() && legs.last().hasArrivalTime()) {
+                            builder.setEstimatedTripTime(
+                                (legs.last().arrivalTime - originPoint.departureTime).toInt()
+                            )
+                        } else {
+                            builder
+                        }
+                    }
+                    .build()
+                addDeparture(departures, departure, route)
+            }
     }
 
-    private fun addDeparture(collection: DepartureCollection, departure: Departure) {
+    private fun addDeparture(
+        collection: DepartureCollection,
+        departure: Departure,
+        route: Route,
+    ) {
         collection.unfiltered += departure
-        val route = findRouteForDeparture(departure) ?: return
         collection.filtered += departure.copy(
             requiresTransfer = route.hasTransfer(),
             transferScheduled = Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine,
         )
-    }
-
-    private fun findRouteForDeparture(departure: Departure): Route? {
-        val trainDestination = Station.getByAbbreviation(
-            departure.trainDestination?.abbreviation
-        )
-        val line = departure.line ?: return null
-        return routes.firstOrNull { route ->
-            route.trainDestinationIsApplicable(trainDestination, line)
-                && (route.destination == null
-                || route.destination!!.includedInLimitedService
-                || !departure.limited)
-        }
     }
 
     private class DepartureCollection {
@@ -632,9 +714,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         return result
     }
 
-    private fun findRoute(trip: TripSnapshot): Route? =
-        routes.firstOrNull { it.trainDestinationIsApplicable(trip.trainDestination, trip.line) }
-
     private fun buildTripLegs(
         route: Route,
         firstTrip: TripSnapshot,
@@ -682,7 +761,12 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 tripStop(it)
             }
             result += TripLeg(
-                lineForDestination(currentTrip.line, currentTrip.trainDestination),
+                lineForLeg(
+                    currentTrip.line,
+                    legOrigin,
+                    legDestination,
+                    currentTrip.trainDestination,
+                ),
                 legOrigin,
                 legDestination,
                 currentTrip.trainDestination,
@@ -710,7 +794,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     ): TripSnapshot? {
         var best: TripSnapshot? = null
         for (trip in allTrips) {
-            if (trip.line != line || !trip.canServe(origin, destination)) {
+            if (trip.canceled || trip.line != line || !trip.canServe(origin, destination)) {
                 continue
             }
             val departure = trip.pointAt(origin)
@@ -824,17 +908,28 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         return bartGtfsNetwork.directionForRouteId(routeId)
     }
 
-    private fun lineForDestination(line: Line, trainDestination: Station?): Line =
-        if (line == Line.YELLOW && (
-                (destination == Station.MLBR && trainDestination == Station.MLBR)
-                    || (destination == null && trainDestination == Station.MLBR)
-                    || (origin == Station.SFIA && destination == Station.MLBR)
-                    || origin == Station.MLBR
-            )
+    private fun lineForLeg(
+        line: Line,
+        legOrigin: Station?,
+        legDestination: Station?,
+        trainDestination: Station?,
+    ): Line = if (line == Line.YELLOW && (
+        (legOrigin == Station.SFIA && legDestination == Station.MLBR)
+            || (destination == null && trainDestination == Station.MLBR)
+            || origin == Station.MLBR
+    )) {
+        Line.YELLOW_LATE_NIGHT
+    } else {
+        line
+    }
+
+    private fun lineForDeparture(trip: TripSnapshot, legs: List<TripLeg>): Line =
+        if (destination == null && trip.line == Line.YELLOW
+            && trip.trainDestination == Station.MLBR
         ) {
             Line.YELLOW_LATE_NIGHT
         } else {
-            line
+            legs.firstOrNull()?.line ?: trip.line
         }
 
     private fun feedTime(feed: GtfsRealtime.FeedMessage): Long =

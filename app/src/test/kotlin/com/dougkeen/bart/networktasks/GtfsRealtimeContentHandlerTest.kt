@@ -129,6 +129,62 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
+    fun progressRefreshReplacesAConnectionInvalidatedByADelay() {
+        val network = network()
+        val route = Schedule.fromStatic(network, 0L)
+            .routesFor(Station.LAKE, Station.DALY)[0]
+        val handler = GtfsRealtimeContentHandler(
+            Station.LAKE, Station.DALY, listOf(route), false, network,
+        )
+        val initialLegs = handler.getRealTimeDepartures(feed())
+            .getDepartures()[0].tripLegs
+
+        val delayedFeed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
+            .addEntity(entity(
+                "1", "yellow-first", arrayOf("LAKE", "MONT"),
+                longArrayOf(1_000L, 2_000L),
+            ))
+            .addEntity(canceledEntity(
+                "12", "blue-early", arrayOf("MONT", "DALY"),
+                longArrayOf(1_100L, 1_160L),
+            ))
+            .addEntity(entity(
+                "12", "blue-valid", arrayOf("MONT", "DALY"),
+                longArrayOf(2_100L, 2_160L),
+            ))
+            .build()
+
+        val refreshed = handler.updateTripLegs(
+            GtfsRealtimeFeedIndex.from(delayedFeed),
+            initialLegs,
+            900_000L,
+            Schedule.fromStatic(network, 0L),
+        )
+
+        assertEquals(2, refreshed.size)
+        assertEquals("blue-valid", refreshed[1].tripId)
+        assertTrue(refreshed[1].departureTime >= refreshed[0].arrivalTime)
+    }
+
+    private fun canceledEntity(
+        routeId: String,
+        tripId: String,
+        stops: Array<String>,
+        times: LongArray,
+    ): GtfsRealtime.FeedEntity {
+        val original = entity(routeId, tripId, stops, times)
+        val tripUpdate = original.tripUpdate.toBuilder()
+            .setTrip(original.tripUpdate.trip.toBuilder()
+                .setScheduleRelationship(
+                    GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED
+                ))
+            .build()
+        return original.toBuilder().setTripUpdate(tripUpdate).build()
+    }
+
+    @Test
     fun dropsTripsThatLeftTheOriginLongAgo() {
         val network = network()
         val route = Schedule.fromStatic(network, 0L).routesFor(Station.MONT, Station.DALY)[0]

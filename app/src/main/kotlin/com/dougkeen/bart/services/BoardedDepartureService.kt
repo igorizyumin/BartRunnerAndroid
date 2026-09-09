@@ -223,7 +223,7 @@ class BoardedDepartureService : Service() {
     }
 
     private fun cancelAlarm() {
-        followedTripRepository.getAlarmScheduler()?.cancel()
+        followedTripRepository.cancelAlarm()
     }
 
     private fun shutDown(isBeingDestroyed: Boolean) {
