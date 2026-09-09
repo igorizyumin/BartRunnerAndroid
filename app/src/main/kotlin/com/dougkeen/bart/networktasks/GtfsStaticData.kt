@@ -185,7 +185,9 @@ class GtfsStaticData @JvmOverloads constructor(
         @Throws(IOException::class)
         private fun parse(file: File): LoadedData =
             PerformanceTrace.section("BART static feed parse") {
-            val feedFiles = readFeedFiles(file)
+            val feedFiles = PerformanceTrace.section("BART static zip read") {
+                readFeedFiles(file)
+            }
             val farePrices = HashMap<String, String>()
             val fareRules = mutableListOf<FareRule>()
 
@@ -209,12 +211,20 @@ class GtfsStaticData @JvmOverloads constructor(
             val networkCatalog: GtfsNetworkCatalog
             val bartGtfsNetwork: BartGtfsNetwork
             try {
-                networkCatalog = GtfsNetworkCatalog.fromFiles(feedFiles)
-                networkCatalog.validationErrors().firstOrNull()?.let {
+                networkCatalog = PerformanceTrace.section("BART catalog build") {
+                    GtfsNetworkCatalog.fromFiles(feedFiles)
+                }
+                PerformanceTrace.section("BART catalog validation") {
+                    networkCatalog.validationErrors().firstOrNull()
+                }?.let {
                     throw IOException("Static GTFS catalog validation failed: $it")
                 }
-                bartGtfsNetwork = BartGtfsNetwork.fromCatalog(networkCatalog)
-                bartGtfsNetwork.validationErrors().firstOrNull()?.let {
+                bartGtfsNetwork = PerformanceTrace.section("BART network mapping") {
+                    BartGtfsNetwork.fromCatalog(networkCatalog)
+                }
+                PerformanceTrace.section("BART network validation") {
+                    bartGtfsNetwork.validationErrors().firstOrNull()
+                }?.let {
                     throw IOException("Static GTFS BART validation failed: $it")
                 }
             } catch (exception: IllegalArgumentException) {
