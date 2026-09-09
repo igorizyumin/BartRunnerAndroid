@@ -24,12 +24,17 @@ class TransitProjectionTest {
 
     @Test
     fun alertProjectionConvertsTheLatestAlertFeed() {
-        val text = GtfsRealtime.TranslatedString.newBuilder()
+        val header = GtfsRealtime.TranslatedString.newBuilder()
+            .addTranslation(GtfsRealtime.TranslatedString.Translation.newBuilder()
+                .setText("Service advisory").build())
+            .build()
+        val description = GtfsRealtime.TranslatedString.newBuilder()
             .addTranslation(GtfsRealtime.TranslatedString.Translation.newBuilder()
                 .setText("Delay at Montgomery").build())
             .build()
         val alert = GtfsRealtime.Alert.newBuilder()
-            .setHeaderText(text)
+            .setHeaderText(header)
+            .setDescriptionText(description)
             .addActivePeriod(GtfsRealtime.TimeRange.newBuilder().setStart(1234L).setEnd(5678L).build())
             .build()
         val alerts = GtfsRealtime.FeedMessage.newBuilder()

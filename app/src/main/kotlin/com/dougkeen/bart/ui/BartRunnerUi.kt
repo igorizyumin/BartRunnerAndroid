@@ -2,6 +2,7 @@ package com.dougkeen.bart.ui
 
 import android.app.Activity
 import android.content.Context
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -29,6 +31,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,7 +47,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsSubway
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Elevator
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
@@ -96,13 +103,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import android.widget.ImageView
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.activities.DeparturesViewModel
@@ -114,6 +127,7 @@ import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.model.TripLeg
 import com.dougkeen.bart.model.TripStop
+import com.dougkeen.bart.networktasks.RiderCategory
 import com.dougkeen.bart.presentation.DepartureTextFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -177,11 +191,19 @@ fun HomeScreen(
     onInsertFavorite: (StationPair, Int) -> Unit,
     onViewTrip: (Departure) -> Unit,
     onViewMap: () -> Unit,
+    onViewElevators: () -> Unit = {},
+    onViewAbout: () -> Unit = {},
+    fareDiscountId: String? = null,
+    fareDiscountOptions: List<RiderCategory> = emptyList(),
+    onFareDiscountChanged: (String?) -> Unit = {},
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var pickerAddsFavorite by remember { mutableStateOf(false) }
     var editingRoute by remember { mutableStateOf<StationPair?>(null) }
     var isEditing by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showElevatorDialog by remember { mutableStateOf(false) }
     var draggedRoute by remember { mutableStateOf<StationPair?>(null) }
     var draggedOffset by remember { mutableFloatStateOf(0f) }
     val favoriteListState = rememberLazyListState()
@@ -197,8 +219,44 @@ fun HomeScreen(
                     Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold)
                 },
                 actions = {
+                    IconButton(onClick = {
+                        showElevatorDialog = true
+                        onViewElevators()
+                    }) {
+                        Icon(
+                            Icons.Filled.Elevator,
+                            contentDescription = stringResource(R.string.elevator_status),
+                        )
+                    }
                     IconButton(onClick = onViewMap) {
                         Icon(Icons.Filled.Map, contentDescription = stringResource(R.string.system_map))
+                    }
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings)) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showSettingsDialog = true
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.about)) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onViewAbout()
+                                },
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -387,12 +445,255 @@ fun HomeScreen(
                 } else if (pickerAddsFavorite) {
                     onAddFavorite(route)
                     if (addReturn && route.destination != null) onAddFavorite(StationPair(route.destination, route.origin))
-                    onRouteSelected(route)
                 } else {
                     onRouteSelected(route)
                 }
             },
         )
+    }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            fareDiscountId = fareDiscountId,
+            fareDiscountOptions = fareDiscountOptions,
+            onFareDiscountChanged = onFareDiscountChanged,
+            onDismiss = { showSettingsDialog = false },
+        )
+    }
+
+    if (showElevatorDialog) {
+        ElevatorStatusDialog(
+            isLoading = state.elevatorIsLoading,
+            description = state.elevatorDescription,
+            error = state.elevatorError,
+            onDismiss = { showElevatorDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun ElevatorStatusDialog(
+    isLoading: Boolean,
+    description: String?,
+    error: Exception?,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.elevator_status)) },
+        text = {
+            when {
+                isLoading || description == null && error == null -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                error != null -> {
+                    Text(
+                        text = stringResource(R.string.elevator_status_unavailable),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                else -> {
+                    Text(
+                        text = description.orEmpty(),
+                        modifier = Modifier
+                            .heightIn(max = 320.dp)
+                            .verticalScroll(rememberScrollState()),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.done))
+            }
+        },
+    )
+}
+
+@Composable
+private fun SettingsDialog(
+    fareDiscountId: String?,
+    fareDiscountOptions: List<RiderCategory>,
+    onFareDiscountChanged: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var showFareDiscountMenu by remember { mutableStateOf(false) }
+    val selectedDescription = fareDiscountOptions
+        .firstOrNull { it.id == fareDiscountId }
+        ?.description
+        ?: stringResource(R.string.none)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.fare_discount),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.height(8.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { showFareDiscountMenu = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(selectedDescription, modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.ArrowForward, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showFareDiscountMenu,
+                        onDismissRequest = { showFareDiscountMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.none)) },
+                            onClick = {
+                                onFareDiscountChanged(null)
+                                showFareDiscountMenu = false
+                            },
+                        )
+                        fareDiscountOptions.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category.description) },
+                                onClick = {
+                                    onFareDiscountChanged(category.id)
+                                    showFareDiscountMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.done))
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AboutScreen(
+    versionName: String,
+    gitBuildHash: String,
+    onBack: () -> Unit,
+    onOpenGithub: () -> Unit,
+    onOpenApacheLicense: () -> Unit = {},
+    onOpenLicenses: () -> Unit,
+    onFeedback: () -> Unit = {},
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.about)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back),
+                        )
+                    }
+                },
+            )
+        },
+        contentWindowInsets = WindowInsets.safeDrawing,
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AndroidView(
+                    factory = { context ->
+                        ImageView(context).apply {
+                            setImageDrawable(
+                                context.packageManager.getApplicationIcon(context.packageName),
+                            )
+                            contentDescription = context.getString(R.string.app_name)
+                        }
+                    },
+                    modifier = Modifier.size(56.dp),
+                )
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(stringResource(R.string.about_description))
+            Spacer(modifier = Modifier.height(4.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.app_version, versionName))
+                Text(stringResource(R.string.git_build_hash, gitBuildHash))
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            val apacheLicenseText = buildAnnotatedString {
+                append(stringResource(R.string.about_license_prefix))
+                append(" ")
+                pushStringAnnotation(
+                    tag = "URL",
+                    annotation = stringResource(R.string.apache_license_url),
+                )
+                withStyle(
+                    SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline,
+                    )
+                ) {
+                    append(stringResource(R.string.apache_license_name))
+                }
+                pop()
+                append(" ")
+                append(stringResource(R.string.about_license_suffix))
+            }
+            ClickableText(
+                text = apacheLicenseText,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                onClick = { offset ->
+                    if (apacheLicenseText.getStringAnnotations("URL", offset, offset).isNotEmpty()) {
+                        onOpenApacheLicense()
+                    }
+                },
+            )
+            TextButton(onClick = onOpenGithub) {
+                Text(stringResource(R.string.github_url))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.developer_copyright_igor))
+                Text(stringResource(R.string.developer_copyright_doug))
+                Text(
+                    text = stringResource(R.string.open_source_licenses),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        textDecoration = TextDecoration.Underline,
+                    ),
+                    modifier = Modifier.clickable(onClick = onOpenLicenses),
+                )
+            }
+            Button(
+                onClick = onFeedback,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp),
+            ) {
+                Text(stringResource(R.string.feedback))
+            }
+        }
     }
 }
 
@@ -975,7 +1276,13 @@ private fun ScheduleDetailsRow(
                 Text(actualTime, style = style, color = color, maxLines = 1)
             }
             details.actualLabel?.let { actualLabel ->
-                Text(actualLabel, style = style, color = color, maxLines = 1, modifier = Modifier.padding(start = 3.dp))
+                Text(
+                    actualLabel,
+                    style = style,
+                    color = if (details.isPositiveDelay) MaterialTheme.colorScheme.error else color,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 3.dp),
+                )
             }
             details.predictionLabel?.let { predictionLabel ->
                 Text(predictionLabel, style = style, color = color, maxLines = 1, modifier = Modifier.padding(start = 3.dp))

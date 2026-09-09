@@ -2,6 +2,10 @@ package com.dougkeen.bart.ui
 
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -18,6 +22,7 @@ import com.dougkeen.bart.model.Line
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.model.TripLeg
+import com.dougkeen.bart.networktasks.RiderCategory
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +56,88 @@ class BartRunnerUiTest {
         composeRule.onNodeWithText("Saved trips").assertIsDisplayed()
         composeRule.onNodeWithText("Your favorite trips will appear here").assertIsDisplayed()
         composeRule.onNodeWithText("Plan a trip").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeScreenOpensFareDiscountSettingFromOverflowMenu() {
+        setTestContent {
+            var selectedId by remember { mutableStateOf<String?>(null) }
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false),
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                    fareDiscountId = selectedId,
+                    fareDiscountOptions = listOf(RiderCategory("5", "Youth Clipper")),
+                    onFareDiscountChanged = { selectedId = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("More options").performClick()
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("Fare discount").assertIsDisplayed()
+        composeRule.onNodeWithText("None").performClick()
+        composeRule.onNodeWithText("Youth Clipper").performClick()
+        composeRule.onNodeWithText("Youth Clipper").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeScreenOpensElevatorStatusPopup() {
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(
+                        isLoading = false,
+                        elevatorDescription = "There is 1 elevator out of service at this time.",
+                    ),
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Elevator status").performClick()
+        composeRule.onNodeWithText("There is 1 elevator out of service at this time.").assertIsDisplayed()
+    }
+
+    @Test
+    fun aboutScreenShowsBuildAndCopyrightInformation() {
+        setTestContent {
+            BartRunnerTheme {
+                AboutScreen(
+                    versionName = "2.2.21",
+                    gitBuildHash = "abc123",
+                    onBack = {},
+                    onOpenGithub = {},
+                    onOpenLicenses = {},
+                    onFeedback = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Version 2.2.21").assertIsDisplayed()
+        composeRule.onNodeWithText("Build ID: abc123").assertIsDisplayed()
+        composeRule.onNodeWithText("A streamlined BART companion that delivers real-time departures, arrival predictions, fares, offline maps, and alerts for your regular routes.").assertIsDisplayed()
+        composeRule.onNodeWithText("Apache 2.0", substring = true).assertExists()
+        composeRule.onNodeWithText("Copyright © Igor Izyumin 2026").assertIsDisplayed()
+        composeRule.onNodeWithText("Copyright © Doug Keen 2012–2026").assertIsDisplayed()
+        composeRule.onNodeWithText("Open source licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("Feedback").assertIsDisplayed()
     }
 
     @Test

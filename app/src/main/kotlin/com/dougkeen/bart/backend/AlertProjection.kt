@@ -30,10 +30,11 @@ class AlertProjection {
                 alerts += Alert(
                     id = entity.id,
                     type = if (source.hasEffect()) source.effect.name else "",
-                    description = text(
-                        if (source.hasHeaderText()) source.headerText else null,
-                        if (source.hasDescriptionText()) source.descriptionText else null
-                    ),
+                    description = if (source.hasDescriptionText()) {
+                        translation(source.descriptionText)
+                    } else {
+                        ""
+                    },
                     postedAtMillis = postedAtMillis,
                     expiresAtMillis = expiresAtMillis
                 )
@@ -68,19 +69,6 @@ class AlertProjection {
             }
         }
         return true
-    }
-
-    private fun text(
-        header: GtfsRealtime.TranslatedString?,
-        description: GtfsRealtime.TranslatedString?
-    ): String {
-        val headerText = translation(header)
-        val descriptionText = translation(description)
-        return when {
-            headerText.isEmpty() -> descriptionText
-            descriptionText.isEmpty() -> headerText
-            else -> "$headerText\n$descriptionText"
-        }
     }
 
     private fun translation(value: GtfsRealtime.TranslatedString?): String =

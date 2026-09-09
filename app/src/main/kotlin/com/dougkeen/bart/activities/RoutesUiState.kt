@@ -16,6 +16,9 @@ class RoutesUiState(
     val alertKind: AlertKind = AlertKind.HIDDEN,
     val isLoading: Boolean = true,
     val error: Exception? = null,
+    val elevatorDescription: String? = null,
+    val elevatorIsLoading: Boolean = false,
+    val elevatorError: Exception? = null,
 ) {
     val favorites: List<StationPair> =
         Collections.unmodifiableList(ArrayList(favorites))
@@ -32,6 +35,9 @@ class RoutesUiState(
         alertKind: AlertKind = this.alertKind,
         isLoading: Boolean = this.isLoading,
         error: Exception? = this.error,
+        elevatorDescription: String? = this.elevatorDescription,
+        elevatorIsLoading: Boolean = this.elevatorIsLoading,
+        elevatorError: Exception? = this.elevatorError,
     ): RoutesUiState = RoutesUiState(
         favorites,
         firstDepartures,
@@ -40,6 +46,9 @@ class RoutesUiState(
         alertKind,
         isLoading,
         error,
+        elevatorDescription,
+        elevatorIsLoading,
+        elevatorError,
     )
 
     enum class AlertKind {

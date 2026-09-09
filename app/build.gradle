@@ -2,6 +2,22 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.ksp)
+    id 'com.google.android.gms.oss-licenses-plugin'
+}
+
+def gitBuildHash = 'unknown'
+try {
+    def gitProcess = new ProcessBuilder('git', 'rev-parse', '--short=12', 'HEAD')
+            .directory(rootProject.projectDir)
+            .redirectErrorStream(true)
+            .start()
+    gitProcess.waitFor()
+    def resolvedHash = gitProcess.inputStream.getText('UTF-8').trim()
+    if (gitProcess.exitValue() == 0 && !resolvedHash.isEmpty()) {
+        gitBuildHash = resolvedHash
+    }
+} catch (Exception ignored) {
+    // Source archives without Git metadata retain the fallback value.
 }
 
 dependencies {
@@ -37,6 +53,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
+    implementation('com.google.android.gms:play-services-oss-licenses:17.5.1')
 }
 
 android {
@@ -44,6 +61,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -61,6 +79,7 @@ android {
     defaultConfig {
         versionName = "2.2.21"
         versionCode = 56
+        buildConfigField "String", "GIT_BUILD_HASH", "\"${gitBuildHash}\""
 
         minSdk = 31
         targetSdk = 37

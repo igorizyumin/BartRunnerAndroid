@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.R
 import com.dougkeen.bart.performance.PerformanceTrace
+import com.dougkeen.bart.networktasks.RiderCategory
 import com.dougkeen.bart.ui.BartRunnerTheme
 import com.dougkeen.bart.ui.HomeScreen
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,8 @@ import kotlinx.coroutines.withContext
 class RoutesListActivity : ComponentActivity() {
     private val routesViewModel: RoutesViewModel by viewModels()
     private var staticDataReady by mutableStateOf(false)
+    private var riderCategories by mutableStateOf<List<RiderCategory>>(emptyList())
+    private var riderCategoryId by mutableStateOf<String?>(null)
 
     fun addFavorite(route: com.dougkeen.bart.model.StationPair) {
         routesViewModel.addFavorite(route)
@@ -46,12 +49,24 @@ class RoutesListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val application = application as BartRunnerApplication
+        riderCategoryId = com.dougkeen.bart.data.FareDiscountPreferences
+            .getRiderCategoryId(this)
         val needsInitialStaticLoad = !application.gtfsStaticData.hasDatabaseCache()
         staticDataReady = !needsInitialStaticLoad
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching {
                 PerformanceTrace.section("BART static data warm-up") {
                     application.gtfsStaticData.warmUp()
+                }
+            }
+            val categories = runCatching {
+                application.gtfsStaticData.getRiderCategories()
+            }.getOrDefault(emptyList())
+            withContext(Dispatchers.Main.immediate) {
+                riderCategories = categories
+                if (riderCategoryId != null && categories.none { it.id == riderCategoryId }) {
+                    riderCategoryId = null
+                    routesViewModel.setRiderCategoryId(null)
                 }
             }
             if (needsInitialStaticLoad) {
@@ -111,6 +126,14 @@ class RoutesListActivity : ComponentActivity() {
                             })
                         },
                         onViewMap = { startActivity(Intent(this, ViewMapActivity::class.java)) },
+                        onViewElevators = routesViewModel::loadElevatorStatus,
+                        onViewAbout = { startActivity(Intent(this, AboutActivity::class.java)) },
+                        fareDiscountId = riderCategoryId,
+                        fareDiscountOptions = riderCategories,
+                        onFareDiscountChanged = { selectedId ->
+                            riderCategoryId = selectedId
+                            routesViewModel.setRiderCategoryId(selectedId)
+                        },
                     )
                 }
             }

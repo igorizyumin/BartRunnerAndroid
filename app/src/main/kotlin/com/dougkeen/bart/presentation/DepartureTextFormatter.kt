@@ -23,6 +23,7 @@ object DepartureTextFormatter {
         val showActualIcon: Boolean = false,
         val showScheduleOnlyIcon: Boolean = false,
         val predictionLabel: String? = null,
+        val isPositiveDelay: Boolean = false,
     ) {
         fun isNotBlank(): Boolean = scheduledTime != null
             || actualTime != null
@@ -226,12 +227,14 @@ object DepartureTextFormatter {
                 } else {
                     null
                 }
+                val displayedDelay = delay?.takeIf { abs(it) >= 45 }
                 ScheduleDetails(
                     scheduledTime = effective.takeIf { it > 0L }
                         ?.let { formatTime(timeFormatter(context), it) }
                         ?: scheduledText,
-                    actualLabel = delay?.takeIf { abs(it) >= 45 }?.let(::formatSignedMinutes),
-                    showActualIcon = delay?.let { abs(it) >= 45 } == true,
+                    actualLabel = displayedDelay?.let(::formatSignedMinutes),
+                    showActualIcon = displayedDelay != null,
+                    isPositiveDelay = displayedDelay?.let { it > 0 } == true,
                 )
             }
             PredictionSource.ESTIMATE -> {
@@ -361,7 +364,7 @@ object DepartureTextFormatter {
 
     private fun formatSignedMinutes(delaySeconds: Int): String {
         val roundedMinutes = kotlin.math.round(delaySeconds / 60.0).toInt()
-        return if (roundedMinutes >= 0) "+${roundedMinutes}m" else "${roundedMinutes}m"
+        return "${roundedMinutes}m"
     }
 
     private fun timeFormatter(context: Context): DateTimeFormatter {

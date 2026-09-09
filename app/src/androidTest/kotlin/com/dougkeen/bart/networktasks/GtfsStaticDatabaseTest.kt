@@ -62,6 +62,21 @@ class GtfsStaticDatabaseTest {
     }
 
     @Test
+    fun fareQuerySelectsOneCategorySpecificFareWithoutMixingBaseFare() {
+        val dao = database.dao()
+        dao.insertFares(
+            listOf(
+                GtfsFareEntity("A>B", "${'$'}7.55"),
+                GtfsFareEntity("A>B", "${'$'}3.75", "5"),
+            )
+        )
+
+        assertEquals("${'$'}7.55", dao.fare("A>B", "")?.price)
+        assertEquals("${'$'}3.75", dao.fare("A>B", "5")?.price)
+        assertEquals(null, dao.fare("A>B", "2"))
+    }
+
+    @Test
     fun staticDataFindsRoomDatabaseAfterProcessRestart() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val databasePath = context.getDatabasePath("gtfs_static_schedule.db")

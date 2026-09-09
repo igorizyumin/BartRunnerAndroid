@@ -23,6 +23,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dougkeen.bart.BartRunnerApplication
+import com.dougkeen.bart.data.FareDiscountPreferences
 import com.dougkeen.bart.R
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Station
@@ -248,7 +249,13 @@ class TripInProgressActivity : ComponentActivity() {
         fareLookupKey = lookupKey
         lifecycleScope.launch {
             val fare = withContext(Dispatchers.IO) {
-                runCatching { app.gtfsStaticData.getFare(origin, destination) }.getOrNull()
+                runCatching {
+                    app.gtfsStaticData.getFare(
+                        origin,
+                        destination,
+                        FareDiscountPreferences.getRiderCategoryId(this@TripInProgressActivity),
+                    )
+                }.getOrNull()
             }
             if (fare != null && fareLookupKey == lookupKey) {
                 tripFare = fare

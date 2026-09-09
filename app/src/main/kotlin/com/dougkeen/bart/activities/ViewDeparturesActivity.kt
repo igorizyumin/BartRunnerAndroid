@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.dougkeen.bart.BartRunnerApplication
+import com.dougkeen.bart.data.FareDiscountPreferences
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.ui.BartRunnerTheme
@@ -39,6 +40,7 @@ class ViewDeparturesActivity : ComponentActivity() {
                         app.gtfsStaticData.getFare(
                             stationPair.origin!!,
                             stationPair.destination!!,
+                            FareDiscountPreferences.getRiderCategoryId(this@ViewDeparturesActivity),
                         )
                     }.getOrNull()
                 }

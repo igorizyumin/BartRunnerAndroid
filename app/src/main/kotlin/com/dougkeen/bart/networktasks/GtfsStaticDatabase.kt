@@ -135,11 +135,23 @@ data class GtfsPatternHeadsignEntity(
     val headsign: String,
 )
 
-@Entity(tableName = "gtfs_fare")
-data class GtfsFareEntity(
-    @PrimaryKey val key: String,
-    val price: String,
+@Entity(
+    tableName = "gtfs_fare",
+    primaryKeys = ["key", "riderCategoryId"],
 )
+data class GtfsFareEntity(
+    val key: String,
+    val price: String,
+    val riderCategoryId: String = BASE_RIDER_CATEGORY_ID,
+)
+
+@Entity(tableName = "gtfs_rider_category")
+data class GtfsRiderCategoryEntity(
+    @PrimaryKey val riderCategoryId: String,
+    val description: String,
+)
+
+internal const val BASE_RIDER_CATEGORY_ID = ""
 
 @Dao
 abstract class GtfsStaticDao {
@@ -178,6 +190,12 @@ abstract class GtfsStaticDao {
 
     @Query("SELECT * FROM gtfs_fare")
     abstract fun fares(): List<GtfsFareEntity>
+
+    @Query("SELECT * FROM gtfs_fare WHERE `key` = :key AND riderCategoryId = :riderCategoryId LIMIT 1")
+    abstract fun fare(key: String, riderCategoryId: String): GtfsFareEntity?
+
+    @Query("SELECT * FROM gtfs_rider_category ORDER BY riderCategoryId")
+    abstract fun riderCategories(): List<GtfsRiderCategoryEntity>
 
     @Query(
         """
@@ -247,6 +265,9 @@ abstract class GtfsStaticDao {
     @Query("DELETE FROM gtfs_fare")
     abstract fun clearFares()
 
+    @Query("DELETE FROM gtfs_rider_category")
+    abstract fun clearRiderCategories()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract fun insertFeed(value: GtfsFeedEntity)
 
@@ -286,6 +307,9 @@ abstract class GtfsStaticDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract fun insertFares(values: List<GtfsFareEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract fun insertRiderCategories(values: List<GtfsRiderCategoryEntity>)
+
     @Transaction
     open fun replace(snapshot: GtfsDatabaseSnapshot) {
         clearFeed()
@@ -301,6 +325,7 @@ abstract class GtfsStaticDao {
         clearPatternTrips()
         clearPatternHeadsigns()
         clearFares()
+        clearRiderCategories()
         insertStops(snapshot.stops)
         insertRoutes(snapshot.routes)
         insertTrips(snapshot.trips)
@@ -313,6 +338,7 @@ abstract class GtfsStaticDao {
         insertPatternTrips(snapshot.patternTrips)
         insertPatternHeadsigns(snapshot.patternHeadsigns)
         insertFares(snapshot.fares)
+        insertRiderCategories(snapshot.riderCategories)
         insertFeed(snapshot.feed)
     }
 }
@@ -332,8 +358,9 @@ abstract class GtfsStaticDao {
         GtfsPatternTripEntity::class,
         GtfsPatternHeadsignEntity::class,
         GtfsFareEntity::class,
+        GtfsRiderCategoryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class GtfsStaticDatabase : RoomDatabase() {
@@ -354,6 +381,7 @@ data class GtfsDatabaseSnapshot(
     val patternTrips: List<GtfsPatternTripEntity>,
     val patternHeadsigns: List<GtfsPatternHeadsignEntity>,
     val fares: List<GtfsFareEntity>,
+    val riderCategories: List<GtfsRiderCategoryEntity> = emptyList(),
 ) {
     companion object {
         fun fromCatalog(
@@ -361,6 +389,8 @@ data class GtfsDatabaseSnapshot(
             fares: Map<String, String>,
             feedVersion: String?,
             importedAtMillis: Long,
+            discountedFares: Map<String, Map<String, String>> = emptyMap(),
+            riderCategories: List<GtfsRiderCategoryEntity> = emptyList(),
         ): GtfsDatabaseSnapshot {
             val patterns = catalog.patterns.mapIndexed { index, pattern ->
                 GtfsPatternEntity(index, pattern.routeId, pattern.directionId)
@@ -447,7 +477,13 @@ data class GtfsDatabaseSnapshot(
                 patternStops = patternStops,
                 patternTrips = patternTrips,
                 patternHeadsigns = patternHeadsigns,
-                fares = fares.map { (key, price) -> GtfsFareEntity(key, price) },
+                fares = fares.map { (key, price) -> GtfsFareEntity(key, price) } +
+                    discountedFares.flatMap { (key, categoryPrices) ->
+                        categoryPrices.map { (categoryId, price) ->
+                            GtfsFareEntity(key, price, categoryId)
+                        }
+                    },
+                riderCategories = riderCategories,
             )
         }
     }
@@ -465,7 +501,6 @@ internal fun GtfsStaticDao.readNetworkParts(): GtfsNetworkParts = GtfsNetworkPar
     patternStops = patternStops(),
     patternTrips = patternTrips(),
     patternHeadsigns = patternHeadsigns(),
-    fares = fares(),
 )
 
 internal data class GtfsNetworkParts(
@@ -480,5 +515,4 @@ internal data class GtfsNetworkParts(
     val patternStops: List<GtfsPatternStopEntity>,
     val patternTrips: List<GtfsPatternTripEntity>,
     val patternHeadsigns: List<GtfsPatternHeadsignEntity>,
-    val fares: List<GtfsFareEntity>,
 )

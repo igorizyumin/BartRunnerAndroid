@@ -6,14 +6,17 @@ import androidx.lifecycle.viewModelScope
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.backend.AlertProjection
 import com.dougkeen.bart.backend.RouteDepartureProjection
+import com.dougkeen.bart.data.FareDiscountPreferences
 import com.dougkeen.bart.data.FavoritesRepository
 import com.dougkeen.bart.model.Alert
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.TimeSource
+import com.dougkeen.bart.networktasks.ElevatorStatusClient
 import com.dougkeen.bart.performance.PerformanceTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +33,9 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
     private val timeSource: TimeSource = app.timeSource
     private val routeJobs = mutableMapOf<StationPair, Job>()
     private var fareJob: Job? = null
+    private var elevatorJob: Job? = null
+    private val elevatorStatusClient = ElevatorStatusClient()
+    private var riderCategoryId: String? = FareDiscountPreferences.getRiderCategoryId(application)
     private val _uiState = MutableStateFlow(RoutesUiState())
 
     val uiState: StateFlow<RoutesUiState> = _uiState.asStateFlow()
@@ -75,6 +81,47 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
 
     fun insertFavorite(favorite: StationPair, index: Int) =
         favoritesRepository.insertFavorite(favorite, index)
+
+    fun setRiderCategoryId(riderCategoryId: String?) {
+        this.riderCategoryId = riderCategoryId
+        FareDiscountPreferences.setRiderCategoryId(getApplication(), riderCategoryId)
+        if (!_uiState.value.isLoading) {
+            loadFares(_uiState.value.favorites)
+        }
+    }
+
+    fun loadElevatorStatus() {
+        elevatorJob?.cancel()
+        _uiState.update {
+            it.copy(
+                elevatorDescription = null,
+                elevatorIsLoading = true,
+                elevatorError = null,
+            )
+        }
+        elevatorJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val description = elevatorStatusClient.fetchDescription()
+                _uiState.update {
+                    it.copy(
+                        elevatorDescription = description,
+                        elevatorIsLoading = false,
+                        elevatorError = null,
+                    )
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        elevatorDescription = null,
+                        elevatorIsLoading = false,
+                        elevatorError = exception,
+                    )
+                }
+            }
+        }
+    }
 
     private fun syncRouteJobs(favorites: List<StationPair>) {
         PerformanceTrace.counter("BART favorite count", favorites.size)
@@ -152,13 +199,15 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun loadFares(favorites: List<StationPair>) {
+        fareJob?.cancel()
         fareJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val staticData = app.gtfsStaticData
                 val fares = favorites.mapNotNull { route ->
                     val origin = route.origin ?: return@mapNotNull null
                     val destination = route.destination ?: return@mapNotNull null
-                    staticData.getFare(origin, destination)?.let { fare -> route to fare }
+                    staticData.getFare(origin, destination, riderCategoryId)
+                        ?.let { fare -> route to fare }
                 }.toMap()
                 _uiState.update { current ->
                     val currentFavorites = current.favorites.toSet()

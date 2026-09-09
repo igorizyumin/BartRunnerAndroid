@@ -38,6 +38,10 @@
             android:name=".activities.ViewMapActivity"
             android:label="@string/system_map"
             android:exported="false" />
+        <activity
+            android:name=".activities.AboutActivity"
+            android:label="@string/about"
+            android:exported="false" />
 
         <service
             android:name=".services.BoardedDepartureService"

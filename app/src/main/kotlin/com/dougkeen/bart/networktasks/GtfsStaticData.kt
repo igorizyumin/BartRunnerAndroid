@@ -33,6 +33,11 @@ import java.util.HashMap
 import java.util.Locale
 import java.util.zip.ZipInputStream
 
+data class RiderCategory(
+    val id: String,
+    val description: String,
+)
+
 /** Loads BART's static GTFS feed at most once per seven days. */
 class GtfsStaticData @JvmOverloads constructor(
     context: Context,
@@ -48,8 +53,26 @@ class GtfsStaticData @JvmOverloads constructor(
     fun getBartGtfsNetwork(): BartGtfsNetwork = load().bartGtfsNetwork
 
     @Throws(IOException::class)
-    fun getFare(origin: Station, destination: Station): String? =
-        load().faresByStationPair[key(origin, destination)]
+    fun getFare(
+        origin: Station,
+        destination: Station,
+        riderCategoryId: String? = null,
+    ): String? {
+        load()
+        val fareKey = key(origin, destination)
+        val dao = openDatabase().dao()
+        val categoryFare = riderCategoryId
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { dao.fare(fareKey, it)?.price }
+        return categoryFare ?: dao.fare(fareKey, BASE_RIDER_CATEGORY_ID)?.price
+    }
+
+    @Throws(IOException::class)
+    fun getRiderCategories(): List<RiderCategory> {
+        load()
+        return openDatabase().dao().riderCategories()
+            .map { RiderCategory(it.riderCategoryId, it.description) }
+    }
 
     /** Ensures the weekly static-feed refresh has completed off the UI thread. */
     @Throws(IOException::class)
@@ -84,6 +107,11 @@ class GtfsStaticData @JvmOverloads constructor(
             var cachedResult: LoadedData? = null
             if (databaseFile.isFile) {
                 cachedResult = readCached(lastSuccess, now)
+                if (cachedResult == null) {
+                    // A schema upgrade or damaged cache must be allowed to retry
+                    // immediately instead of being held by the weekly backoff.
+                    preferences.edit { remove(LAST_ATTEMPT) }
+                }
                 if (cachedResult != null
                     && (!refreshStale || now - lastSuccess < CACHE_MILLIS)
                 ) {
@@ -172,6 +200,10 @@ class GtfsStaticData @JvmOverloads constructor(
                     parsed.faresByStationPair,
                     parsed.feedVersion,
                     importedAtMillis,
+                    parsed.discountedFaresByStationPair,
+                    parsed.riderCategories.map { category ->
+                        GtfsRiderCategoryEntity(category.id, category.description)
+                    },
                 )
             )
         }
@@ -204,12 +236,7 @@ class GtfsStaticData @JvmOverloads constructor(
         PerformanceTrace.section("BART network validation") {
             network.validationErrors().firstOrNull()
         }?.let { throw IOException("Static GTFS BART validation failed: $it") }
-        return LoadedData(
-            faresByStationPair = Collections.unmodifiableMap(
-                parts.fares.associate { it.key to it.price }
-            ),
-            bartGtfsNetwork = network,
-        )
+        return LoadedData(bartGtfsNetwork = network)
     }
 
     private fun catalogFromDatabase(parts: GtfsNetworkParts): GtfsNetworkCatalog {
@@ -409,7 +436,8 @@ class GtfsStaticData @JvmOverloads constructor(
             "routes.txt", "trips.txt",
             "stops.txt", "stop_times.txt", "calendar.txt", "calendar_dates.txt",
             "transfers.txt", "fare_attributes.txt",
-            "fare_rules.txt", "feed_info.txt"
+            "fare_rules.txt", "fare_rider_categories.txt", "rider_categories.txt",
+            "feed_info.txt"
         )
 
         private fun input(value: String): InputStream =
@@ -421,18 +449,38 @@ class GtfsStaticData @JvmOverloads constructor(
             val feedFiles = PerformanceTrace.section("BART static zip read") {
                 readFeedFiles(file)
             }
-            val feedVersion = feedFiles["feed_info.txt"]?.let(::parseFeedVersion)
-            val farePrices = HashMap<String, String>()
-            val fareRules = mutableListOf<FareRule>()
+        val feedVersion = feedFiles["feed_info.txt"]?.let(::parseFeedVersion)
+        val farePrices = HashMap<String, String>()
+        val fareRules = mutableListOf<FareRule>()
+        val riderCategories = HashMap<String, String>()
+        val discountedFarePrices = HashMap<String, MutableMap<String, String>>()
 
-            feedFiles["fare_attributes.txt"]?.let { parseFareAttributes(input(it), farePrices) }
-            feedFiles["fare_rules.txt"]?.let { parseFareRules(input(it), fareRules) }
+        feedFiles["fare_attributes.txt"]?.let { parseFareAttributes(input(it), farePrices) }
+        feedFiles["fare_rules.txt"]?.let { parseFareRules(input(it), fareRules) }
+        feedFiles["rider_categories.txt"]?.let {
+            parseRiderCategories(input(it), riderCategories)
+        }
+        feedFiles["fare_rider_categories.txt"]?.let {
+            parseFareRiderCategories(input(it), discountedFarePrices)
+        }
 
             val fares = HashMap<String, String>()
             for (rule in fareRules) {
                 val price = farePrices[rule.fareId]
                 if (price != null && rule.origin.isNotEmpty() && rule.destination.isNotEmpty()) {
                     fares["${rule.origin}>${rule.destination}"] = "$$price"
+                }
+            }
+
+            val discountedFares = HashMap<String, MutableMap<String, String>>()
+            for (rule in fareRules) {
+                if (rule.origin.isEmpty() || rule.destination.isEmpty()) continue
+                val fareKey = "${rule.origin}>${rule.destination}"
+                discountedFarePrices[rule.fareId].orEmpty().forEach { (categoryId, price) ->
+                    if (categoryId in riderCategories) {
+                        discountedFares
+                            .getOrPut(fareKey) { HashMap() }[categoryId] = "$$price"
+                    }
                 }
             }
 
@@ -464,6 +512,12 @@ class GtfsStaticData @JvmOverloads constructor(
                 networkCatalog,
                 Collections.unmodifiableMap(HashMap(fares)),
                 feedVersion,
+                Collections.unmodifiableMap(
+                    discountedFares.mapValues { (_, values) ->
+                        Collections.unmodifiableMap(HashMap(values))
+                    }
+                ),
+                riderCategories.map { (id, description) -> RiderCategory(id, description) },
             )
             }
 
@@ -514,6 +568,45 @@ class GtfsStaticData @JvmOverloads constructor(
                 ?.takeIf { it.isNotEmpty() }
         }
 
+        @Throws(IOException::class)
+        private fun parseRiderCategories(
+            input: InputStream,
+            categories: MutableMap<String, String>,
+        ) {
+            input.bufferedReader(StandardCharsets.UTF_8).use { reader ->
+                val header = splitCsvLine(reader.readLine())
+                val id = indexOf(header, "rider_category_id")
+                val description = indexOf(header, "rider_category_description")
+                reader.forEachLine { line ->
+                    val values = splitCsvLine(line)
+                    if (id >= 0 && description >= 0 && id < values.size && description < values.size) {
+                        categories[values[id]] = values[description]
+                    }
+                }
+            }
+        }
+
+        @Throws(IOException::class)
+        private fun parseFareRiderCategories(
+            input: InputStream,
+            prices: MutableMap<String, MutableMap<String, String>>,
+        ) {
+            input.bufferedReader(StandardCharsets.UTF_8).use { reader ->
+                val header = splitCsvLine(reader.readLine())
+                val fare = indexOf(header, "fare_id")
+                val category = indexOf(header, "rider_category_id")
+                val price = indexOf(header, "price")
+                reader.forEachLine { line ->
+                    val values = splitCsvLine(line)
+                    if (fare >= 0 && category >= 0 && price >= 0
+                        && fare < values.size && category < values.size && price < values.size
+                    ) {
+                        prices.getOrPut(values[fare]) { HashMap() }[values[category]] = values[price]
+                    }
+                }
+            }
+        }
+
         private fun indexOf(values: Array<String>, value: String): Int = values.indexOf(value)
 
         private fun splitCsvLine(line: String?): Array<String> {
@@ -553,10 +646,11 @@ class GtfsStaticData @JvmOverloads constructor(
             val catalog: GtfsNetworkCatalog,
             val faresByStationPair: Map<String, String>,
             val feedVersion: String?,
+            val discountedFaresByStationPair: Map<String, Map<String, String>>,
+            val riderCategories: List<RiderCategory>,
         )
 
         private data class LoadedData(
-            val faresByStationPair: Map<String, String>,
             val bartGtfsNetwork: BartGtfsNetwork,
         )
     }
