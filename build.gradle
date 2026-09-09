@@ -23,7 +23,7 @@ tasks.register("verifyCompatibility") {
         }
         [
                 agp: [actual: libs.versions.agp.get(), required: "9.4.0"],
-                kotlin: [actual: libs.versions.kotlin.get(), required: "2.2.10"],
+                kotlin: [actual: libs.versions.kotlin.get(), required: "2.4.20"],
                 androidxCore: [actual: libs.versions.androidxCore.get(), required: "1.19.0"],
         ].each { name, version ->
             if (version.actual != version.required) {

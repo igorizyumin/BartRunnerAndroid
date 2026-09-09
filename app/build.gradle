@@ -59,7 +59,7 @@ android {
         versionCode = 56
 
         minSdk = 31
-        targetSdk = 36
+        targetSdk = 37
     }
 
     buildTypes {
