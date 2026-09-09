@@ -6,6 +6,8 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationManagerCompat
 import com.dougkeen.bart.BartRunnerApplication
@@ -27,7 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Keeps the notification for the followed departure current while the user is travelling. */
+/** Keeps a pending departure alarm aligned with the live BART feed. */
 class BoardedDepartureService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -56,15 +58,35 @@ class BoardedDepartureService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         hasShutDown = false
-        val initialDeparture = if (intent?.action == ACTION_FOLLOW_DEPARTURE) {
-            followedTripRepository.getFollowedDeparture()
-        } else {
-            null
+        when (intent?.action) {
+            ACTION_CANCEL_ALARM -> {
+                cancelAlarm()
+                shutDown()
+                return START_NOT_STICKY
+            }
+
+            ACTION_CLEAR_DEPARTURE -> {
+                cancelAlarm()
+                followedTripRepository.clearFollowedDeparture()
+                shutDown()
+                return START_NOT_STICKY
+            }
+
+            ACTION_START_ALARM_TRACKING -> Unit
+            else -> {
+                shutDown()
+                return START_NOT_STICKY
+            }
         }
-        initialDeparture?.let(::updateNotification)
+
+        if (!isAlarmPending()) {
+            shutDown()
+            return START_NOT_STICKY
+        }
+        updateNotification()
         serviceScope.launch {
             serviceMutex.withLock {
-                intent?.let { handleIntent(it, initialDeparture != null) }
+                handleIntent()
             }
         }
         return START_REDELIVER_INTENT
@@ -82,38 +104,29 @@ class BoardedDepartureService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun handleIntent(intent: Intent, notificationAlreadyShown: Boolean = false) {
-        when (intent.action) {
-            ACTION_CANCEL_ALARM -> {
-                cancelAlarm()
-                if (followedTripRepository.getFollowedDeparture() == null) {
-                    shutDown(false)
-                } else {
-                    updateNotification()
-                }
-                return
-            }
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        shutDown()
+    }
 
-            ACTION_CLEAR_DEPARTURE -> {
-                cancelAlarm()
-                followedTripRepository.clearFollowedDeparture()
-                shutDown(false)
-                return
-            }
+    private fun handleIntent() {
+        if (!isAlarmPending()) {
+            shutDown()
+            return
         }
 
         val boardedDeparture = followedTripRepository.getFollowedDeparture()
         if (boardedDeparture == null) {
-            shutDown(false)
+            shutDown()
             return
         }
 
         updateStationPair(boardedDeparture.getStationPair())
-        if (!notificationAlreadyShown) {
-            updateNotification()
-        }
         startPolling()
     }
+
+    private fun isAlarmPending(): Boolean =
+        followedTripRepository.getAlarmScheduler()?.isPending == true
 
     private fun updateStationPair(nextStationPair: StationPair?) {
         if (nextStationPair == stationPair) {
@@ -147,7 +160,7 @@ class BoardedDepartureService : Service() {
         }
         val boardedDeparture = followedTripRepository.getFollowedDeparture()
         if (boardedDeparture == null) {
-            shutDown(false)
+            shutDown()
             return
         }
 
@@ -159,7 +172,6 @@ class BoardedDepartureService : Service() {
             followedTripRepository.setFollowedDeparture(
                 Departure.merge(boardedDeparture, updatedDeparture, false, timeSource),
             )
-            updateAlarm()
             updateNotification()
         }
     }
@@ -175,14 +187,18 @@ class BoardedDepartureService : Service() {
                         false
                     } else {
                         val departure = followedTripRepository.getFollowedDeparture()
+                        val hasDeparted = departure?.hasDeparted(timeSource) == true
                         if (shouldStopPolling(
+                                isAlarmPending(),
                                 departure != null,
-                                departure?.hasDeparted(timeSource) == true,
-                            )) {
-                            shutDown(false)
+                                hasDeparted,
+                        )) {
+                            if (hasDeparted) {
+                                cancelAlarm()
+                            }
+                            shutDown()
                             false
                         } else {
-                            updateAlarm()
                             true
                         }
                     }
@@ -207,8 +223,11 @@ class BoardedDepartureService : Service() {
         || previous.getUncertaintySeconds() != incoming.getUncertaintySeconds()
 
     @VisibleForTesting
-    internal fun shouldStopPolling(hasFollowedDeparture: Boolean, hasDeparted: Boolean): Boolean =
-        !hasFollowedDeparture || hasDeparted
+    internal fun shouldStopPolling(
+        hasPendingAlarm: Boolean,
+        hasFollowedDeparture: Boolean,
+        hasDeparted: Boolean,
+    ): Boolean = !hasPendingAlarm || !hasFollowedDeparture || hasDeparted
 
     @VisibleForTesting
     internal fun pollIntervalMillisForAlarm(secondsUntilAlarm: Int): Long =
@@ -218,15 +237,11 @@ class BoardedDepartureService : Service() {
             FAST_POLL_MILLIS
         }
 
-    private fun updateAlarm() {
-        followedTripRepository.getAlarmScheduler()?.update()
-    }
-
     private fun cancelAlarm() {
         followedTripRepository.cancelAlarm()
     }
 
-    private fun shutDown(isBeingDestroyed: Boolean) {
+    private fun shutDown() {
         if (hasShutDown) {
             return
         }
@@ -236,9 +251,7 @@ class BoardedDepartureService : Service() {
         cancelDepartureCollection()
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationManager?.cancel(DEPARTURE_NOTIFICATION_ID)
-        if (!isBeingDestroyed) {
-            stopSelf()
-        }
+        stopSelf()
     }
 
     private fun cancelDepartureCollection() {
@@ -279,8 +292,7 @@ class BoardedDepartureService : Service() {
     }
 
     companion object {
-        const val ACTION_FOLLOW_DEPARTURE = "com.dougkeen.action.FOLLOW_BOARDED_DEPARTURE"
-        const val ACTION_REFRESH_DEPARTURE = "com.dougkeen.action.REFRESH_BOARDED_DEPARTURE"
+        const val ACTION_START_ALARM_TRACKING = "com.dougkeen.action.START_ALARM_TRACKING"
         const val ACTION_CANCEL_ALARM = "com.dougkeen.action.CANCEL_BOARDED_DEPARTURE_ALARM"
         const val ACTION_CLEAR_DEPARTURE = "com.dougkeen.action.CLEAR_BOARDED_DEPARTURE"
         private const val DEPARTURE_NOTIFICATION_ID = 123

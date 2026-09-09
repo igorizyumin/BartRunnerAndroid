@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import com.dougkeen.bart.BartRunnerApplication
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Station
-import com.dougkeen.bart.services.BoardedDepartureService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +14,7 @@ data class TripActionsUiState(
     val alarmLeadTimeMinutes: Int = 0,
 )
 
-/** Owns user decisions that mutate or command the followed-trip service. */
+/** Owns user decisions that mutate followed-trip and alarm state. */
 class TripActionsViewModel(application: Application) :
     AndroidViewModel(application) {
     private val followedTripRepository = (application as BartRunnerApplication)
@@ -37,11 +36,10 @@ class TripActionsViewModel(application: Application) :
         _uiState.value = readUiState()
     }
 
-    fun followTrip(departure: Departure, passengerDestination: Station? = null): String {
+    fun followTrip(departure: Departure, passengerDestination: Station? = null) {
         followedTripRepository.setFollowedDeparture(
             prepareDepartureForFollowing(departure, passengerDestination),
         )
-        return BoardedDepartureService.ACTION_FOLLOW_DEPARTURE
     }
 
     fun updateFollowedTrip(departure: Departure) {
@@ -52,15 +50,13 @@ class TripActionsViewModel(application: Application) :
         }
     }
 
-    fun cancelAlarm(): String {
+    fun cancelAlarm() {
         followedTripRepository.cancelAlarm()
         refreshAlarmState()
-        return BoardedDepartureService.ACTION_CANCEL_ALARM
     }
 
-    fun clearTrip(): String {
+    fun clearTrip() {
         followedTripRepository.clearFollowedDeparture()
-        return BoardedDepartureService.ACTION_CLEAR_DEPARTURE
     }
 
     fun setAlarm(leadTimeMinutes: Int) {

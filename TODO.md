@@ -34,14 +34,14 @@ This backlog records the post-Compose audit. The current app builds successfully
 - [ ] Migrate small preference values from `SharedPreferences` to Preferences DataStore: route picker selection, static-feed timestamps, and alarm state.
 - [ ] Decide whether followed-trip JSON should remain a file-backed cache or move to a typed Proto DataStore; preserve process-death restoration and atomic writes.
 - [ ] Replace repository-owned `ExecutorService` instances with application-scoped coroutine dispatchers/scope where this does not weaken serialized writes.
-- [ ] Keep persistence migrations backward-compatible for existing installed users.
+- [ ] Do not bother keeping persistence migrations backward-compatible for existing installed users (there aren't any).
 
 ## Phase 5: alarms and background execution
 
-- [ ] Review `BoardedDepartureService`'s long-running `dataSync` foreground-service design against Android 15's time limits.
-- [ ] Add and test `Service.onTimeout()` handling, or replace continuous polling with a bounded/background-work design where product behavior permits.
-- [ ] Make the full-screen alarm notification the primary background entry point; avoid directly starting an activity from `AlarmBroadcastReceiver` unless required by tested alarm behavior.
-- [ ] Move alarm audio/vibration ownership into a clearly bounded service lifecycle and audit the static `WakeLocker` state for process/re-entry edge cases.
+- [x] Review `BoardedDepartureService`'s long-running `dataSync` foreground-service design against Android 15's time limits.
+- [x] Add `Service.onTimeout()` handling and bound foreground polling to the pending-alarm lifecycle.
+- [x] Make the full-screen alarm notification the primary background entry point; remove direct activity launches from `AlarmBroadcastReceiver`.
+- [x] Move alarm audio/vibration ownership to the standard notification channel and remove the custom `WakeLocker`/media-player lifecycle.
 - [ ] Add device tests for exact-alarm permission denial, notification permission denial, background alarm delivery, and full-screen intent denial.
 
 ## Phase 6: feed and build cleanup

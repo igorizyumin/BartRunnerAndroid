@@ -5,7 +5,6 @@ import android.app.Activity
 import android.os.Bundle
 import com.dougkeen.bart.backend.HttpTransitFeedClient
 import com.dougkeen.bart.backend.TransitRepository
-import com.dougkeen.bart.data.AlarmController
 import com.dougkeen.bart.data.FavoritesRepository
 import com.dougkeen.bart.data.FollowedTripRepository
 import com.dougkeen.bart.model.SystemTimeSource
@@ -18,7 +17,6 @@ import java.util.function.Supplier
 class BartRunnerApplication : Application() {
     lateinit var favoritesRepository: FavoritesRepository
     lateinit var followedTripRepository: FollowedTripRepository
-    lateinit var alarmController: AlarmController
     lateinit var transitRepository: TransitRepository
     lateinit var gtfsStaticData: GtfsStaticData
 
@@ -36,7 +34,6 @@ class BartRunnerApplication : Application() {
         super.onCreate()
         favoritesRepository = FavoritesRepository(this)
         followedTripRepository = FollowedTripRepository(this)
-        alarmController = AlarmController()
         gtfsStaticData = GtfsStaticData(this, timeSource)
         transitRepository = TransitRepository(
             HttpTransitFeedClient(),

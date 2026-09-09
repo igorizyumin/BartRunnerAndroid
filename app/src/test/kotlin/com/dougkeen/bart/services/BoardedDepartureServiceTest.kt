@@ -10,12 +10,13 @@ import org.junit.Test
 class BoardedDepartureServiceTest {
 
     @Test
-    fun pollingStopsWhenTheFollowedTripDisappearsOrDeparts() {
+    fun pollingStopsWhenTheAlarmIsHandledOrTripDisappearsOrDeparts() {
         val service = BoardedDepartureService()
 
-        assertTrue(service.shouldStopPolling(false, false))
-        assertTrue(service.shouldStopPolling(true, true))
-        assertFalse(service.shouldStopPolling(true, false))
+        assertTrue(service.shouldStopPolling(false, true, false))
+        assertTrue(service.shouldStopPolling(true, false, false))
+        assertTrue(service.shouldStopPolling(true, true, true))
+        assertFalse(service.shouldStopPolling(true, true, false))
     }
 
     @Test
@@ -41,12 +42,12 @@ class BoardedDepartureServiceTest {
     @Test
     fun serviceCommandsAreExplicitActions() {
         assertNotEquals(
+            BoardedDepartureService.ACTION_START_ALARM_TRACKING,
             BoardedDepartureService.ACTION_CANCEL_ALARM,
-            BoardedDepartureService.ACTION_CLEAR_DEPARTURE,
         )
         assertNotEquals(
-            BoardedDepartureService.ACTION_FOLLOW_DEPARTURE,
             BoardedDepartureService.ACTION_CANCEL_ALARM,
+            BoardedDepartureService.ACTION_CLEAR_DEPARTURE,
         )
     }
 

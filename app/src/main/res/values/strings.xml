@@ -43,7 +43,6 @@
     <string name="stop_following_title">Stop following this trip?</string>
     <string name="stop_following_message">You can start following another train at any time.</string>
     <string name="your_train_leaving_soon">Your train is leaving soon</string>
-    <string name="departure_alarm_sounding">Your departure alarm is sounding.</string>
     <string name="silence_alarm">Silence alarm</string>
     <string name="departs">Departs</string>
     <string name="arrives">Arrives</string>
@@ -119,7 +118,7 @@
     <string name="route_title_arrow">%1$s → %2$s</string>
     <string name="notification_channel_id">BART_Runner_notifications</string>
     <string name="notification_channel_name">BART Runner departure notifications</string>
-    <string name="alarm_notification_channel_id">BART_Runner_alarm_notifications</string>
+    <string name="alarm_notification_channel_id">BART_Runner_alarm_notifications_v2</string>
     <string name="alarm_notification_channel_name">BART Runner departure alarms</string>
     <string name="alarm_notification_title">Your train is leaving soon</string>
     <string name="alarm_notification_text">Departing for %1$s</string>

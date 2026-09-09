@@ -4,15 +4,9 @@ import android.Manifest
 import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.MediaPlayer
-import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.os.VibrationEffect
-import android.os.VibratorManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,10 +26,10 @@ import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.presentation.DepartureTextFormatter
+import com.dougkeen.bart.receivers.AlarmBroadcastReceiver
 import com.dougkeen.bart.services.BoardedDepartureService
 import com.dougkeen.bart.ui.BartRunnerTheme
 import com.dougkeen.bart.ui.TripScreen
-import com.dougkeen.util.WakeLocker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,8 +47,8 @@ class TripInProgressActivity : ComponentActivity() {
     private var tripFare by mutableStateOf<String?>(null)
     private var fareEligible = false
     private var fareLookupKey: String? = null
-    private val alarmHandler = Handler(Looper.getMainLooper())
     private var pendingAlarmLeadTimeMinutes: Int? = null
+    private var alarmVisible by mutableStateOf(false)
 
     override fun onResume() {
         super.onResume()
@@ -68,6 +62,12 @@ class TripInProgressActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (intent.getBooleanExtra(AlarmBroadcastReceiver.EXTRA_ALARM_TRIGGERED, false)) {
+            alarmVisible = true
+            showAlarmWindow()
+            NotificationManagerCompat.from(this)
+                .cancel(AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
+        }
         if (intent.getStringExtra(RouteArguments.DEPARTURE_IDENTITY) != null) {
             setIntent(intent)
             recreate()
@@ -94,13 +94,14 @@ class TripInProgressActivity : ComponentActivity() {
         fareEligible = route.destination != null
         tripFare = route.fare.takeIf { fareEligible }
         resolveFare(app, route)
+        alarmVisible = intent.getBooleanExtra(
+            AlarmBroadcastReceiver.EXTRA_ALARM_TRIGGERED,
+            false,
+        )
         NotificationManagerCompat.from(this)
             .cancel(com.dougkeen.bart.receivers.AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
-        if (app.alarmController.isRingtoneRequested() || app.alarmController.isSounding()) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            soundTheAlarm()
+        if (alarmVisible) {
+            showAlarmWindow()
         }
         isFollowing = followed != null && identity == followed.identity
         tripProgressViewModel.setQuery(
@@ -124,14 +125,13 @@ class TripInProgressActivity : ComponentActivity() {
         setContent {
             val departure by tripProgressViewModel.departureState.collectAsStateWithLifecycle()
             val tripActionsState by tripActionsViewModel.uiState.collectAsStateWithLifecycle()
-            val alarmState by app.alarmController.state.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 TripScreen(
                     departure = departure,
                     route = tripRoute,
                     fare = tripFare,
                     isFollowingInitially = isFollowing,
-                    alarmVisible = alarmState.sounding || alarmState.ringtoneRequested,
+                    alarmVisible = alarmVisible,
                     timeSource = app.timeSource,
                     alarmPending = tripActionsState.alarmPending,
                     alarmLeadTimeMinutes = tripActionsState.alarmLeadTimeMinutes,
@@ -139,10 +139,12 @@ class TripInProgressActivity : ComponentActivity() {
                     onFollow = { followTrip(it) },
                     onSetAlarm = ::enableAlarm,
                     onCancelAlarm = {
-                        sendServiceAction(tripActionsViewModel.cancelAlarm())
+                        tripActionsViewModel.cancelAlarm()
+                        stopAlarmTrackingService()
                     },
                     onClear = {
-                        sendServiceAction(tripActionsViewModel.clearTrip())
+                        tripActionsViewModel.clearTrip()
+                        stopAlarmTrackingService()
                         finish()
                     },
                     onShare = ::shareArrival,
@@ -152,38 +154,15 @@ class TripInProgressActivity : ComponentActivity() {
         }
     }
 
-    private fun soundTheAlarm() {
-        val app = application as BartRunnerApplication
-        if (app.alarmController.getMediaPlayer() == null) {
-            val alarmUris = listOf(
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
-            )
-            alarmUris.firstOrNull { it != null && tryToPlayRingtone(it) }
-        }
-        getSystemService(VibratorManager::class.java)?.defaultVibrator?.vibrate(
-            VibrationEffect.createWaveform(longArrayOf(0, 500, 500), 1),
-        )
-        alarmHandler.removeCallbacksAndMessages(null)
-        alarmHandler.postDelayed(::silenceAlarm, 20_000L)
-        app.alarmController.consumeRingtoneRequest()
-        app.alarmController.setSounding(true)
-    }
-
-    private fun tryToPlayRingtone(uri: Uri): Boolean {
-        val player = MediaPlayer.create(this, uri) ?: return false
-        player.isLooping = true
-        player.start()
-        (application as BartRunnerApplication).alarmController.setMediaPlayer(player)
-        return true
-    }
-
     private fun silenceAlarm() {
-        (application as BartRunnerApplication).alarmController.silence()
-        getSystemService(VibratorManager::class.java)?.defaultVibrator?.cancel()
+        alarmVisible = false
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        WakeLocker.release()
+    }
+
+    private fun showAlarmWindow() {
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private fun enableAlarm(leadTimeMinutes: Int) {
@@ -199,7 +178,7 @@ class TripInProgressActivity : ComponentActivity() {
         }
 
         tripActionsViewModel.setAlarm(leadTimeMinutes)
-        sendServiceAction(BoardedDepartureService.ACTION_REFRESH_DEPARTURE)
+        startAlarmTrackingService()
     }
 
     private fun hasExactAlarmPermission(): Boolean {
@@ -251,21 +230,10 @@ class TripInProgressActivity : ComponentActivity() {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        WakeLocker.release()
-    }
-
-    override fun onDestroy() {
-        alarmHandler.removeCallbacksAndMessages(null)
-        super.onDestroy()
-    }
-
     private fun followTrip(departure: Departure) {
         if (isFollowing) return
-        val action = tripActionsViewModel.followTrip(departure, tripRoute?.destination)
+        tripActionsViewModel.followTrip(departure, tripRoute?.destination)
         requestNotificationPermissionIfNeeded()
-        sendServiceAction(action)
         isFollowing = true
     }
 
@@ -303,8 +271,15 @@ class TripInProgressActivity : ComponentActivity() {
         }, getString(R.string.share_arrival_time)))
     }
 
-    private fun sendServiceAction(action: String) {
-        startForegroundService(Intent(this, BoardedDepartureService::class.java).setAction(action))
+    private fun startAlarmTrackingService() {
+        startForegroundService(
+            Intent(this, BoardedDepartureService::class.java)
+                .setAction(BoardedDepartureService.ACTION_START_ALARM_TRACKING),
+        )
+    }
+
+    private fun stopAlarmTrackingService() {
+        stopService(Intent(this, BoardedDepartureService::class.java))
     }
 
     private fun requestNotificationPermissionIfNeeded() {

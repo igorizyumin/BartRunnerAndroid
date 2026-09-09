@@ -77,17 +77,6 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         schedule()
     }
 
-    fun update() {
-        if (alarmManager == null) {
-            Log.w(Constants.TAG,
-                "No alarm manager available, so alarm will not be updated")
-            return
-        }
-        if (isPending && leadTimeMinutes > 0) {
-            schedule()
-        }
-    }
-
     fun cancel() {
         alarmManager?.cancel(alarmIntent())
         updateState(leadTimeMinutes, false)

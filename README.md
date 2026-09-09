@@ -6,17 +6,12 @@ of annoyances.
 
 This project is not affiliated with BART in any way.
 
-## Architecture
-
-The production UI is built with Jetpack Compose. Screen state is owned by lifecycle-aware
-ViewModels and collected with lifecycle-aware Compose APIs; the old XML/View screen layer is no
-longer part of the application.
-
 ## Reporting bugs/requesting features
 Please file bugs and suggestions as GitHub issues.
 
 ## Developed by
 Igor Izyumin - igor.izyumin@gmail.com
+
 Original by Doug Keen - doug@dougkeen.com
 
 # Special thanks to

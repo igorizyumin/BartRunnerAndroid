@@ -126,6 +126,8 @@ private val BlueDark = Color(0xFF064B9B)
 private val BlueLight = Color(0xFFE8F1FF)
 private val Teal = Color(0xFF006B6B)
 private val Warning = Color(0xFFB3261E)
+private val LightConnectingTrainTile = Color(0xFFE6E6E6)
+private val LightYellowLine = Color(0xFFE6C400)
 
 @Composable
 fun BartRunnerTheme(content: @Composable () -> Unit) {
@@ -136,7 +138,11 @@ fun BartRunnerTheme(content: @Composable () -> Unit) {
         onPrimaryContainer = BlueDark,
         secondary = Teal,
         surface = Color(0xFFF8FAFD),
-        surfaceContainer = Color.White,
+        surfaceContainerLowest = Color.White,
+        surfaceContainerLow = Color(0xFFF7F7F7),
+        surfaceContainer = Color(0xFFF0F0F0),
+        surfaceContainerHigh = Color(0xFFEBEBEB),
+        surfaceContainerHighest = LightConnectingTrainTile,
         background = Color(0xFFF8FAFD),
         error = Warning,
     )
@@ -849,7 +855,6 @@ fun TripScreen(
         AlertDialog(
             onDismissRequest = { },
             title = { Text(stringResource(R.string.your_train_leaving_soon)) },
-            text = { Text(stringResource(R.string.departure_alarm_sounding)) },
             confirmButton = { TextButton(onClick = onSilenceAlarm) { Text(stringResource(R.string.silence_alarm)) } },
         )
     }
@@ -1036,7 +1041,12 @@ private fun TripTimeline(departure: Departure, tick: Long) {
 private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lineColor = lineColor(leg.line)
-    Card(colors = CardDefaults.cardColors(containerColor = if (current) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainer), border = if (current) androidx.compose.foundation.BorderStroke(1.dp, lineColor) else null) {
+    val tileColor = when {
+        current -> MaterialTheme.colorScheme.surfaceContainerHighest
+        androidx.compose.foundation.isSystemInDarkTheme() -> MaterialTheme.colorScheme.surfaceContainer
+        else -> LightConnectingTrainTile
+    }
+    Card(colors = CardDefaults.cardColors(containerColor = tileColor), border = if (current) androidx.compose.foundation.BorderStroke(1.dp, lineColor) else null) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LineBadge(leg.line)
@@ -1231,10 +1241,13 @@ fun SystemMapScreen(onBack: () -> Unit) {
     }
 }
 
+@Composable
 private fun lineColor(line: Line?): Color = when (line) {
     Line.RED -> Color(0xFFFF0000)
     Line.ORANGE -> Color(0xFFFF9933)
-    Line.YELLOW, Line.YELLOW_DMU, Line.YELLOW_LATE_NIGHT -> Color(0xFFFFFF33)
+    Line.YELLOW, Line.YELLOW_DMU, Line.YELLOW_LATE_NIGHT ->
+        if (androidx.compose.foundation.isSystemInDarkTheme()) Color(0xFFFFFF33)
+        else LightYellowLine
     Line.BLUE -> Color(0xFF0099CC)
     Line.GREEN -> Color(0xFF339933)
     Line.PURPLE -> Color(0xFFD5CFA3)

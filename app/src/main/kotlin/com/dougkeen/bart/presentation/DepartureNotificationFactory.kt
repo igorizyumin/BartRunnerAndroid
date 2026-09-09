@@ -13,7 +13,7 @@ import com.dougkeen.bart.model.TimeSource
 import com.dougkeen.bart.platform.DepartureAlarmScheduler
 import com.dougkeen.bart.services.BoardedDepartureService
 
-/** Builds the foreground notification for a followed departure. */
+/** Builds the foreground notification used while a departure alarm is pending. */
 object DepartureNotificationFactory {
     @JvmStatic
     fun create(
