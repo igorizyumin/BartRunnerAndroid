@@ -5,10 +5,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import com.dougkeen.bart.BartRunnerApplication
+import com.dougkeen.bart.performance.PerformanceTrace
 import com.dougkeen.bart.ui.BartRunnerTheme
 import com.dougkeen.bart.ui.HomeScreen
 import kotlinx.coroutines.Dispatchers
@@ -25,10 +29,22 @@ class RoutesListActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val application = application as BartRunnerApplication
         lifecycleScope.launch(Dispatchers.IO) {
-            application.transitRepository.refreshIfStale()
+            PerformanceTrace.section("BART startup refresh") {
+                application.transitRepository.refreshIfStale()
+            }
         }
         setContent {
             val state by routesViewModel.uiState.collectAsStateWithLifecycle()
+            val firstContentReported = remember { mutableStateOf(false) }
+            if (!state.isLoading && !firstContentReported.value) {
+                SideEffect {
+                    if (!firstContentReported.value) {
+                        firstContentReported.value = true
+                        PerformanceTrace.instant("BART first route state")
+                        reportFullyDrawn()
+                    }
+                }
+            }
             val followedTripState by application.followedTripRepository.state.collectAsStateWithLifecycle()
             val followedTrip = if (followedTripState.departure != null) {
                 application.followedTripRepository.getFollowedDeparture()

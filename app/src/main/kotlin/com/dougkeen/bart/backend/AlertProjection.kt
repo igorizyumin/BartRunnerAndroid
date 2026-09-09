@@ -2,41 +2,44 @@ package com.dougkeen.bart.backend
 
 import com.dougkeen.bart.model.Alert
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
+import com.dougkeen.bart.performance.PerformanceTrace
 import com.google.transit.realtime.GtfsRealtime
 
 /** Converts the latest alert feed into the app's alert model. */
 class AlertProjection {
     fun project(snapshot: TransitFeedSnapshot): Alert.AlertList {
-        val index: GtfsRealtimeFeedIndex = snapshot.getAlertIndex()
-        val alerts = mutableListOf<Alert>()
-        for (entity in index.alertEntities) {
-            if (!entity.hasAlert()) {
-                continue
-            }
-            val source = entity.alert
-            var postedAtMillis: Long? = null
-            var expiresAtMillis: Long? = null
-            if (source.activePeriodList.isNotEmpty()) {
-                val period = source.getActivePeriod(0)
-                if (period.hasStart()) {
-                    postedAtMillis = period.start * 1000L
+        return PerformanceTrace.section("BART alert projection") {
+            val index: GtfsRealtimeFeedIndex = snapshot.getAlertIndex()
+            val alerts = mutableListOf<Alert>()
+            for (entity in index.alertEntities) {
+                if (!entity.hasAlert()) {
+                    continue
                 }
-                if (period.hasEnd()) {
-                    expiresAtMillis = period.end * 1000L
+                val source = entity.alert
+                var postedAtMillis: Long? = null
+                var expiresAtMillis: Long? = null
+                if (source.activePeriodList.isNotEmpty()) {
+                    val period = source.getActivePeriod(0)
+                    if (period.hasStart()) {
+                        postedAtMillis = period.start * 1000L
+                    }
+                    if (period.hasEnd()) {
+                        expiresAtMillis = period.end * 1000L
+                    }
                 }
+                alerts += Alert(
+                    id = entity.id,
+                    type = if (source.hasEffect()) source.effect.name else "",
+                    description = text(
+                        if (source.hasHeaderText()) source.headerText else null,
+                        if (source.hasDescriptionText()) source.descriptionText else null
+                    ),
+                    postedAtMillis = postedAtMillis,
+                    expiresAtMillis = expiresAtMillis
+                )
             }
-            alerts += Alert(
-                id = entity.id,
-                type = if (source.hasEffect()) source.effect.name else "",
-                description = text(
-                    if (source.hasHeaderText()) source.headerText else null,
-                    if (source.hasDescriptionText()) source.descriptionText else null
-                ),
-                postedAtMillis = postedAtMillis,
-                expiresAtMillis = expiresAtMillis
-            )
+            Alert.AlertList(alerts, alerts.isEmpty())
         }
-        return Alert.AlertList(alerts, alerts.isEmpty())
     }
 
     fun areEquivalent(

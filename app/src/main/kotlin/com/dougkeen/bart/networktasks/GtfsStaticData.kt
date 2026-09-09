@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.SystemTimeSource
 import com.dougkeen.bart.model.TimeSource
+import com.dougkeen.bart.performance.PerformanceTrace
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.dougkeen.bart.transit.gtfs.GtfsNetworkCatalog
 import okhttp3.OkHttpClient
@@ -45,7 +46,12 @@ class GtfsStaticData @JvmOverloads constructor(
         load().faresByStationPair[key(origin, destination)]
 
     @Throws(IOException::class)
-    private fun load(): LoadedData {
+    private fun load(): LoadedData = PerformanceTrace.section("BART static data load") {
+        loadLocked()
+    }
+
+    @Throws(IOException::class)
+    private fun loadLocked(): LoadedData {
         synchronized(lock) {
             val now = timeSource.nowMillis()
             val serviceDate = dateCode(
@@ -108,15 +114,17 @@ class GtfsStaticData @JvmOverloads constructor(
         lastSuccess: Long,
         serviceDate: String,
         now: Long,
-    ): LoadedData? = try {
-        parse(cacheFile).also {
-            cachedData = it
-            cachedAt = if (lastSuccess > 0) lastSuccess else now
-            cachedServiceDate = serviceDate
+    ): LoadedData? = PerformanceTrace.section("BART static cache parse") {
+        try {
+            parse(cacheFile).also {
+                cachedData = it
+                cachedAt = if (lastSuccess > 0) lastSuccess else now
+                cachedServiceDate = serviceDate
+            }
+        } catch (exception: Exception) {
+            cacheFile.delete()
+            null
         }
-    } catch (exception: Exception) {
-        cacheFile.delete()
-        null
     }
 
     companion object {
@@ -130,21 +138,22 @@ class GtfsStaticData @JvmOverloads constructor(
         private val CLIENT: OkHttpClient = NetworkUtils.makeHttpClient()
 
         @Throws(IOException::class)
-        private fun download(destination: File) {
-            val request = Request.Builder().url(FEED_URL)
-                .header("Accept", "application/zip")
-                .build()
-            CLIENT.newCall(request).execute().use { response ->
-                if (!response.isSuccessful || response.body == null) {
-                    throw IOException("Static GTFS returned ${response.code}")
-                }
-                FileOutputStream(destination, false).use { output ->
-                    response.body!!.byteStream().use { input ->
-                        input.copyTo(output, 8192)
+        private fun download(destination: File) =
+            PerformanceTrace.section("BART static feed download") {
+                val request = Request.Builder().url(FEED_URL)
+                    .header("Accept", "application/zip")
+                    .build()
+                CLIENT.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful || response.body == null) {
+                        throw IOException("Static GTFS returned ${response.code}")
+                    }
+                    FileOutputStream(destination, false).use { output ->
+                        response.body!!.byteStream().use { input ->
+                            input.copyTo(output, 8192)
+                        }
                     }
                 }
             }
-        }
 
         @Throws(IOException::class)
         private fun readFeedFiles(file: File): Map<String, String> {
@@ -174,7 +183,8 @@ class GtfsStaticData @JvmOverloads constructor(
             ByteArrayInputStream(value.toByteArray(StandardCharsets.UTF_8))
 
         @Throws(IOException::class)
-        private fun parse(file: File): LoadedData {
+        private fun parse(file: File): LoadedData =
+            PerformanceTrace.section("BART static feed parse") {
             val feedFiles = readFeedFiles(file)
             val farePrices = HashMap<String, String>()
             val fareRules = mutableListOf<FareRule>()
@@ -210,11 +220,11 @@ class GtfsStaticData @JvmOverloads constructor(
             } catch (exception: IllegalArgumentException) {
                 throw IOException("Could not parse static GTFS network catalog", exception)
             }
-            return LoadedData(
+            LoadedData(
                 Collections.unmodifiableMap(HashMap(fares)),
                 bartGtfsNetwork
             )
-        }
+            }
 
         @Throws(IOException::class)
         private fun parseFareAttributes(input: InputStream, fares: MutableMap<String, String>) {

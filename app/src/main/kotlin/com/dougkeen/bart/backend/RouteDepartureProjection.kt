@@ -6,6 +6,7 @@ import com.dougkeen.bart.model.Station
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.networktasks.GtfsRealtimeContentHandler
 import com.dougkeen.bart.networktasks.GtfsRealtimeFeedIndex
+import com.dougkeen.bart.performance.PerformanceTrace
 import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
 import java.util.function.Supplier
@@ -33,21 +34,24 @@ class RouteDepartureProjection private constructor(
     }
 
     fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures {
-        val network = networkSupplier.get()
-        val feedIndex = snapshot.getTripUpdateIndex()
-        val feedTime = snapshot.getTripUpdatesTimestampMillis()
-        // A later fallback may add transfer routes whose lines are not present
-        // in the first route set. Build one complete time-scoped graph so the
-        // fallback cannot accidentally lose its static connecting trains.
-        val schedule = snapshot.getCorrectedSchedule(network)
-        val routes = schedule.routesFor(query.origin, query.destination)
-        return projectWithRouting(
-            routes,
-            network,
-            feedIndex,
-            feedTime,
-            schedule,
-        )
+        val name = "BART route ${query.origin?.abbreviation.orEmpty()}-${query.destination?.abbreviation.orEmpty()}"
+        return PerformanceTrace.section(name) {
+            val network = networkSupplier.get()
+            val feedIndex = snapshot.getTripUpdateIndex()
+            val feedTime = snapshot.getTripUpdatesTimestampMillis()
+            // A later fallback may add transfer routes whose lines are not present
+            // in the first route set. Build one complete time-scoped graph so the
+            // fallback cannot accidentally lose its static connecting trains.
+            val schedule = snapshot.getCorrectedSchedule(network)
+            val routes = schedule.routesFor(query.origin, query.destination)
+            projectWithRouting(
+                routes,
+                network,
+                feedIndex,
+                feedTime,
+                schedule,
+            )
+        }
     }
 
     private fun projectWithRouting(

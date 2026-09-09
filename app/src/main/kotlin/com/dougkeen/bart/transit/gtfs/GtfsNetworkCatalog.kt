@@ -1,5 +1,6 @@
 package com.dougkeen.bart.transit.gtfs
 
+import com.dougkeen.bart.performance.PerformanceTrace
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -131,13 +132,15 @@ class GtfsNetworkCatalog private constructor(
 
     /** Returns trips running on a service date, including GTFS exceptions. */
     fun scheduledTripsFor(serviceDate: LocalDate): List<GtfsScheduledTrip> =
-        tripsById.values.mapNotNull { trip ->
-            val serviceId = trip.serviceId ?: return@mapNotNull null
-            if (!isServiceActive(serviceId, serviceDate)) {
-                return@mapNotNull null
+        PerformanceTrace.section("BART scheduled trips") {
+            tripsById.values.mapNotNull { trip ->
+                val serviceId = trip.serviceId ?: return@mapNotNull null
+                if (!isServiceActive(serviceId, serviceDate)) {
+                    return@mapNotNull null
+                }
+                val stopTimes = stopTimesByTripId[trip.tripId].orEmpty()
+                if (stopTimes.isEmpty()) null else GtfsScheduledTrip(trip, stopTimes)
             }
-            val stopTimes = stopTimesByTripId[trip.tripId].orEmpty()
-            if (stopTimes.isEmpty()) null else GtfsScheduledTrip(trip, stopTimes)
         }
 
     private fun isServiceActive(serviceId: String, date: LocalDate): Boolean {

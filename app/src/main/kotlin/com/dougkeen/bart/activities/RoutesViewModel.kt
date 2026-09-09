@@ -11,6 +11,7 @@ import com.dougkeen.bart.model.Alert
 import com.dougkeen.bart.model.Departure
 import com.dougkeen.bart.model.StationPair
 import com.dougkeen.bart.model.TimeSource
+import com.dougkeen.bart.performance.PerformanceTrace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +77,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         favoritesRepository.insertFavorite(favorite, index)
 
     private fun syncRouteJobs(favorites: List<StationPair>) {
+        PerformanceTrace.counter("BART favorite count", favorites.size)
         val desired = favorites.toSet()
         routeJobs.keys.toList()
             .filter { it !in desired }
@@ -166,6 +168,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
                 publishError(exception)
             }
         }
+        PerformanceTrace.counter("BART projection job count", routeJobs.size)
     }
 
     private fun immutableList(values: List<StationPair>): List<StationPair> =

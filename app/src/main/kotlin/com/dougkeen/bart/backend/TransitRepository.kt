@@ -1,6 +1,7 @@
 package com.dougkeen.bart.backend
 
 import com.google.transit.realtime.GtfsRealtime
+import com.dougkeen.bart.performance.PerformanceTrace
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -150,11 +151,13 @@ class TransitRepository(
         }
 
         try {
-            val fetchResult = runInterruptible(Dispatchers.IO) {
-                try {
-                    feedClient.fetchFeeds()
-                } catch (exception: Exception) {
-                    TransitFeedFetchResult.failed(exception)
+            val fetchResult = PerformanceTrace.suspendSection("BART realtime refresh") {
+                runInterruptible(Dispatchers.IO) {
+                    try {
+                        feedClient.fetchFeeds()
+                    } catch (exception: Exception) {
+                        TransitFeedFetchResult.failed(exception)
+                    }
                 }
             }
             currentCoroutineContext().ensureActive()
@@ -185,13 +188,15 @@ class TransitRepository(
     }
 
     private fun fetchAndPublish() {
-        val fetchResult = try {
-            feedClient.fetchFeeds()
-        } catch (exception: Exception) {
-            TransitFeedFetchResult.failed(exception)
-        }
+        PerformanceTrace.section("BART realtime refresh") {
+            val fetchResult = try {
+                feedClient.fetchFeeds()
+            } catch (exception: Exception) {
+                TransitFeedFetchResult.failed(exception)
+            }
 
-        publishFetchResult(fetchResult)
+            publishFetchResult(fetchResult)
+        }
     }
 
     private fun publishFetchResult(fetchResult: TransitFeedFetchResult) {

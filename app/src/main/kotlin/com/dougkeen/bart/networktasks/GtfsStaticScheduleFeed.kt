@@ -4,6 +4,7 @@ import com.dougkeen.bart.transit.gtfs.BartGtfsNetwork
 import com.dougkeen.bart.transit.gtfs.GtfsScheduledTrip
 import com.dougkeen.bart.transit.gtfs.GtfsStopTime
 import com.dougkeen.bart.model.Line
+import com.dougkeen.bart.performance.PerformanceTrace
 import com.google.transit.realtime.GtfsRealtime
 import java.time.Instant
 import java.time.LocalDate
@@ -24,9 +25,9 @@ internal object GtfsStaticScheduleFeed {
         network: BartGtfsNetwork,
         feedTime: Long,
         lines: Set<Line>
-    ): GtfsRealtimeFeedIndex {
+    ): GtfsRealtimeFeedIndex = PerformanceTrace.section("BART static schedule feed") {
         if (feedTime <= 0L) {
-            return GtfsRealtimeFeedIndex.from(emptyFeed())
+            return@section GtfsRealtimeFeedIndex.from(emptyFeed())
         }
         val serviceDate = Instant.ofEpochMilli(feedTime)
             .atZone(PACIFIC_ZONE)
@@ -50,7 +51,7 @@ internal object GtfsStaticScheduleFeed {
         val entities = scheduledTrips.values.mapIndexed { index, scheduled ->
             toEntity(index, scheduled)
         }
-        return GtfsRealtimeFeedIndex.from(
+        GtfsRealtimeFeedIndex.from(
             GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(
                     GtfsRealtime.FeedHeader.newBuilder()
