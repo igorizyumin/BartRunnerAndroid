@@ -101,7 +101,8 @@ and keep the implementation simple.
 - [x] Add API annotations around full-screen-intent settings access and remove
   redundant SDK guards made unnecessary by `minSdk`.
 - [x] Fix the remaining low-risk Compose lint hints.
-- [ ] Keep debug lint at zero errors and eliminate warnings where practical.
+- [x] Keep debug lint at zero errors; the two remaining resource-layout warnings
+  are intentional for the adaptive launcher/resource setup.
 
 ## Phase 9: staged dependency and SDK maintenance
 
