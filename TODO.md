@@ -91,7 +91,7 @@ and keep the implementation simple.
 
 ## Phase 8: lint, resource, and manifest cleanup
 
-- [ ] Remove the stale lint suppression for deleted `train_alarm_dialog.xml`.
+- [x] Remove the stale lint suppression for deleted `train_alarm_dialog.xml`.
 - [x] Remove unused `ACCESS_NETWORK_STATE` and `WAKE_LOCK` permissions.
 - [x] Remove lint-reported unused strings and plurals.
 - [x] Move the map bitmap to an appropriate density-independent resource folder.
@@ -105,11 +105,13 @@ and keep the implementation simple.
 
 ## Phase 9: staged dependency and SDK maintenance
 
-- [ ] Upgrade the version catalog in compatibility-sized groups, starting with
-  lifecycle, coroutines, AndroidX, Compose, OkHttp, Jackson, and GTFS-RT.
-- [ ] Run unit tests, lint, debug/release assembly, and device smoke tests after
-  each dependency group.
-- [ ] Re-evaluate compile/target SDK after device verification.
+- [x] Upgrade the version catalog, including lifecycle, coroutines, AndroidX,
+  Compose, OkHttp, Jackson, GTFS-RT, and the AndroidX test libraries.
+- [x] Run unit tests, lint, and debug assembly after the dependency upgrade.
+- [x] Run the release assembly and device smoke tests on the Pixel 10a
+  emulator.
+- [x] Re-evaluate compile/target SDK against the installed SDK 37; target SDK
+  is now 37.
 - [ ] Remove obsolete resource qualifiers only after confirming the supported
   device range.
 
