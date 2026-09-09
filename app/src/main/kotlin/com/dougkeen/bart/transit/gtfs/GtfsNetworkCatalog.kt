@@ -1,6 +1,10 @@
 package com.dougkeen.bart.transit.gtfs
 
 import com.dougkeen.bart.performance.PerformanceTrace
+import org.apache.commons.csv.CSVFormat
+import org.apache.commons.csv.CSVParser
+import org.apache.commons.csv.CSVRecord
+import java.io.IOException
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -226,32 +230,52 @@ class GtfsNetworkCatalog private constructor(
 
         @JvmStatic
         fun fromFiles(files: Map<String, String>): GtfsNetworkCatalog {
-            val stops = parseStops(requiredFile(files, STOPS))
-            val routes = parseRoutes(requiredFile(files, ROUTES))
-            val trips = parseTrips(requiredFile(files, TRIPS))
-            val stopTimesByTrip = parseStopTimes(
-                requiredFile(files, STOP_TIMES),
-                trips.keys
-            )
-            val stopIdsByTrip = stopTimesByTrip.mapValues { (_, stopTimes) ->
-                stopTimes.map { it.stopId }
+            val stops = PerformanceTrace.section("BART parse stops") {
+                parseStops(requiredFile(files, STOPS))
             }
-            val calendars = files[CALENDAR]?.let(::parseCalendars).orEmpty()
-            val calendarDates = files[CALENDAR_DATES]?.let(::parseCalendarDates).orEmpty()
-            val transfers = files[TRANSFERS]?.let(::parseTransfers).orEmpty()
+            val routes = PerformanceTrace.section("BART parse routes") {
+                parseRoutes(requiredFile(files, ROUTES))
+            }
+            val trips = PerformanceTrace.section("BART parse trips") {
+                parseTrips(requiredFile(files, TRIPS))
+            }
+            val stopTimesByTrip = PerformanceTrace.section("BART parse stop times") {
+                parseStopTimes(
+                    requiredFile(files, STOP_TIMES),
+                    trips.keys
+                )
+            }
+            val stopIdsByTrip = PerformanceTrace.section("BART derive trip stop IDs") {
+                stopTimesByTrip.mapValues { (_, stopTimes) ->
+                    stopTimes.map { it.stopId }
+                }
+            }
+            val calendars = PerformanceTrace.section("BART parse calendars") {
+                files[CALENDAR]?.let(::parseCalendars).orEmpty()
+            }
+            val calendarDates = PerformanceTrace.section("BART parse calendar dates") {
+                files[CALENDAR_DATES]?.let(::parseCalendarDates).orEmpty()
+            }
+            val transfers = PerformanceTrace.section("BART parse transfers") {
+                files[TRANSFERS]?.let(::parseTransfers).orEmpty()
+            }
 
-            val patterns = buildPatterns(trips, stopIdsByTrip)
-            return GtfsNetworkCatalog(
-                stopsById = stops.toMap(),
-                routesById = routes.toMap(),
-                tripsById = trips.toMap(),
-                stopIdsByTripId = stopIdsByTrip.mapValues { it.value.toList() }.toMap(),
-                stopTimesByTripId = stopTimesByTrip.mapValues { it.value.toList() }.toMap(),
-                calendarsByServiceId = calendars,
-                calendarDatesByServiceId = calendarDates,
-                patterns = patterns.toList(),
-                transfers = transfers
-            )
+            val patterns = PerformanceTrace.section("BART build patterns") {
+                buildPatterns(trips, stopIdsByTrip)
+            }
+            return PerformanceTrace.section("BART freeze catalog") {
+                GtfsNetworkCatalog(
+                    stopsById = stops.toMap(),
+                    routesById = routes.toMap(),
+                    tripsById = trips.toMap(),
+                    stopIdsByTripId = stopIdsByTrip.mapValues { it.value.toList() }.toMap(),
+                    stopTimesByTripId = stopTimesByTrip.mapValues { it.value.toList() }.toMap(),
+                    calendarsByServiceId = calendars,
+                    calendarDatesByServiceId = calendarDates,
+                    patterns = patterns.toList(),
+                    transfers = transfers
+                )
+            }
         }
 
         private fun requiredFile(files: Map<String, String>, name: String): String =
@@ -290,21 +314,28 @@ class GtfsNetworkCatalog private constructor(
             }.associateBy { it.routeId }
 
         private fun parseTrips(input: String): Map<String, GtfsTrip> =
-            rows(input).mapNotNull { row ->
-                val tripId = row["trip_id"].orEmpty()
-                val routeId = row["route_id"].orEmpty()
-                if (tripId.isEmpty() || routeId.isEmpty()) {
-                    null
-                } else {
-                    GtfsTrip(
-                        tripId = tripId,
-                        routeId = routeId,
-                        serviceId = row.optional("service_id"),
-                        directionId = row.optional("direction_id"),
-                        headsign = row.optional("trip_headsign")
-                    )
+            withCsv(input) { parser ->
+                val tripIdIndex = parser.columnIndex("trip_id")
+                val routeIdIndex = parser.columnIndex("route_id")
+                val serviceIdIndex = parser.columnIndex("service_id")
+                val directionIdIndex = parser.columnIndex("direction_id")
+                val headsignIndex = parser.columnIndex("trip_headsign")
+                val trips = linkedMapOf<String, GtfsTrip>()
+                for (row in parser) {
+                    val tripId = row.valueAt(tripIdIndex).orEmpty()
+                    val routeId = row.valueAt(routeIdIndex).orEmpty()
+                    if (tripId.isNotEmpty() && routeId.isNotEmpty()) {
+                        trips[tripId] = GtfsTrip(
+                            tripId = tripId,
+                            routeId = routeId,
+                            serviceId = row.optionalAt(serviceIdIndex),
+                            directionId = row.optionalAt(directionIdIndex),
+                            headsign = row.optionalAt(headsignIndex)
+                        )
+                    }
                 }
-            }.associateBy { it.tripId }
+                trips
+            }
 
         private fun parseStopTimes(
             input: String,
@@ -313,21 +344,29 @@ class GtfsNetworkCatalog private constructor(
             data class StopTime(val value: GtfsStopTime, val rowOrder: Int)
 
             val byTrip = linkedMapOf<String, MutableList<StopTime>>()
-            rows(input).forEachIndexed { rowOrder, row ->
-                val tripId = row["trip_id"].orEmpty()
-                val stopId = row["stop_id"].orEmpty()
-                val sequence = row["stop_sequence"]?.toIntOrNull()
-                if (tripId in knownTripIds && stopId.isNotEmpty() && sequence != null) {
-                    byTrip.getOrPut(tripId) { mutableListOf() }
-                        .add(StopTime(
-                            GtfsStopTime(
-                                stopId,
-                                sequence,
-                                parseGtfsTime(row.optional("arrival_time")),
-                                parseGtfsTime(row.optional("departure_time"))
-                            ),
-                            rowOrder
-                        ))
+            withCsv(input) { parser ->
+                val tripIdIndex = parser.columnIndex("trip_id")
+                val stopIdIndex = parser.columnIndex("stop_id")
+                val sequenceIndex = parser.columnIndex("stop_sequence")
+                val arrivalIndex = parser.columnIndex("arrival_time")
+                val departureIndex = parser.columnIndex("departure_time")
+                for ((rowOrder, row) in parser.withIndex()) {
+                    val tripId = row.valueAt(tripIdIndex).orEmpty()
+                    val stopId = row.valueAt(stopIdIndex).orEmpty()
+                    val sequence = row.valueAt(sequenceIndex)?.toIntOrNull()
+                    if (tripId in knownTripIds && stopId.isNotEmpty() && sequence != null) {
+                        byTrip.getOrPut(tripId) { mutableListOf() }.add(
+                            StopTime(
+                                GtfsStopTime(
+                                    stopId,
+                                    sequence,
+                                    parseGtfsTime(row.optionalAt(arrivalIndex)),
+                                    parseGtfsTime(row.optionalAt(departureIndex))
+                                ),
+                                rowOrder
+                            )
+                        )
+                    }
                 }
             }
             return byTrip.mapValues { (_, stopTimes) ->
@@ -374,13 +413,29 @@ class GtfsNetworkCatalog private constructor(
 
         private fun parseGtfsTime(value: String?): Int? {
             if (value.isNullOrBlank()) return null
-            val parts = value.split(':')
-            if (parts.size != 3) return null
-            val hours = parts[0].toIntOrNull() ?: return null
-            val minutes = parts[1].toIntOrNull() ?: return null
-            val seconds = parts[2].toIntOrNull() ?: return null
+            val firstColon = value.indexOf(':')
+            val secondColon = value.indexOf(':', firstColon + 1)
+            if (firstColon <= 0 || secondColon <= firstColon + 1
+                || secondColon == value.lastIndex
+                || value.indexOf(':', secondColon + 1) >= 0
+            ) {
+                return null
+            }
+            val hours = parseDigits(value, 0, firstColon) ?: return null
+            val minutes = parseDigits(value, firstColon + 1, secondColon) ?: return null
+            val seconds = parseDigits(value, secondColon + 1, value.length) ?: return null
             if (hours < 0 || minutes !in 0..59 || seconds !in 0..59) return null
             return hours * 3600 + minutes * 60 + seconds
+        }
+
+        private fun parseDigits(value: String, start: Int, end: Int): Int? {
+            var result = 0
+            for (index in start until end) {
+                val digit = value[index] - '0'
+                if (digit !in 0..9) return null
+                result = result * 10 + digit
+            }
+            return result
         }
 
         private fun parseDate(value: String?): LocalDate? = try {
@@ -461,83 +516,39 @@ class GtfsNetworkCatalog private constructor(
         }
 
         private fun rows(input: String): List<Map<String, String>> {
-            val records = parseCsvRecords(input)
-            if (records.isEmpty()) {
-                return emptyList()
+            return withCsv(input) { parser ->
+                parser.filter { record -> record.any { it.isNotEmpty() } }
+                    .map { it.toMap() }
             }
-            val headers = records.first().mapIndexed { index, value ->
-                if (index == 0) value.removePrefix("\uFEFF") else value
-            }
-            return records.drop(1)
-                .filter { record -> record.any { it.isNotEmpty() } }
-                .map { record ->
-                    headers.mapIndexedNotNull { index, header ->
-                        if (header.isEmpty()) {
-                            null
-                        } else {
-                            header to record.getOrElse(index) { "" }
-                        }
-                    }.toMap()
-                }
         }
+
+        private fun <T> withCsv(input: String, block: (CSVParser) -> T): T {
+            try {
+                return CSVParser.parse(
+                    input.removePrefix("\uFEFF"),
+                    CSV_FORMAT
+                ).use(block)
+            } catch (exception: IOException) {
+                throw IllegalArgumentException("Could not parse CSV", exception)
+            }
+        }
+
+        private fun CSVParser.columnIndex(name: String): Int =
+            headerMap[name] ?: -1
+
+        private fun CSVRecord.valueAt(index: Int): String? =
+            if (index >= 0 && index < size()) get(index) else null
+
+        private fun CSVRecord.optionalAt(index: Int): String? =
+            valueAt(index)?.trim()?.takeIf { it.isNotEmpty() }
+
+        private val CSV_FORMAT = CSVFormat.DEFAULT.builder()
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .get()
 
         private fun Map<String, String>.optional(key: String): String? =
             this[key]?.trim()?.takeIf { it.isNotEmpty() }
-
-        private fun parseCsvRecords(input: String): List<List<String>> {
-            val result = mutableListOf<List<String>>()
-            var record = mutableListOf<String>()
-            var field = StringBuilder()
-            var quoted = false
-            var index = 0
-
-            fun finishField() {
-                record.add(field.toString())
-                field = StringBuilder()
-            }
-
-            fun finishRecord() {
-                finishField()
-                if (record.any { it.isNotEmpty() }) {
-                    result.add(record)
-                }
-                record = mutableListOf()
-            }
-
-            while (index < input.length) {
-                val character = input[index]
-                if (quoted) {
-                    if (character == '"') {
-                        if (index + 1 < input.length && input[index + 1] == '"') {
-                            field.append('"')
-                            index++
-                        } else {
-                            quoted = false
-                        }
-                    } else {
-                        field.append(character)
-                    }
-                } else {
-                    when (character) {
-                        '"' -> quoted = true
-                        ',' -> finishField()
-                        '\r' -> {
-                            finishRecord()
-                            if (index + 1 < input.length && input[index + 1] == '\n') {
-                                index++
-                            }
-                        }
-                        '\n' -> finishRecord()
-                        else -> field.append(character)
-                    }
-                }
-                index++
-            }
-            if (field.isNotEmpty() || record.isNotEmpty()) {
-                finishRecord()
-            }
-            return result
-        }
     }
 }
 
