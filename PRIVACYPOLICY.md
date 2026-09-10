@@ -2,7 +2,7 @@
 
 **Effective date: September 9, 2026**
 
-BART Runner is an independent, free and open-source third-party Android application developed by Igor Izyumin with contributions from volunteers. It is not owned, operated, or endorsed by Bay Area Rapid Transit (BART).
+BART Runner is an independent, free and open-source third-party Android application developed by volunteers. It is not owned, operated, or endorsed by Bay Area Rapid Transit (BART).
 
 This Privacy Policy explains what information Igor Izyumin, the developer of BART Runner ("Developer," "we," "us," or "our"), handles in connection with the app. BART Runner is designed to work without an account and without advertising or analytics services.
 
@@ -35,7 +35,7 @@ The Developer does not use information for targeted advertising, sell personal i
 
 ## Sharing and third parties
 
-The Developer does not sell or rent personal information. The Developer does not receive or share locally stored app data with third parties as part of the app's normal operation.
+The Developer does not sell or rent personal information. The Developer does not share personal information with third parties as part of the app's normal operation.
 
 The app does connect to BART's public data services, as described above. If you send feedback, your message is delivered through the email provider and email app you choose; those providers may process the message under their own privacy policies. The Developer may also disclose information if required to do so by law or when reasonably necessary to protect the rights, safety, or security of the Developer, users, or others.
 
@@ -47,7 +47,7 @@ If you contact the Developer by email, we retain the message and related corresp
 
 ## Security
 
-The Developer uses reasonable measures appropriate to the limited information we handle. No method of electronic transmission or storage is completely secure, so we cannot guarantee absolute security. Information sent by email may be handled by your email provider and the recipient's email systems.
+The Developer uses reasonable measures appropriate to the limited information we handle. No method of electronic transmission or storage is completely secure, so we cannot guarantee absolute security. Information sent by email may be handled by your email provider and the recipient's email systems, and is sent at your own risk.
 
 ## Children
 
