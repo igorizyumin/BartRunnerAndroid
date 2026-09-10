@@ -40,6 +40,7 @@ class TripActionsViewModel(application: Application) :
         followedTripRepository.setFollowedDeparture(
             prepareDepartureForFollowing(departure, passengerDestination),
         )
+        followedTripRepository.startTracking()
     }
 
     fun updateFollowedTrip(departure: Departure) {

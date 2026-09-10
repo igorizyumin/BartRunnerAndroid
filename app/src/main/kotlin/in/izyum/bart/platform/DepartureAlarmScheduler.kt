@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import androidx.core.content.edit
 import java.time.Instant
@@ -33,6 +34,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         const val ALARM_PREFS = "departure_alarm_state"
         const val LEAD_TIME_SUFFIX = ".leadTimeMinutes"
         const val PENDING_SUFFIX = ".pending"
+        const val TRACKING_SUFFIX = ".tracking"
     }
 
     private val applicationContext = context.applicationContext
@@ -66,6 +68,9 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     val isPending: Boolean
         get() = _state.value.pending
 
+    val isTracking: Boolean
+        get() = preferences.getBoolean(stateKey + TRACKING_SUFFIX, false)
+
     val secondsUntilAlarm: Int
         get() = DepartureAlarmPolicy.secondsUntilAlarm(
             departure.getMeanEstimate(), leadTimeMinutes, timeSource.nowMillis())
@@ -75,7 +80,12 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             "leadTimeMinutes must be non-negative"
         }
         updateState(leadTimeMinutes, true)
+        startTracking()
         schedule()
+    }
+
+    fun startTracking() {
+        preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, true) }
     }
 
     fun cancel() {
@@ -84,8 +94,13 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         Log.d(Constants.TAG, "Alarm cancelled")
     }
 
+    fun stopTracking() {
+        preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, false) }
+    }
+
     fun notifyAlarmHasBeenHandled() {
         updateState(leadTimeMinutes, false)
+        preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, true) }
     }
 
     /**
@@ -96,9 +111,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     fun close(preservePending: Boolean = false) {
         if (isPending) {
             alarmManager?.cancel(alarmIntent())
-            if (!preservePending) {
-                updateState(leadTimeMinutes, false)
-            }
+            if (!preservePending) updateState(leadTimeMinutes, false)
+        }
+        if (!preservePending) {
+            stopTracking()
         }
     }
 
@@ -132,7 +148,8 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         val intent = alarmIntent()
         if (alarmTime < timeSource.nowMillis()) {
             manager.set(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-        } else if (!manager.canScheduleExactAlarms()) {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            !manager.canScheduleExactAlarms()) {
             manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
             Log.w(Constants.TAG,
                 "Exact alarm permission is unavailable; using an inexact alarm")

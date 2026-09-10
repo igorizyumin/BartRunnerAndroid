@@ -59,6 +59,55 @@ class BartRunnerUiTest {
     }
 
     @Test
+    fun homeScreenShowsPlanTripShortcutInAppBar() {
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false),
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Plan a trip").performClick()
+        composeRule.onNodeWithText("From").assertIsDisplayed()
+        composeRule.onNodeWithText("To").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeScreenShowsOfflineWarningInsteadOfNoDelays() {
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false, isOffline = true),
+                    isOffline = true,
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(
+            "Offline — using stored schedules. Realtime updates and service alerts are unavailable.",
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun homeScreenOpensFareDiscountSettingFromOverflowMenu() {
         setTestContent {
             var selectedId by remember { mutableStateOf<String?>(null) }

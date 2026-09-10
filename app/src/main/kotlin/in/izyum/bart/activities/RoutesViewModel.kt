@@ -59,6 +59,20 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         viewModelScope.launch {
+            app.offlineStatusController.isOffline.collectLatest { isOffline ->
+                _uiState.update { current ->
+                    current.copy(
+                        isOffline = isOffline,
+                        alertKind = if (isOffline) {
+                            RoutesUiState.AlertKind.WARNING
+                        } else {
+                            alertKindFor(current.alerts)
+                        },
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
             val projection = AlertProjection()
             transitRepository.projectedState(
                 projection::project,
@@ -171,13 +185,10 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun publishAlerts(alerts: Alert.AlertList) {
-        val alertKind: RoutesUiState.AlertKind
-        if (alerts.hasAlerts()) {
-            alertKind = RoutesUiState.AlertKind.WARNING
-        } else if (alerts.areNoDelaysReported()) {
-            alertKind = RoutesUiState.AlertKind.NO_DELAYS
+        val alertKind = if (_uiState.value.isOffline) {
+            RoutesUiState.AlertKind.WARNING
         } else {
-            alertKind = RoutesUiState.AlertKind.HIDDEN
+            alertKindFor(alerts)
         }
         _uiState.update {
             it.copy(
@@ -186,6 +197,13 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
                 error = null,
             )
         }
+    }
+
+    private fun alertKindFor(alerts: Alert.AlertList?): RoutesUiState.AlertKind = when {
+        alerts == null -> RoutesUiState.AlertKind.HIDDEN
+        alerts.hasAlerts() -> RoutesUiState.AlertKind.WARNING
+        alerts.areNoDelaysReported() -> RoutesUiState.AlertKind.NO_DELAYS
+        else -> RoutesUiState.AlertKind.HIDDEN
     }
 
     private fun publishError(exception: Exception) {

@@ -76,6 +76,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -116,7 +117,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.widget.ImageView
-import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.DeparturesViewModel
 import `in`.izyum.bart.activities.RoutesUiState
@@ -141,6 +141,8 @@ private val Blue = Color(0xFF0B63CE)
 private val BlueDark = Color(0xFF064B9B)
 private val BlueLight = Color(0xFFE8F1FF)
 private val Teal = Color(0xFF006B6B)
+private val SuccessGreen = Color(0xFF2E7D32)
+private val SuccessGreenContainer = Color(0xFFDDF5E3)
 private val Warning = Color(0xFFB3261E)
 private val LightConnectingTrainTile = Color(0xFFE6E6E6)
 private val LightYellowLine = Color(0xFFE6C400)
@@ -153,6 +155,10 @@ fun BartRunnerTheme(content: @Composable () -> Unit) {
         primaryContainer = BlueLight,
         onPrimaryContainer = BlueDark,
         secondary = Teal,
+        tertiary = SuccessGreen,
+        onTertiary = Color.White,
+        tertiaryContainer = SuccessGreenContainer,
+        onTertiaryContainer = Color(0xFF0D3B1E),
         surface = Color(0xFFF8FAFD),
         surfaceContainerLowest = Color.White,
         surfaceContainerLow = Color(0xFFF7F7F7),
@@ -168,6 +174,10 @@ fun BartRunnerTheme(content: @Composable () -> Unit) {
         primaryContainer = Color(0xFF174A83),
         onPrimaryContainer = Color(0xFFD7E3FF),
         secondary = Color(0xFF7DD9D4),
+        tertiary = Color(0xFF8BD5A0),
+        onTertiary = Color(0xFF00391B),
+        tertiaryContainer = Color(0xFF20552F),
+        onTertiaryContainer = Color(0xFFA6F2B8),
         surface = Color(0xFF101419),
         background = Color(0xFF101419),
     )
@@ -178,10 +188,33 @@ fun BartRunnerTheme(content: @Composable () -> Unit) {
     )
 }
 
+@Composable
+private fun OfflineBanner() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Warning, contentDescription = null)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.offline_in_app_message),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: RoutesUiState,
+    isOffline: Boolean = false,
     followedTrip: Departure?,
     timeSource: TimeSource,
     onRouteSelected: (StationPair) -> Unit,
@@ -219,6 +252,16 @@ fun HomeScreen(
                     Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold)
                 },
                 actions = {
+                    IconButton(onClick = {
+                        pickerAddsFavorite = false
+                        editingRoute = null
+                        showPicker = true
+                    }) {
+                        Icon(
+                            Icons.Filled.DirectionsSubway,
+                            contentDescription = stringResource(R.string.plan_trip),
+                        )
+                    }
                     IconButton(onClick = {
                         showElevatorDialog = true
                         onViewElevators()
@@ -270,8 +313,11 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             state = favoriteListState,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (isOffline) {
+                item { OfflineBanner() }
+            }
             if (followedTrip != null) {
                 item {
                     Card(
@@ -298,7 +344,7 @@ fun HomeScreen(
                     }
                 }
             }
-            if (state.alertKind != RoutesUiState.AlertKind.HIDDEN) {
+            if (!state.isOffline && state.alertKind != RoutesUiState.AlertKind.HIDDEN) {
                 item { ServiceAlert(state, context) }
             }
             item {
@@ -699,7 +745,7 @@ fun AboutScreen(
 
 @Composable
 private fun ServiceAlert(state: RoutesUiState, context: Context) {
-    val isGood = state.alertKind == RoutesUiState.AlertKind.NO_DELAYS
+    val isGood = !state.isOffline && state.alertKind == RoutesUiState.AlertKind.NO_DELAYS
     val messages = state.alerts?.getAlerts()?.joinToString("\n\n") { it.description.orEmpty() }.orEmpty()
     var expanded by remember { mutableStateOf(false) }
     val containerColor = if (isGood) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer
@@ -713,7 +759,11 @@ private fun ServiceAlert(state: RoutesUiState, context: Context) {
             Icon(if (isGood) Icons.Filled.CheckCircle else Icons.Filled.Warning, null, tint = accentColor)
             Spacer(Modifier.width(10.dp))
             Text(
-                text = if (isGood) context.getString(R.string.no_delays_reported) else messages.ifBlank { context.getString(R.string.service_advisory) },
+                text = when {
+                    state.isOffline -> context.getString(R.string.offline_in_app_message)
+                    isGood -> context.getString(R.string.no_delays_reported)
+                    else -> messages.ifBlank { context.getString(R.string.service_advisory) }
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = if (expanded || isGood) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis,
@@ -899,6 +949,7 @@ private fun CheckboxRow(text: String, checked: Boolean, onCheckedChange: (Boolea
 fun DeparturesScreen(
     route: StationPair,
     state: DeparturesViewModel.State,
+    isOffline: Boolean = false,
     timeSource: TimeSource,
     fare: String? = null,
     onBack: () -> Unit,
@@ -980,6 +1031,9 @@ fun DeparturesScreen(
             DeparturesViewModel.Status.ERROR -> EmptyState(stringResource(R.string.could_not_connect), stringResource(R.string.try_again_connection), modifier = Modifier.padding(padding))
             DeparturesViewModel.Status.EMPTY -> EmptyState(stringResource(R.string.no_departures_found), stringResource(R.string.no_departures_message), modifier = Modifier.padding(padding))
             DeparturesViewModel.Status.CONTENT -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (isOffline) {
+                    item { OfflineBanner() }
+                }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.upcoming_trains), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -1092,6 +1146,7 @@ private fun EmptyState(title: String, message: String, modifier: Modifier = Modi
 fun TripScreen(
     departure: Departure?,
     route: StationPair?,
+    isOffline: Boolean = false,
     fare: String? = null,
     isFollowingInitially: Boolean,
     alarmVisible: Boolean,
@@ -1130,6 +1185,9 @@ fun TripScreen(
         } else {
             val pair = current.getStationPair()
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (isOffline) {
+                    item { OfflineBanner() }
+                }
                 item {
                     TripHero(current, route ?: pair, fare, timeSource, tick)
                 }

@@ -70,6 +70,21 @@ class TransitFeedSnapshot(
     fun hasSameFeedData(other: TransitFeedSnapshot?): Boolean =
         other != null && tripUpdates == other.tripUpdates && alerts == other.alerts
 
+    companion object {
+        /** A timestamped empty realtime feed used to project the stored schedule offline. */
+        @JvmStatic
+        fun empty(receivedAtMillis: Long): TransitFeedSnapshot {
+            val header = GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0")
+                .setTimestamp(receivedAtMillis / 1000L)
+                .build()
+            val emptyFeed = GtfsRealtime.FeedMessage.newBuilder()
+                .setHeader(header)
+                .build()
+            return TransitFeedSnapshot(emptyFeed, emptyFeed, receivedAtMillis)
+        }
+    }
+
     private fun feedTimestampMillis(
         feed: GtfsRealtime.FeedMessage,
         fallback: Long

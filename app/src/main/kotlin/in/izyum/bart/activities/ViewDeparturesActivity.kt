@@ -49,10 +49,12 @@ class ViewDeparturesActivity : ComponentActivity() {
         departuresViewModel.setQuery(app.transitRepository, app.bartGtfsNetworkSupplier, stationPair)
         setContent {
             val state by departuresViewModel.uiState.collectAsStateWithLifecycle()
+            val isOffline by app.offlineStatusController.isOffline.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 DeparturesScreen(
                     route = stationPair,
                     state = state,
+                    isOffline = isOffline,
                     timeSource = app.timeSource,
                     fare = routeFare,
                     onBack = { finish() },

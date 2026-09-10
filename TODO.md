@@ -95,7 +95,8 @@ and keep the implementation simple.
 - [x] Remove unused `ACCESS_NETWORK_STATE` and `WAKE_LOCK` permissions.
 - [x] Remove lint-reported unused strings and plurals.
 - [x] Move the map bitmap to an appropriate density-independent resource folder.
-- [x] Move the adaptive launcher icon to `mipmap-anydpi-v31` because `minSdk` is 31.
+- [x] Keep the adaptive launcher icon in `mipmap-anydpi-v31` with a legacy
+  fallback for devices below Android 12.
 - [x] Replace the raster notification icon with a white vector drawable and
   make the cancel-alarm action asset density-independent.
 - [x] Add API annotations around full-screen-intent settings access and remove

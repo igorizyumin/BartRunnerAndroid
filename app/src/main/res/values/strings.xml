@@ -3,6 +3,10 @@
 
     <string name="app_name">BART Runner</string>
     <string name="static_data_loading">Preparing schedule data…</string>
+    <string name="offline_title">Offline</string>
+    <string name="offline_message">Using stored schedules. Retrying connection periodically.</string>
+    <string name="offline_in_app_message">Offline — using stored schedules. Realtime updates and service alerts are unavailable.</string>
+    <string name="offline_channel_name">Connection status</string>
     <string name="back">Back</string>
     <string name="saved_trips">Saved trips</string>
     <string name="add">Add</string>

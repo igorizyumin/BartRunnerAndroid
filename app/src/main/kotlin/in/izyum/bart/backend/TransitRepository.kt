@@ -32,6 +32,7 @@ import kotlinx.coroutines.runInterruptible
 data class TransitFeedState(
     val snapshot: TransitFeedSnapshot? = null,
     val error: Exception? = null,
+    val isOffline: Boolean = false,
 )
 
 /** Owns feed polling and exposes one replaying flow for all transit consumers. */
@@ -40,6 +41,9 @@ class TransitRepository(
     private val feedClient: TransitFeedClient,
     private val refreshIntervalMillis: Long,
     private val backgroundPollingNeeded: StateFlow<Boolean> = MutableStateFlow(false),
+    private val offlineSnapshotProvider: (() -> TransitFeedSnapshot)? = null,
+    private val backgroundPollingIntervalMillis: StateFlow<Long> =
+        MutableStateFlow(refreshIntervalMillis),
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
@@ -65,16 +69,21 @@ class TransitRepository(
                 feedUpdates.subscriptionCount.map { count -> count > 0 },
                 appInForeground,
                 backgroundPollingNeeded,
-            ) { hasSubscribers, foreground, backgroundAllowed ->
-                hasSubscribers && (foreground || backgroundAllowed)
+                backgroundPollingIntervalMillis,
+            ) { hasSubscribers, foreground, backgroundAllowed, backgroundInterval ->
+                if (!hasSubscribers || (!foreground && !backgroundAllowed)) {
+                    null
+                } else if (foreground) {
+                    refreshIntervalMillis
+                } else {
+                    backgroundInterval
+                }
             }
                 .distinctUntilChanged()
-                .collectLatest { shouldPoll ->
-                    if (shouldPoll) {
-                        while (isActive) {
-                            refreshIfStaleCancellable()
-                            delay(refreshIntervalMillis)
-                        }
+                .collectLatest { pollingIntervalMillis ->
+                    while (isActive && pollingIntervalMillis != null) {
+                        refreshIfStaleCancellable()
+                        delay(pollingIntervalMillis)
                     }
                 }
         }
@@ -113,8 +122,13 @@ class TransitRepository(
                 }
             }
             .mapLatest { feedState ->
-                feedState.error?.let {
-                    return@mapLatest Result.failure<T>(it)
+                if (feedState.snapshot == null) {
+                    feedState.error?.let {
+                        return@mapLatest Result.failure<T>(it)
+                    }
+                    return@mapLatest Result.failure<T>(
+                        IllegalStateException("Transit feed is unavailable"),
+                    )
                 }
                 runCatching { project(feedState.snapshot!!) }
             }
@@ -209,7 +223,13 @@ class TransitRepository(
                 fetchResult.tripUpdatesError?.let { addRefreshError(refreshErrors, it) }
                 fetchResult.alertsError?.let { addRefreshError(refreshErrors, it) }
 
-                val mergedSnapshot = mergeSnapshot(fetchResult)
+                val mergedSnapshot = if (refreshErrors.isNotEmpty()) {
+                    // The Android application supplies a static-only snapshot here so
+                    // stale realtime corrections are not presented as current data.
+                    offlineSnapshotProvider?.invoke() ?: mergeSnapshot(fetchResult)
+                } else {
+                    mergeSnapshot(fetchResult)
+                }
                 if (mergedSnapshot != null &&
                     (latestSnapshot == null ||
                         !mergedSnapshot.hasSameFeedData(latestSnapshot!!))
@@ -221,6 +241,7 @@ class TransitRepository(
                     stateToPublish = TransitFeedState(
                         snapshot = latestSnapshot,
                         error = refreshErrors.first(),
+                        isOffline = true,
                     )
                 }
             }

@@ -61,6 +61,70 @@ class TransitRepositoryTest {
     }
 
     @Test
+    fun failedInitialRefreshProjectsTheOfflineStaticFallback() = runBlocking {
+        val client = FakeFeedClient()
+        val fallback = snapshot(8, 80_000L)
+        client.enqueue(IOException("network unavailable"))
+        repository = TransitRepository(
+            client,
+            60_000L,
+            offlineSnapshotProvider = { fallback },
+        )
+
+        repository!!.refreshNow()
+
+        val state = repository!!.state.value
+        assertSame(fallback, state.snapshot)
+        assertEquals(true, state.isOffline)
+        val projection = withTimeout(TIMEOUT_MILLIS) {
+            repository!!.projectedState(project = { it.receivedAtMillis })
+                .first { it.isSuccess }
+        }
+        assertEquals(80_000L, projection.getOrNull())
+    }
+
+    @Test
+    fun successfulRefreshClearsOfflineState() = runBlocking {
+        val client = FakeFeedClient()
+        val fallback = snapshot(9, 90_000L)
+        val online = snapshot(10, 100_000L)
+        client.enqueue(IOException("network unavailable"))
+        client.enqueue(online)
+        repository = TransitRepository(
+            client,
+            60_000L,
+            offlineSnapshotProvider = { fallback },
+        )
+
+        repository!!.refreshNow()
+        repository!!.refreshNow()
+
+        assertSame(online, repository!!.state.value.snapshot)
+        assertEquals(false, repository!!.state.value.isOffline)
+        assertEquals(null, repository!!.state.value.error)
+    }
+
+    @Test
+    fun offlineRefreshReplacesAStaleRealtimeSnapshotWhenFallbackIsConfigured() {
+        val client = FakeFeedClient()
+        val online = snapshot(11, 110_000L)
+        val fallback = snapshot(12, 120_000L)
+        client.enqueue(online)
+        client.enqueue(IOException("network unavailable"))
+        repository = TransitRepository(
+            client,
+            60_000L,
+            offlineSnapshotProvider = { fallback },
+        )
+
+        repository!!.refreshNow()
+        repository!!.refreshNow()
+
+        assertSame(fallback, repository!!.state.value.snapshot)
+        assertEquals(true, repository!!.state.value.isOffline)
+    }
+
+    @Test
     fun partialFeedRefreshPublishesMergedSnapshot() = runBlocking {
         val client = FakeFeedClient()
         val first = snapshot(3, 30_000L)

@@ -77,11 +77,12 @@ android {
     }
 
     defaultConfig {
-        versionName = "2.2.21"
-        versionCode = 56
+        applicationId "in.izyum.bart"
+        versionName = "1.0.0"
+        versionCode = 1
         buildConfigField "String", "GIT_BUILD_HASH", "\"${gitBuildHash}\""
 
-        minSdk = 31
+        minSdk = 28
         targetSdk = 37
     }
 

@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Keeps a pending departure alarm aligned with the live BART feed. */
+/** Keeps a followed departure aligned with the live BART feed until departure. */
 class BoardedDepartureService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -61,8 +61,8 @@ class BoardedDepartureService : Service() {
         when (intent?.action) {
             ACTION_CANCEL_ALARM -> {
                 cancelAlarm()
-                shutDown()
-                return START_NOT_STICKY
+                updateNotification()
+                return START_REDELIVER_INTENT
             }
 
             ACTION_CLEAR_DEPARTURE -> {
@@ -79,7 +79,7 @@ class BoardedDepartureService : Service() {
             }
         }
 
-        if (!isAlarmPending()) {
+        if (!isTracking()) {
             shutDown()
             return START_NOT_STICKY
         }
@@ -110,7 +110,7 @@ class BoardedDepartureService : Service() {
     }
 
     private fun handleIntent() {
-        if (!isAlarmPending()) {
+        if (!isTracking()) {
             shutDown()
             return
         }
@@ -189,12 +189,12 @@ class BoardedDepartureService : Service() {
                         val departure = followedTripRepository.getFollowedDeparture()
                         val hasDeparted = departure?.hasDeparted(timeSource) == true
                         if (shouldStopPolling(
-                                isAlarmPending(),
+                                isTracking(),
                                 departure != null,
                                 hasDeparted,
                         )) {
                             if (hasDeparted) {
-                                cancelAlarm()
+                                followedTripRepository.stopTracking()
                             }
                             shutDown()
                             false
@@ -206,9 +206,10 @@ class BoardedDepartureService : Service() {
                 if (!shouldContinue) {
                     return@launch
                 }
+                followedTripRepository.refreshBackgroundPollingState()
                 delay(
-                    pollIntervalMillisForAlarm(
-                        followedTripRepository.getAlarmScheduler()?.secondsUntilAlarm ?: 0,
+                    pollIntervalMillisForDeparture(
+                        followedTripRepository.getFollowedDeparture(),
                     ),
                 )
             }
@@ -224,18 +225,24 @@ class BoardedDepartureService : Service() {
 
     @VisibleForTesting
     internal fun shouldStopPolling(
-        hasPendingAlarm: Boolean,
+        hasActiveTracking: Boolean,
         hasFollowedDeparture: Boolean,
         hasDeparted: Boolean,
-    ): Boolean = !hasPendingAlarm || !hasFollowedDeparture || hasDeparted
+    ): Boolean = !hasActiveTracking || !hasFollowedDeparture || hasDeparted
 
     @VisibleForTesting
-    internal fun pollIntervalMillisForAlarm(secondsUntilAlarm: Int): Long =
-        if (secondsUntilAlarm > FAST_POLL_THRESHOLD_SECONDS) {
-            SLOW_POLL_MILLIS
-        } else {
-            FAST_POLL_MILLIS
+    internal fun pollIntervalMillisForDeparture(departure: Departure?): Long {
+        val minutesLeft = departure?.getMeanSecondsLeft(timeSource)?.div(60L)
+            ?: Long.MAX_VALUE
+        return when {
+            minutesLeft > 15 -> SLOW_POLL_MILLIS
+            minutesLeft >= 5 -> MEDIUM_POLL_MILLIS
+            else -> FAST_POLL_MILLIS
         }
+    }
+
+    private fun isTracking(): Boolean =
+        followedTripRepository.getAlarmScheduler()?.isTracking == true
 
     private fun cancelAlarm() {
         followedTripRepository.cancelAlarm()
@@ -271,11 +278,15 @@ class BoardedDepartureService : Service() {
             followedTripRepository.getAlarmScheduler(),
             timeSource,
         )
-        startForeground(
-            DEPARTURE_NOTIFICATION_ID,
-            notification,
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                DEPARTURE_NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        } else {
+            startForeground(DEPARTURE_NOTIFICATION_ID, notification)
+        }
     }
 
     private fun createNotificationChannel() {
@@ -296,8 +307,8 @@ class BoardedDepartureService : Service() {
         const val ACTION_CANCEL_ALARM = "com.dougkeen.action.CANCEL_BOARDED_DEPARTURE_ALARM"
         const val ACTION_CLEAR_DEPARTURE = "com.dougkeen.action.CLEAR_BOARDED_DEPARTURE"
         private const val DEPARTURE_NOTIFICATION_ID = 123
-        private const val FAST_POLL_MILLIS = 6_000L
-        private const val SLOW_POLL_MILLIS = 15_000L
-        private const val FAST_POLL_THRESHOLD_SECONDS = 3 * 60
+        private const val FAST_POLL_MILLIS = 15_000L
+        private const val MEDIUM_POLL_MILLIS = 30_000L
+        private const val SLOW_POLL_MILLIS = 60_000L
     }
 }

@@ -138,7 +138,7 @@ class GtfsStaticData @JvmOverloads constructor(
             }
 
             val lastAttempt = preferences.getLong(LAST_ATTEMPT, 0L)
-            if (now - lastAttempt < CACHE_MILLIS) {
+            if (now - lastAttempt < RETRY_MILLIS) {
                 cachedResult?.let { return it }
                 throw IOException("Static GTFS refresh already attempted")
             }
@@ -372,6 +372,8 @@ class GtfsStaticData @JvmOverloads constructor(
         private const val FEED_URL = "https://www.bart.gov/dev/schedules/google_transit.zip"
         // BART recommends checking the static schedule feed weekly.
         private const val CACHE_MILLIS = 7L * 24L * 60L * 60L * 1000L
+        // A failed refresh should not suppress retries for the entire cache lifetime.
+        private const val RETRY_MILLIS = 15L * 60L * 1000L
         private const val CACHE_FILE_NAME = "gtfs_static_schedule.zip"
         private const val DATABASE_FILE_NAME = "gtfs_static_schedule.db"
         private const val PREFS_NAME = "gtfs_static_schedule"

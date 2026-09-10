@@ -50,7 +50,10 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
         postAlarmNotification(context, targetIntent, boardedDeparture)
 
         application.followedTripRepository.notifyAlarmHasBeenHandled()
-        context.stopService(Intent(context, BoardedDepartureService::class.java))
+        context.startForegroundService(
+            Intent(context, BoardedDepartureService::class.java)
+                .setAction(BoardedDepartureService.ACTION_START_ALARM_TRACKING),
+        )
     }
 
     private fun postAlarmNotification(

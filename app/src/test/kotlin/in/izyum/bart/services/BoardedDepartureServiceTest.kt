@@ -10,7 +10,7 @@ import org.junit.Test
 class BoardedDepartureServiceTest {
 
     @Test
-    fun pollingStopsWhenTheAlarmIsHandledOrTripDisappearsOrDeparts() {
+    fun pollingStopsWhenTrackingEndsOrTripDisappearsOrDeparts() {
         val service = BoardedDepartureService()
 
         assertTrue(service.shouldStopPolling(false, true, false))
@@ -20,12 +20,12 @@ class BoardedDepartureServiceTest {
     }
 
     @Test
-    fun pollingUsesFastCadenceAtOrInsideThreeMinutes() {
+    fun pollingUsesAdaptiveCadenceBasedOnDeparture() {
         val service = BoardedDepartureService()
 
-        assertEquals(6_000L, service.pollIntervalMillisForAlarm(180))
-        assertEquals(6_000L, service.pollIntervalMillisForAlarm(-1))
-        assertEquals(15_000L, service.pollIntervalMillisForAlarm(181))
+        assertEquals(60_000L, service.pollIntervalMillisForDeparture(departureWithDeparture(16)))
+        assertEquals(30_000L, service.pollIntervalMillisForDeparture(departureWithDeparture(5)))
+        assertEquals(15_000L, service.pollIntervalMillisForDeparture(departureWithDeparture(4)))
     }
 
     @Test
@@ -55,5 +55,11 @@ class BoardedDepartureServiceTest {
         Departure.builder()
             .setMinEstimate(minEstimate)
             .setMaxEstimate(maxEstimate)
+            .build()
+
+    private fun departureWithDeparture(minutes: Int): Departure =
+        Departure.builder()
+            .setMinEstimate(System.currentTimeMillis() + minutes * 60_000L)
+            .setMaxEstimate(System.currentTimeMillis() + minutes * 60_000L)
             .build()
 }

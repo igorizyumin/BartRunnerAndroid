@@ -3,6 +3,7 @@ package `in`.izyum.bart
 import android.app.Application
 import android.app.Activity
 import android.os.Bundle
+import `in`.izyum.bart.backend.TransitFeedSnapshot
 import `in`.izyum.bart.backend.HttpTransitFeedClient
 import `in`.izyum.bart.backend.TransitRepository
 import `in`.izyum.bart.data.FavoritesRepository
@@ -10,6 +11,8 @@ import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.networktasks.GtfsStaticData
+import `in`.izyum.bart.platform.OfflineStatusController
+import `in`.izyum.bart.receivers.DownloadRetryReceiver
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.io.IOException
 import java.util.function.Supplier
@@ -19,6 +22,7 @@ class BartRunnerApplication : Application() {
     lateinit var followedTripRepository: FollowedTripRepository
     lateinit var transitRepository: TransitRepository
     lateinit var gtfsStaticData: GtfsStaticData
+    lateinit var offlineStatusController: OfflineStatusController
 
     val timeSource: TimeSource = SystemTimeSource
 
@@ -39,7 +43,14 @@ class BartRunnerApplication : Application() {
             HttpTransitFeedClient(),
             15_000L,
             followedTripRepository.backgroundPollingNeeded,
+            offlineSnapshotProvider = { TransitFeedSnapshot.empty(timeSource.nowMillis()) },
+            backgroundPollingIntervalMillis = followedTripRepository.backgroundPollingIntervalMillis,
         )
+        offlineStatusController = OfflineStatusController(this, transitRepository) {
+            runCatching { gtfsStaticData.warmUp() }
+            transitRepository.refreshNow()
+        }
+        DownloadRetryReceiver.schedule(this)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var startedActivityCount = 0
 

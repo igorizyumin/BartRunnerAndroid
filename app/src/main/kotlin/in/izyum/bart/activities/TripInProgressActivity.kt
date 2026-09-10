@@ -128,10 +128,12 @@ class TripInProgressActivity : ComponentActivity() {
         setContent {
             val departure by tripProgressViewModel.departureState.collectAsStateWithLifecycle()
             val tripActionsState by tripActionsViewModel.uiState.collectAsStateWithLifecycle()
+            val isOffline by app.offlineStatusController.isOffline.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 TripScreen(
                     departure = departure,
                     route = tripRoute,
+                    isOffline = isOffline,
                     fare = tripFare,
                     isFollowingInitially = isFollowing,
                     alarmVisible = alarmVisible,
@@ -143,7 +145,6 @@ class TripInProgressActivity : ComponentActivity() {
                     onSetAlarm = ::enableAlarm,
                     onCancelAlarm = {
                         tripActionsViewModel.cancelAlarm()
-                        stopAlarmTrackingService()
                     },
                     onClear = {
                         tripActionsViewModel.clearTrip()
@@ -171,7 +172,9 @@ class TripInProgressActivity : ComponentActivity() {
     private fun enableAlarm(leadTimeMinutes: Int) {
         if (!hasExactAlarmPermission()) {
             pendingAlarmLeadTimeMinutes = leadTimeMinutes
-            openExactAlarmSettings()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                openExactAlarmSettings()
+            }
             return
         }
         if (!hasFullScreenIntentPermission()) {
@@ -187,6 +190,9 @@ class TripInProgressActivity : ComponentActivity() {
     }
 
     private fun hasExactAlarmPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true
+        }
         return getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
     }
 
@@ -198,6 +204,7 @@ class TripInProgressActivity : ComponentActivity() {
             ?.canUseFullScreenIntent() == true
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun openExactAlarmSettings() {
         val settingsIntent = Intent(
             Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
@@ -237,6 +244,7 @@ class TripInProgressActivity : ComponentActivity() {
         if (isFollowing) return
         tripActionsViewModel.followTrip(departure, tripRoute?.destination)
         requestNotificationPermissionIfNeeded()
+        startAlarmTrackingService()
         isFollowing = true
     }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -104,6 +105,7 @@ class RoutesListActivity : ComponentActivity() {
                     }
                     HomeScreen(
                         state = state,
+                        isOffline = state.isOffline,
                         followedTrip = followedTrip,
                         timeSource = application.timeSource,
                         onRouteSelected = { route ->
@@ -142,20 +144,26 @@ class RoutesListActivity : ComponentActivity() {
 
     @Composable
     private fun StaticDataSplash() {
-        Box(
+        Surface(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    text = stringResource(R.string.static_data_loading),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        text = stringResource(R.string.static_data_loading),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
             }
         }
     }

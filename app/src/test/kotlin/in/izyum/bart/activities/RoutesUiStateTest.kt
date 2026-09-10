@@ -23,4 +23,11 @@ class RoutesUiStateTest {
             (state.firstDepartures as MutableMap).clear()
         }
     }
+
+    @Test
+    fun stateCopyPreservesOfflineStatus() {
+        val state = RoutesUiState(isOffline = true)
+
+        assertEquals(true, state.copy().isOffline)
+    }
 }

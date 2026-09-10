@@ -36,10 +36,15 @@ class FollowedTripRepository @JvmOverloads constructor(
 
     private val _state = MutableStateFlow(toState(followedDeparture))
     private val _backgroundPollingNeeded = MutableStateFlow(
-        alarmScheduler?.isPending == true,
+        alarmScheduler?.isTracking == true,
+    )
+    private val _backgroundPollingIntervalMillis = MutableStateFlow(
+        backgroundPollingIntervalFor(followedDeparture),
     )
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
     val backgroundPollingNeeded: StateFlow<Boolean> = _backgroundPollingNeeded.asStateFlow()
+    val backgroundPollingIntervalMillis: StateFlow<Long> =
+        _backgroundPollingIntervalMillis.asStateFlow()
 
     fun getFollowedDeparture(): Departure? {
         val departure = synchronized(stateLock) { followedDeparture }
@@ -68,7 +73,7 @@ class FollowedTripRepository @JvmOverloads constructor(
                 DepartureAlarmScheduler(applicationContext, it)
             }
             _state.value = toState(departure)
-            _backgroundPollingNeeded.value = alarmScheduler?.isPending == true
+            refreshBackgroundPollingStateLocked()
         }
 
         persist(departure)
@@ -87,8 +92,18 @@ class FollowedTripRepository @JvmOverloads constructor(
         refreshBackgroundPollingState()
     }
 
+    fun startTracking() {
+        synchronized(stateLock) { alarmScheduler }?.startTracking()
+        refreshBackgroundPollingState()
+    }
+
     fun cancelAlarm() {
         synchronized(stateLock) { alarmScheduler }?.cancel()
+        refreshBackgroundPollingState()
+    }
+
+    fun stopTracking() {
+        synchronized(stateLock) { alarmScheduler }?.stopTracking()
         refreshBackgroundPollingState()
     }
 
@@ -97,9 +112,27 @@ class FollowedTripRepository @JvmOverloads constructor(
         refreshBackgroundPollingState()
     }
 
-    private fun refreshBackgroundPollingState() {
-        _backgroundPollingNeeded.value = synchronized(stateLock) {
-            alarmScheduler?.isPending == true
+    private fun refreshBackgroundPollingStateInternal() {
+        synchronized(stateLock) { refreshBackgroundPollingStateLocked() }
+    }
+
+    /** Refreshes the background polling cadence as the departure countdown changes. */
+    fun refreshBackgroundPollingState() {
+        refreshBackgroundPollingStateInternal()
+    }
+
+    private fun refreshBackgroundPollingStateLocked() {
+        _backgroundPollingNeeded.value = alarmScheduler?.isTracking == true
+        _backgroundPollingIntervalMillis.value = backgroundPollingIntervalFor(followedDeparture)
+    }
+
+    private fun backgroundPollingIntervalFor(departure: Departure?): Long {
+        val departureSeconds: Long = departure?.getMeanSecondsLeft(timeSource)?.toLong()
+            ?: Long.MAX_VALUE
+        return when {
+            departureSeconds > 15 * 60 -> 60_000L
+            departureSeconds >= 5 * 60 -> 30_000L
+            else -> 15_000L
         }
     }
 
