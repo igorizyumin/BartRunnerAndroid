@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.performance.PerformanceTrace
+import `in`.izyum.bart.data.BackgroundPollingPreferences
+import `in`.izyum.bart.platform.DeparturePollingWork
 import `in`.izyum.bart.networktasks.RiderCategory
 import `in`.izyum.bart.ui.BartRunnerTheme
 import `in`.izyum.bart.ui.HomeScreen
@@ -42,6 +44,7 @@ class RoutesListActivity : ComponentActivity() {
     private var staticDataReady by mutableStateOf(false)
     private var riderCategories by mutableStateOf<List<RiderCategory>>(emptyList())
     private var riderCategoryId by mutableStateOf<String?>(null)
+    private var backgroundPollingEnabled by mutableStateOf(true)
 
     fun addFavorite(route: `in`.izyum.bart.model.StationPair) {
         routesViewModel.addFavorite(route)
@@ -52,6 +55,7 @@ class RoutesListActivity : ComponentActivity() {
         val application = application as BartRunnerApplication
         riderCategoryId = `in`.izyum.bart.data.FareDiscountPreferences
             .getRiderCategoryId(this)
+        backgroundPollingEnabled = BackgroundPollingPreferences.isEnabled(this)
         val needsInitialStaticLoad = !application.gtfsStaticData.hasDatabaseCache()
         staticDataReady = !needsInitialStaticLoad
         lifecycleScope.launch(Dispatchers.IO) {
@@ -135,6 +139,12 @@ class RoutesListActivity : ComponentActivity() {
                         onFareDiscountChanged = { selectedId ->
                             riderCategoryId = selectedId
                             routesViewModel.setRiderCategoryId(selectedId)
+                        },
+                        backgroundPollingEnabled = backgroundPollingEnabled,
+                        onBackgroundPollingChanged = { enabled ->
+                            backgroundPollingEnabled = enabled
+                            BackgroundPollingPreferences.setEnabled(this, enabled)
+                            DeparturePollingWork.refresh(this, application.followedTripRepository)
                         },
                     )
                 }

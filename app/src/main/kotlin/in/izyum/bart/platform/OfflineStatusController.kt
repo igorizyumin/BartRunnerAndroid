@@ -13,6 +13,7 @@ import androidx.core.app.NotificationManagerCompat
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.RoutesListActivity
 import `in`.izyum.bart.backend.TransitRepository
+import `in`.izyum.bart.data.FollowedTripRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 class OfflineStatusController(
     context: Context,
     private val transitRepository: TransitRepository,
+    private val followedTripRepository: FollowedTripRepository,
     private val retryDownloads: suspend () -> Unit = {},
 ) : AutoCloseable {
     private val applicationContext = context.applicationContext
@@ -75,11 +77,17 @@ class OfflineStatusController(
                 synchronized(lock) {
                     downloadFailed = state.isOffline
                 }
-                if (state.isOffline) {
+                if (state.isOffline && followedTripRepository.backgroundPollingNeeded.value) {
                     startRetrying()
                 } else {
                     stopRetrying()
                 }
+                updateNotification()
+            }
+        }
+        scope.launch {
+            followedTripRepository.backgroundPollingNeeded.collectLatest {
+                if (!it) stopRetrying()
                 updateNotification()
             }
         }
@@ -117,7 +125,8 @@ class OfflineStatusController(
 
     private fun updateNotification() {
         val shouldShow = synchronized(lock) {
-            !closed && (networkAvailable == false || downloadFailed)
+            !closed && followedTripRepository.backgroundPollingNeeded.value &&
+                (networkAvailable == false || downloadFailed)
         }
         _isOffline.value = shouldShow
         try {

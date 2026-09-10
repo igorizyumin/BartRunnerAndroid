@@ -30,7 +30,7 @@ import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.presentation.DepartureTextFormatter
 import `in`.izyum.bart.receivers.AlarmBroadcastReceiver
-import `in`.izyum.bart.services.BoardedDepartureService
+import `in`.izyum.bart.platform.DeparturePollingWork
 import `in`.izyum.bart.ui.BartRunnerTheme
 import `in`.izyum.bart.ui.TripScreen
 import kotlinx.coroutines.Dispatchers
@@ -289,14 +289,11 @@ class TripInProgressActivity : ComponentActivity() {
     }
 
     private fun startAlarmTrackingService() {
-        startForegroundService(
-            Intent(this, BoardedDepartureService::class.java)
-                .setAction(BoardedDepartureService.ACTION_START_ALARM_TRACKING),
-        )
+        DeparturePollingWork.schedule(this)
     }
 
     private fun stopAlarmTrackingService() {
-        stopService(Intent(this, BoardedDepartureService::class.java))
+        DeparturePollingWork.refresh(this, (application as BartRunnerApplication).followedTripRepository)
     }
 
     private fun requestNotificationPermissionIfNeeded() {

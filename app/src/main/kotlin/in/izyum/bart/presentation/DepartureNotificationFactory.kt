@@ -4,14 +4,17 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.RouteArguments
 import `in`.izyum.bart.activities.TripInProgressActivity
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.platform.DepartureAlarmScheduler
-import `in`.izyum.bart.services.BoardedDepartureService
+import `in`.izyum.bart.receivers.DepartureTrackingReceiver
 
 /** Builds the foreground notification used while a departure alarm is pending. */
 object DepartureNotificationFactory {
@@ -39,8 +42,8 @@ object DepartureNotificationFactory {
             departure.origin?.shortName.orEmpty(),
             (departure.passengerDestination ?: departure.trainDestination)?.shortName.orEmpty(),
         )
-        val cancelAlarmIntent = Intent(context, BoardedDepartureService::class.java)
-            .setAction(BoardedDepartureService.ACTION_CANCEL_ALARM)
+        val cancelAlarmIntent = Intent(context, DepartureTrackingReceiver::class.java)
+            .setAction(DepartureTrackingReceiver.ACTION_CANCEL_ALARM)
         val channelId = context.getString(R.string.notification_channel_id)
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_notification)
@@ -56,7 +59,7 @@ object DepartureNotificationFactory {
                 .setUsesChronometer(true)
         }
         if (alarmScheduler?.isPending == true) {
-            val pendingIntent = PendingIntent.getService(
+            val pendingIntent = PendingIntent.getBroadcast(
                 context,
                 0,
                 cancelAlarmIntent,
@@ -96,8 +99,38 @@ object DepartureNotificationFactory {
     }
 
     private fun deleteNotificationIntent(context: Context): PendingIntent {
-        val targetIntent = Intent(context, BoardedDepartureService::class.java)
-            .setAction(BoardedDepartureService.ACTION_CLEAR_DEPARTURE)
-        return PendingIntent.getService(context, 0, targetIntent, PendingIntent.FLAG_IMMUTABLE)
+        val targetIntent = Intent(context, DepartureTrackingReceiver::class.java)
+            .setAction(DepartureTrackingReceiver.ACTION_CLEAR_DEPARTURE)
+        return PendingIntent.getBroadcast(context, 0, targetIntent, PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    fun show(
+        context: Context,
+        departure: Departure,
+        repository: `in`.izyum.bart.data.FollowedTripRepository,
+        timeSource: TimeSource,
+    ) {
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(
+                context.getString(R.string.notification_channel_id),
+                context.getString(R.string.notification_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                enableLights(false)
+                enableVibration(false)
+                setSound(null, null)
+            },
+        )
+        try {
+            NotificationManagerCompat.from(context).notify(
+                123, create(context, departure, repository.getAlarmScheduler(), timeSource),
+            )
+        } catch (_: SecurityException) {
+            // Notification permission can be revoked independently of alarms.
+        }
+    }
+
+    fun cancel(context: Context) {
+        NotificationManagerCompat.from(context).cancel(123)
     }
 }

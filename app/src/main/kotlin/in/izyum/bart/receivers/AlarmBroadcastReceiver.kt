@@ -16,7 +16,7 @@ import `in`.izyum.bart.activities.RouteArguments
 import `in`.izyum.bart.activities.TripInProgressActivity
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Constants
-import `in`.izyum.bart.services.BoardedDepartureService
+import `in`.izyum.bart.platform.DeparturePollingWork
 
 class AlarmBroadcastReceiver : BroadcastReceiver() {
     companion object {
@@ -50,10 +50,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
         postAlarmNotification(context, targetIntent, boardedDeparture)
 
         application.followedTripRepository.notifyAlarmHasBeenHandled()
-        context.startForegroundService(
-            Intent(context, BoardedDepartureService::class.java)
-                .setAction(BoardedDepartureService.ACTION_START_ALARM_TRACKING),
-        )
+        DeparturePollingWork.schedule(context)
     }
 
     private fun postAlarmNotification(

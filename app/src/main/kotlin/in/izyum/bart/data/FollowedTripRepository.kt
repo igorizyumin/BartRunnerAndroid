@@ -5,6 +5,7 @@ import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.platform.DepartureAlarmScheduler
+import `in`.izyum.bart.platform.DeparturePollingWork
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,16 @@ class FollowedTripRepository @JvmOverloads constructor(
 ) : AutoCloseable {
     private companion object {
         const val STORAGE_FILE_NAME = "followed_trip.json"
+
+        fun backgroundPollingIntervalFor(departure: Departure?): Long {
+            val departureSeconds = departure?.getMeanSecondsLeft(SystemTimeSource)?.toLong()
+                ?: Long.MAX_VALUE
+            return when {
+                departureSeconds > 15 * 60 -> 60_000L
+                departureSeconds >= 5 * 60 -> 30_000L
+                else -> 15_000L
+            }
+        }
     }
 
     private val applicationContext = context.applicationContext
@@ -38,13 +49,8 @@ class FollowedTripRepository @JvmOverloads constructor(
     private val _backgroundPollingNeeded = MutableStateFlow(
         alarmScheduler?.isTracking == true,
     )
-    private val _backgroundPollingIntervalMillis = MutableStateFlow(
-        backgroundPollingIntervalFor(followedDeparture),
-    )
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
     val backgroundPollingNeeded: StateFlow<Boolean> = _backgroundPollingNeeded.asStateFlow()
-    val backgroundPollingIntervalMillis: StateFlow<Long> =
-        _backgroundPollingIntervalMillis.asStateFlow()
 
     fun getFollowedDeparture(): Departure? {
         val departure = synchronized(stateLock) { followedDeparture }
@@ -77,6 +83,7 @@ class FollowedTripRepository @JvmOverloads constructor(
         }
 
         persist(departure)
+        DeparturePollingWork.refresh(applicationContext, this)
     }
 
     fun clearFollowedDeparture() {
@@ -119,14 +126,14 @@ class FollowedTripRepository @JvmOverloads constructor(
     /** Refreshes the background polling cadence as the departure countdown changes. */
     fun refreshBackgroundPollingState() {
         refreshBackgroundPollingStateInternal()
+        DeparturePollingWork.refresh(applicationContext, this)
     }
 
     private fun refreshBackgroundPollingStateLocked() {
         _backgroundPollingNeeded.value = alarmScheduler?.isTracking == true
-        _backgroundPollingIntervalMillis.value = backgroundPollingIntervalFor(followedDeparture)
     }
 
-    private fun backgroundPollingIntervalFor(departure: Departure?): Long {
+    internal fun backgroundPollingIntervalFor(departure: Departure?): Long {
         val departureSeconds: Long = departure?.getMeanSecondsLeft(timeSource)?.toLong()
             ?: Long.MAX_VALUE
         return when {

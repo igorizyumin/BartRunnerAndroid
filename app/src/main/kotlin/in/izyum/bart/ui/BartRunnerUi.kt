@@ -77,6 +77,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -229,6 +230,8 @@ fun HomeScreen(
     fareDiscountId: String? = null,
     fareDiscountOptions: List<RiderCategory> = emptyList(),
     onFareDiscountChanged: (String?) -> Unit = {},
+    backgroundPollingEnabled: Boolean = true,
+    onBackgroundPollingChanged: (Boolean) -> Unit = {},
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var pickerAddsFavorite by remember { mutableStateOf(false) }
@@ -503,6 +506,8 @@ fun HomeScreen(
             fareDiscountId = fareDiscountId,
             fareDiscountOptions = fareDiscountOptions,
             onFareDiscountChanged = onFareDiscountChanged,
+            backgroundPollingEnabled = backgroundPollingEnabled,
+            onBackgroundPollingChanged = onBackgroundPollingChanged,
             onDismiss = { showSettingsDialog = false },
         )
     }
@@ -566,6 +571,8 @@ private fun SettingsDialog(
     fareDiscountId: String?,
     fareDiscountOptions: List<RiderCategory>,
     onFareDiscountChanged: (String?) -> Unit,
+    backgroundPollingEnabled: Boolean,
+    onBackgroundPollingChanged: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var showFareDiscountMenu by remember { mutableStateOf(false) }
@@ -613,6 +620,26 @@ private fun SettingsDialog(
                             )
                         }
                     }
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.background_departure_updates),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.background_departure_updates_description),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(
+                        checked = backgroundPollingEnabled,
+                        onCheckedChange = onBackgroundPollingChanged,
+                    )
                 }
             }
         },
