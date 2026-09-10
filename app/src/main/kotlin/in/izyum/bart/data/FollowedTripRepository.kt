@@ -54,6 +54,12 @@ class FollowedTripRepository @JvmOverloads constructor(
 
     fun getFollowedDeparture(): Departure? {
         val departure = synchronized(stateLock) { followedDeparture }
+        if (departure != null && departure.hasDeparted(timeSource)) {
+            // A followed train is monitored only until departure. Stop the
+            // background work as soon as the cached estimate crosses departure,
+            // even if no realtime refresh is available.
+            stopTracking()
+        }
         if (departure != null && departure.hasExpired(timeSource.nowMillis())) {
             clearFollowedDeparture()
             return null

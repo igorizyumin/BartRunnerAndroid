@@ -22,6 +22,14 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
     companion object {
         const val ALARM_NOTIFICATION_ID = 124
         const val EXTRA_ALARM_TRIGGERED = "alarmTriggered"
+
+        fun cancelNotification(context: Context) {
+            try {
+                NotificationManagerCompat.from(context).cancel(ALARM_NOTIFICATION_ID)
+            } catch (_: SecurityException) {
+                // Notification permission can be disabled independently of alarms.
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {

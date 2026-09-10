@@ -17,6 +17,7 @@ class DepartureTrackingReceiver : BroadcastReceiver() {
         DeparturePollingWork.refresh(context, app.followedTripRepository)
         if (intent.action == ACTION_CLEAR_DEPARTURE) {
             DepartureNotificationFactory.cancel(context)
+            AlarmBroadcastReceiver.cancelNotification(context)
         }
     }
 

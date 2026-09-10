@@ -79,8 +79,8 @@ android {
 
     defaultConfig {
         applicationId "in.izyum.bart"
-        versionName = "1.0.3"
-        versionCode = 4
+        versionName = "1.0.4"
+        versionCode = 5
         buildConfigField "String", "GIT_BUILD_HASH", "\"${gitBuildHash}\""
 
         minSdk = 28
@@ -90,7 +90,7 @@ android {
     buildTypes {
         release {
             // Include native debug symbols
-            ndk { debugSymbolLevel 'FULL' }
+            ndk.debugSymbolLevel = 'FULL'
             minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),

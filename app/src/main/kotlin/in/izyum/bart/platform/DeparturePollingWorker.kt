@@ -9,6 +9,7 @@ import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.presentation.DepartureNotificationFactory
+import `in`.izyum.bart.receivers.AlarmBroadcastReceiver
 
 /** Refreshes a followed departure once, then schedules the next refresh. */
 class DeparturePollingWorker(context: Context, params: WorkerParameters) :
@@ -21,6 +22,7 @@ class DeparturePollingWorker(context: Context, params: WorkerParameters) :
         ) {
             DeparturePollingWork.cancel(applicationContext)
             DepartureNotificationFactory.cancel(applicationContext)
+            AlarmBroadcastReceiver.cancelNotification(applicationContext)
             return Result.success()
         }
 
@@ -51,6 +53,7 @@ class DeparturePollingWorker(context: Context, params: WorkerParameters) :
             if (departure?.hasDeparted(app.timeSource) == true) repository.stopTracking()
             DeparturePollingWork.cancel(applicationContext)
             DepartureNotificationFactory.cancel(applicationContext)
+            AlarmBroadcastReceiver.cancelNotification(applicationContext)
         } else {
             DepartureNotificationFactory.show(applicationContext, departure, repository, app.timeSource)
             DeparturePollingWork.schedule(
