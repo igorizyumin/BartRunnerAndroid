@@ -68,8 +68,6 @@ class TripInProgressActivity : ComponentActivity() {
         if (intent.getBooleanExtra(AlarmBroadcastReceiver.EXTRA_ALARM_TRIGGERED, false)) {
             alarmVisible = true
             showAlarmWindow()
-            NotificationManagerCompat.from(this)
-                .cancel(AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
         }
         if (intent.getStringExtra(RouteArguments.DEPARTURE_IDENTITY) != null) {
             setIntent(intent)
@@ -101,8 +99,6 @@ class TripInProgressActivity : ComponentActivity() {
             AlarmBroadcastReceiver.EXTRA_ALARM_TRIGGERED,
             false,
         )
-        NotificationManagerCompat.from(this)
-            .cancel(`in`.izyum.bart.receivers.AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
         if (alarmVisible) {
             showAlarmWindow()
         }
@@ -160,6 +156,8 @@ class TripInProgressActivity : ComponentActivity() {
 
     private fun silenceAlarm() {
         alarmVisible = false
+        NotificationManagerCompat.from(this)
+            .cancel(AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 

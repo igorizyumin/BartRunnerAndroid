@@ -119,6 +119,19 @@ class FollowedTripRepository @JvmOverloads constructor(
         refreshBackgroundPollingState()
     }
 
+    /** Atomically claims a pending alarm and returns the departure it belongs to. */
+    fun handleAlarmTriggered(): Departure? {
+        val departure = synchronized(stateLock) {
+            if (alarmScheduler?.isPending != true) {
+                return@synchronized null
+            }
+            alarmScheduler?.notifyAlarmHasBeenHandled()
+            followedDeparture
+        }
+        refreshBackgroundPollingState()
+        return departure
+    }
+
     private fun refreshBackgroundPollingStateInternal() {
         synchronized(stateLock) { refreshBackgroundPollingStateLocked() }
     }

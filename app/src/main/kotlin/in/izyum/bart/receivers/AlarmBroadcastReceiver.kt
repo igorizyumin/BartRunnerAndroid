@@ -29,7 +29,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             return
         }
         val application = context.applicationContext as BartRunnerApplication
-        val boardedDeparture = application.followedTripRepository.getFollowedDeparture()
+        val boardedDeparture = application.followedTripRepository.handleAlarmTriggered()
             ?: return
 
         val targetIntent = Intent(context, TripInProgressActivity::class.java).apply {
@@ -49,7 +49,6 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
 
         postAlarmNotification(context, targetIntent, boardedDeparture)
 
-        application.followedTripRepository.notifyAlarmHasBeenHandled()
         DeparturePollingWork.schedule(context)
     }
 
