@@ -125,6 +125,53 @@ class Schedule private constructor(
         )
     }
 
+    /**
+     * Applies operational departure times without changing the static schedule.
+     * ETD has no trip IDs, so callers must first make the station/time
+     * association. Once associated, shift predicted times at and after the
+     * station so transfer validation uses the observed departure and the
+     * scheduled running time remains intact.
+     */
+    fun applyDepartureOverrides(
+        overrides: Map<Pair<String, Station>, Long>,
+    ): Schedule {
+        if (overrides.isEmpty()) return this
+        val adjustedTrips = trips.map { trip ->
+            val tripId = trip.key.tripId
+            val override = trip.stops.mapIndexedNotNull { index, stop ->
+                overrides[tripId to stop.station]?.let { index to it }
+            }.firstOrNull()
+            if (override == null) {
+                trip
+            } else {
+                val (startIndex, departureTime) = override
+                val scheduledDeparture = trip.stops[startIndex].scheduledDepartureTime
+                val delay = departureTime - scheduledDeparture
+                trip.copy(
+                    stops = immutableList(trip.stops.mapIndexed { index, stop ->
+                        if (index < startIndex) {
+                            stop
+                        } else {
+                            stop.copy(
+                                arrivalTime = shifted(stop.arrivalTime, delay),
+                                departureTime = shifted(stop.departureTime, delay),
+                                arrivalSource = PredictionSource.ESTIMATE,
+                                departureSource = PredictionSource.ESTIMATE,
+                            )
+                        }
+                    })
+                )
+            }
+        }
+        return create(
+            adjustedTrips,
+            nominalTravelTimes,
+            stationResolver,
+            network,
+            feedTime,
+        )
+    }
+
     /** Routes are selected from this corrected schedule, not from static data alone. */
     fun routesFor(origin: Station?, destination: Station?): List<Route> {
         if (origin == null || origin == destination) return emptyList()
@@ -931,6 +978,9 @@ class Schedule private constructor(
                 stationResolver,
             )
         }
+
+        private fun shifted(time: Long, delay: Long): Long =
+            if (time > 0L) time + delay else time
 
         private fun epochMillis(serviceDate: LocalDate, stopTime: GtfsStopTime): Long =
             epochMillis(serviceDate, stopTime.departureSeconds ?: stopTime.arrivalSeconds ?: 0)

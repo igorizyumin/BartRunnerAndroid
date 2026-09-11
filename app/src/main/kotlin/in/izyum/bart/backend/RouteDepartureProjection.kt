@@ -33,7 +33,21 @@ class RouteDepartureProjection private constructor(
         require(query.origin != null) { "A route query needs an origin" }
     }
 
-    fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures {
+    fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures =
+        project(snapshot, emptySet())
+
+    /** Projects while excluding trips corroborated as unavailable by ETD. */
+    fun project(
+        snapshot: TransitFeedSnapshot,
+        excludedTripIds: Set<String>,
+    ): RealTimeDepartures = project(snapshot, excludedTripIds, emptyMap())
+
+    /** Projects with operational departure times for ETD-correlated trips. */
+    fun project(
+        snapshot: TransitFeedSnapshot,
+        excludedTripIds: Set<String>,
+        departureOverrides: Map<Pair<String, Station>, Long>,
+    ): RealTimeDepartures {
         val name = "BART route ${query.origin?.abbreviation.orEmpty()}-${query.destination?.abbreviation.orEmpty()}"
         return PerformanceTrace.section(name) {
             val network = networkSupplier.get()
@@ -43,6 +57,7 @@ class RouteDepartureProjection private constructor(
             // in the first route set. Build one complete time-scoped graph so the
             // fallback cannot accidentally lose its static connecting trains.
             val schedule = snapshot.getCorrectedSchedule(network)
+                .applyDepartureOverrides(departureOverrides)
             val routes = schedule.routesFor(query.origin, query.destination)
             projectWithRouting(
                 routes,
@@ -50,6 +65,7 @@ class RouteDepartureProjection private constructor(
                 feedIndex,
                 feedTime,
                 schedule,
+                excludedTripIds,
             )
         }
     }
@@ -60,8 +76,11 @@ class RouteDepartureProjection private constructor(
         feedIndex: GtfsRealtimeFeedIndex,
         feedTime: Long,
         schedule: Schedule,
+        excludedTripIds: Set<String>,
     ): RealTimeDepartures {
-        var result = projectRoutes(routes, network, feedIndex, feedTime, schedule)
+        var result = projectRoutes(
+            routes, network, feedIndex, feedTime, schedule, excludedTripIds
+        )
 
         if (result.getDepartures().isEmpty() && query.destination != null) {
             val lateNightRoutes = if (schedule.isLateNightSfoMillbraeService()) {
@@ -82,6 +101,7 @@ class RouteDepartureProjection private constructor(
                 feedIndex,
                 feedTime,
                 schedule,
+                excludedTripIds,
             )
             if (transferResult.getDepartures().isNotEmpty()) {
                 result = transferResult.includeTransferRoutes()
@@ -99,6 +119,7 @@ class RouteDepartureProjection private constructor(
                 feedIndex,
                 feedTime,
                 schedule,
+                excludedTripIds,
             )
             if (doubleTransferResult.getDepartures().isNotEmpty()) {
                 result = doubleTransferResult.includeDoubleTransferRoutes()
@@ -120,12 +141,13 @@ class RouteDepartureProjection private constructor(
         feedIndex: GtfsRealtimeFeedIndex,
         feedTime: Long,
         schedule: Schedule,
+        excludedTripIds: Set<String>,
     ): RealTimeDepartures = GtfsRealtimeContentHandler(
         query.origin!!,
         query.destination,
         routes,
         ignoreDirection,
         network
-    ).getRealTimeDepartures(feedIndex, feedTime, schedule)
+    ).getRealTimeDepartures(feedIndex, feedTime, schedule, excludedTripIds)
 
 }

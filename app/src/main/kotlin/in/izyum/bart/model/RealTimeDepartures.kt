@@ -67,6 +67,19 @@ class RealTimeDepartures internal constructor(
         return sortDepartures()
     }
 
+    /** Returns the same projection with selected candidate departures removed. */
+    fun filterDepartures(predicate: (Departure) -> Boolean): RealTimeDepartures =
+        RealTimeDepartures(
+            origin,
+            destination,
+            time,
+            routes,
+            unfilteredDepartures.filter(predicate),
+            departures.filter(predicate),
+            schedule,
+            transfersIncluded,
+        )
+
     private fun withAdditionalRoutes(additionalRoutes: List<Route>): RealTimeDepartures {
         val nextRoutes = routes + additionalRoutes
         return copy(

@@ -113,6 +113,13 @@ class TransitRepository(
         project: (TransitFeedSnapshot) -> T,
         areEquivalent: (T?, T?) -> Boolean = { previous, current -> previous == current },
     ): Flow<Result<T>> =
+        projectedStateSuspending(project, areEquivalent)
+
+    /** Maps the shared feed through an asynchronous projection. */
+    fun <T> projectedStateSuspending(
+        project: suspend (TransitFeedSnapshot) -> T,
+        areEquivalent: (T?, T?) -> Boolean = { previous, current -> previous == current },
+    ): Flow<Result<T>> =
         feed()
             .mapNotNull { feedState ->
                 if (feedState.snapshot == null && feedState.error == null) {

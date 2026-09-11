@@ -249,6 +249,12 @@ remain unchanged in the test fixture directory.
   from BART at 2026-09-08 20:23:39 PDT for the Castro Valley to SFO regression.
   The matching test fixtures are in
   `app/src/test/resources/gtfsrt/`.
+- `bart_trip_updates_live_20260910_171711.pb` and
+  `bart_alerts_live_20260910_171711.pb` — current paired live snapshot captured
+  from BART at 2026-09-10 17:17:11 PDT. The trip feed contains 78 trip updates;
+  all 1,043 stop-time updates omit `stop_sequence`, matching BART's current
+  feed behavior. The matching test fixtures are in
+  `app/src/test/resources/gtfsrt/`.
 
 ## Regression coverage
 

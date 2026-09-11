@@ -56,11 +56,13 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     fun getRealTimeDepartures(
         feedIndex: GtfsRealtimeFeedIndex,
         feedTime: Long,
-        schedule: Schedule
+        schedule: Schedule,
+        excludedTripIds: Set<String> = emptySet(),
     ): RealTimeDepartures {
         val departures = DepartureCollection()
 
         val trips = parseTrips(feedIndex.tripUpdateEntities, feedTime, schedule)
+            .filter { it.tripId !in excludedTripIds }
         trips.forEach { trip -> addTripUpdate(departures, trip, trips, feedTime) }
         return RealTimeDepartures(
             origin,

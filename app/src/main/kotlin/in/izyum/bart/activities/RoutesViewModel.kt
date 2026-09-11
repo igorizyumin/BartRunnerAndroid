@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.backend.AlertProjection
+import `in`.izyum.bart.backend.EtdAwareRouteDepartureProjection
 import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.data.FareDiscountPreferences
 import `in`.izyum.bart.data.FavoritesRepository
@@ -150,11 +151,15 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         favorites.forEach { route ->
             if (route !in routeJobs) {
                 routeJobs[route] = viewModelScope.launch {
-                    val projection = RouteDepartureProjection(
+                    val baseProjection = RouteDepartureProjection(
                         route,
                         app.bartGtfsNetworkSupplier,
                     )
-                    transitRepository.projectedState(
+                    val projection = EtdAwareRouteDepartureProjection(
+                        baseProjection,
+                        app.etdStationCache,
+                    )
+                    transitRepository.projectedStateSuspending(
                         projection::project,
                         projection::areEquivalent,
                     ).collectLatest { state ->

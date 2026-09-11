@@ -46,7 +46,12 @@ class ViewDeparturesActivity : ComponentActivity() {
                 }
             }
         }
-        departuresViewModel.setQuery(app.transitRepository, app.bartGtfsNetworkSupplier, stationPair)
+        departuresViewModel.setQuery(
+            app.transitRepository,
+            app.bartGtfsNetworkSupplier,
+            stationPair,
+            app.etdStationCache,
+        )
         setContent {
             val state by departuresViewModel.uiState.collectAsStateWithLifecycle()
             val isOffline by app.offlineStatusController.isOffline.collectAsStateWithLifecycle()
