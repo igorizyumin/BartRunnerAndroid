@@ -40,6 +40,9 @@ import kotlinx.coroutines.withContext
 class TripInProgressActivity : ComponentActivity() {
     companion object {
         private const val POST_NOTIFICATIONS_REQUEST_CODE = 1002
+
+        internal fun shouldReturnToRoutes(screenMode: String?, followed: Departure?): Boolean =
+            screenMode == RouteArguments.MODE_FOLLOWED && followed == null
     }
 
     private val tripProgressViewModel: TripProgressViewModel by viewModels()
@@ -82,6 +85,13 @@ class TripInProgressActivity : ComponentActivity() {
         var route = RouteArguments.readRoute(intent)
         var identity = RouteArguments.readDepartureIdentity(intent)
         val screenMode = RouteArguments.readScreenMode(intent)
+        if (shouldReturnToRoutes(screenMode, followed)) {
+            startActivity(Intent(this, RoutesListActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            })
+            finish()
+            return
+        }
         if (route == null && followed != null && (screenMode == null || screenMode == RouteArguments.MODE_FOLLOWED)) {
             identity = followed.identity
             route = followed.getStationPair()
