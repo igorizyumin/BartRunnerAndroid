@@ -14,9 +14,9 @@ testing effort and help make improvements.
 To participate in testing:
 
 
-1. Join [this Google group](https://groups.google.com/g/bart-runner-testers/) with the same Google accoun
-   you use for Play. The group is open, but membership visibility is restricted for privacy. Your email will
-   not be made public.
+1. Join [this Google group](https://groups.google.com/g/bart-runner-testers/) with the same Google account
+   you use for Play. The group is open, but membership visibility is restricted for privacy. Your information will
+   not be made public or shared with other members.
 2. Enroll in the test program [here](https://play.google.com/apps/testing/in.izyum.bart) using the same Google account.
 3. Install the test build from Play using [this link](https://play.google.com/store/apps/details?id=in.izyum.bart).  Note that
    this link will most likely not work right away.  Google usually takes a few minutes and sometimes longer to grant
