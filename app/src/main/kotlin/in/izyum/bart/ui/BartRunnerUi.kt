@@ -106,7 +106,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.googlefonts.Font as DownloadableFont
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.buildAnnotatedString
@@ -148,6 +151,48 @@ private val Warning = Color(0xFFB3261E)
 private val LightConnectingTrainTile = Color(0xFFE6E6E6)
 private val LightYellowLine = Color(0xFFE6C400)
 
+private val RobotoGoogleFont = GoogleFont("Roboto")
+private val RobotoFontProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = androidx.compose.ui.text.googlefonts.R.array.com_google_android_gms_fonts_certs,
+)
+private val RobotoFontFamily = FontFamily(
+    DownloadableFont(
+        googleFont = RobotoGoogleFont,
+        fontProvider = RobotoFontProvider,
+        weight = FontWeight.Normal,
+    ),
+    DownloadableFont(
+        googleFont = RobotoGoogleFont,
+        fontProvider = RobotoFontProvider,
+        weight = FontWeight.Medium,
+    ),
+    DownloadableFont(
+        googleFont = RobotoGoogleFont,
+        fontProvider = RobotoFontProvider,
+        weight = FontWeight.Bold,
+    ),
+)
+
+private fun androidx.compose.material3.Typography.withFontFamily(fontFamily: FontFamily) = copy(
+    displayLarge = displayLarge.copy(fontFamily = fontFamily),
+    displayMedium = displayMedium.copy(fontFamily = fontFamily),
+    displaySmall = displaySmall.copy(fontFamily = fontFamily),
+    headlineLarge = headlineLarge.copy(fontFamily = fontFamily),
+    headlineMedium = headlineMedium.copy(fontFamily = fontFamily),
+    headlineSmall = headlineSmall.copy(fontFamily = fontFamily),
+    titleLarge = titleLarge.copy(fontFamily = fontFamily),
+    titleMedium = titleMedium.copy(fontFamily = fontFamily),
+    titleSmall = titleSmall.copy(fontFamily = fontFamily),
+    bodyLarge = bodyLarge.copy(fontFamily = fontFamily),
+    bodyMedium = bodyMedium.copy(fontFamily = fontFamily),
+    bodySmall = bodySmall.copy(fontFamily = fontFamily),
+    labelLarge = labelLarge.copy(fontFamily = fontFamily),
+    labelMedium = labelMedium.copy(fontFamily = fontFamily),
+    labelSmall = labelSmall.copy(fontFamily = fontFamily),
+)
+
 @Composable
 fun BartRunnerTheme(content: @Composable () -> Unit) {
     val light = androidx.compose.material3.lightColorScheme(
@@ -184,7 +229,7 @@ fun BartRunnerTheme(content: @Composable () -> Unit) {
     )
     androidx.compose.material3.MaterialTheme(
         colorScheme = if (androidx.compose.foundation.isSystemInDarkTheme()) dark else light,
-        typography = androidx.compose.material3.Typography(),
+        typography = androidx.compose.material3.Typography().withFontFamily(RobotoFontFamily),
         content = content,
     )
 }
