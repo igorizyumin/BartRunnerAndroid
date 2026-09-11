@@ -67,7 +67,10 @@ class FollowedTripRepository @JvmOverloads constructor(
         return departure
     }
 
-    fun setFollowedDeparture(departure: Departure?) {
+    fun setFollowedDeparture(
+        departure: Departure?,
+        refreshBackgroundWork: Boolean = true,
+    ) {
         val previousScheduler: DepartureAlarmScheduler?
         val preserveAlarm = synchronized(stateLock) {
             followedDeparture?.let { previous ->
@@ -89,7 +92,9 @@ class FollowedTripRepository @JvmOverloads constructor(
         }
 
         persist(departure)
-        DeparturePollingWork.refresh(applicationContext, this)
+        if (refreshBackgroundWork) {
+            DeparturePollingWork.refresh(applicationContext, this)
+        }
     }
 
     fun clearFollowedDeparture() {

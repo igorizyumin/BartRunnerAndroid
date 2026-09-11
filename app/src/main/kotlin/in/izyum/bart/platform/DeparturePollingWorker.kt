@@ -40,6 +40,7 @@ class DeparturePollingWorker(context: Context, params: WorkerParameters) :
                     ) {
                         repository.setFollowedDeparture(
                             Departure.merge(current, updated, false, app.timeSource),
+                            refreshBackgroundWork = false,
                         )
                     }
                 }
