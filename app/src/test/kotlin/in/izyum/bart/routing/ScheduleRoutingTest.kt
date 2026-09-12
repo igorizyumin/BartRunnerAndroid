@@ -126,7 +126,7 @@ class ScheduleRoutingTest {
     }
 
     @Test
-    fun preferredEastBayRouteUsesBayFairAndNineteenthStreet() {
+    fun preferredEastBayRouteUsesLakeMerrittAndNineteenthStreet() {
         val routes: List<Route> = preferredTransferRoutes(Station.DUBL,
                 Station.ANTC, TEST_NETWORK)
 
@@ -134,8 +134,67 @@ class ScheduleRoutingTest {
         val route = routes[0]
         assertEquals(asLines(Line.BLUE, Line.ORANGE, Line.YELLOW),
                 route.lines)
-        assertEquals(asStations(Station.BAYF, Station._19TH),
+        assertEquals(asStations(Station.LAKE, Station._19TH),
                 route.transferStations)
+    }
+
+    @Test
+    fun antiochToCastroValleyUsesOrangeAtMacArthurAndLakeMerritt() {
+        val routes: List<Route> = preferredTransferRoutes(Station.ANTC,
+                Station.CAST, TEST_NETWORK)
+
+        assertFalse("routes=" + routes, routes.isEmpty())
+        val route = routes[0]
+        assertEquals(asLines(Line.YELLOW, Line.ORANGE, Line.BLUE), route.lines)
+        assertEquals(asStations(Station.MCAR, Station.LAKE),
+                route.transferStations)
+    }
+
+    @Test
+    fun richmondToSfoUsesMacArthurForTheSouthboundYellowTransfer() {
+        val routes: List<Route> = preferredTransferRoutes(Station.RICH,
+                Station.SFIA, TEST_NETWORK)
+
+        assertFalse("routes=" + routes, routes.isEmpty())
+        val route = routes[0]
+        assertEquals(asLines(Line.ORANGE, Line.YELLOW), route.lines)
+        assertEquals(asStations(Station.MCAR), route.transferStations)
+    }
+
+    @Test
+    fun allStationPairingsUseTheExpectedTransfersInBothDirections() {
+        val expected: Map<Pair<Station, Station>, List<Station>> = mapOf(
+            (Station.RICH to Station.SFIA) to emptyList(),
+            (Station.RICH to Station.BERY) to emptyList(),
+            (Station.RICH to Station.DUBL) to asStations(Station.BALB),
+            (Station.RICH to Station.ANTC) to asStations(Station._19TH),
+            (Station.SFIA to Station.RICH) to emptyList(),
+            (Station.SFIA to Station.BERY) to asStations(Station.BALB),
+            (Station.SFIA to Station.DUBL) to asStations(Station.BALB),
+            (Station.SFIA to Station.ANTC) to emptyList(),
+            (Station.BERY to Station.RICH) to emptyList(),
+            (Station.BERY to Station.SFIA) to asStations(Station.MCAR),
+            (Station.BERY to Station.DUBL) to asStations(Station.LAKE),
+            (Station.BERY to Station.ANTC) to asStations(Station._19TH),
+            (Station.DUBL to Station.RICH) to asStations(Station.BALB),
+            (Station.DUBL to Station.SFIA) to asStations(Station.BALB),
+            (Station.DUBL to Station.BERY) to asStations(Station.LAKE),
+            (Station.DUBL to Station.ANTC) to asStations(Station.LAKE, Station._19TH),
+            (Station.ANTC to Station.RICH) to asStations(Station.MCAR),
+            (Station.ANTC to Station.SFIA) to emptyList(),
+            (Station.ANTC to Station.BERY) to asStations(Station.MCAR),
+            (Station.ANTC to Station.DUBL) to asStations(Station.MCAR, Station.LAKE),
+        )
+
+        val mismatches = mutableListOf<String>()
+        for ((pair, transfers) in expected) {
+            val route = routesFor(pair.first, pair.second, TEST_NETWORK).firstOrNull()
+            if (route == null || route.transferStations != transfers) {
+                mismatches += "${pair.first} -> ${pair.second}: expected=$transfers " +
+                    "actual=${route?.transferStations} lines=${route?.lines}"
+            }
+        }
+        assertTrue(mismatches.joinToString("; "), mismatches.isEmpty())
     }
 
     @Test

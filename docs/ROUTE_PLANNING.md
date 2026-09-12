@@ -51,11 +51,23 @@ time-scoped graph used for predictions. It selects in this order:
 - special late-night SFO-to-Millbrae routing when the destination is Millbrae.
 
 Routes contain line sequences, transfer stations, direction, and the station
-sequence for each leg. Route scoring prefers fewer transfers, with a few BART-
-specific preferences for common East Bay/San Francisco trunk journeys. A route
-is rejected when the corrected schedule has no usable service for one of its
-legs; a route with no static trips in the current window remains eligible
-because realtime may still supply that trip.
+sequence for each leg. Route scoring prefers fewer transfers, with BART-specific
+preferences for common East Bay/San Francisco trunk journeys. In particular,
+Yellow/Orange uses MacArthur southbound and 19th Street northbound; the
+southbound Yellow-to-Blue path is preferred through Orange at MacArthur and
+Lake Merritt (with Bay Fair as the schedule-dependent fallback). Lake Merritt
+is preferred over Bay Fair when the resulting arrival is effectively
+equivalent. Split-platform stations are de-preferred, and a route using one
+is only selected when its connection has at least five minutes beyond the
+feed's minimum transfer time. Busy downtown stations remain valid but are not
+preferred.
+
+For realtime departures, all complete timed itineraries for the same first
+train are compared. A preferred topology wins when it arrives within five
+minutes of the earliest candidate; a larger schedule difference wins over the
+station preference. A route is rejected when the corrected schedule has no
+usable service for one of its legs; a route with no static trips in the current
+window remains eligible because realtime may still supply that trip.
 
 Station-only queries use the longest useful static pattern for each line at the
 origin. They are deliberately not destination-filtered, because the board must

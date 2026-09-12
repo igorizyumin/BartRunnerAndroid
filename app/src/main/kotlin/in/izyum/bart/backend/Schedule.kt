@@ -5,6 +5,7 @@ import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
+import `in`.izyum.bart.routing.TransferStationPreferences
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.gtfs.GtfsScheduledTrip
 import `in`.izyum.bart.transit.gtfs.GtfsStopTime
@@ -603,18 +604,20 @@ class Schedule private constructor(
         for (line in network.linesForStation(origin)) {
             val bestPatterns = LinkedHashMap<String?, BartGtfsNetwork.StationPattern>()
             network.routePatternsForLine(line).forEach { pattern ->
+                val direction = pattern.direction
                 val originIndex = pattern.stations.indexOf(origin)
                 val destinationIndex = pattern.stations.indexOf(destination)
                 if (originIndex >= 0 && destinationIndex > originIndex
-                    && (bestPatterns[pattern.direction] == null
-                        || pattern.stations.size > bestPatterns[pattern.direction]!!.stations.size)
+                    && (bestPatterns[direction] == null
+                        || pattern.stations.size > bestPatterns[direction]!!.stations.size)
                 ) {
-                    bestPatterns[pattern.direction] = pattern
+                    bestPatterns[direction] = pattern
                 }
             }
             bestPatterns.values.forEach { pattern ->
+                val direction = pattern.direction
                 routes += Route.direct(
-                    origin, destination, line, pattern.direction, pattern.stations
+                    origin, destination, line, direction, pattern.stations
                 )
             }
         }
@@ -684,7 +687,9 @@ class Schedule private constructor(
             val segmentDestination = if (index == lines.lastIndex) destination else transfers[index]
             val pattern = segment(line, segmentOrigin, segmentDestination) ?: return null
             sequences[line] = pattern.stations
-            if (index == 0) direction = pattern.direction
+            if (index == 0) {
+                direction = pattern.direction
+            }
         }
         val route = Route.transfer(origin, destination, lines, transfers, direction, sequences)
         return if (isValidTransferPath(route)) route else null
@@ -746,11 +751,36 @@ class Schedule private constructor(
             && lines[2] == Line.YELLOW
             && route.transferStations.size == 2
         ) score -= 200
+        if (isYellowSouthToBlueViaOrange(route)) {
+            // This is the preferred Antioch/East Bay pattern even though it
+            // adds a transfer: it avoids the split-platform West Oakland
+            // connection and uses the Orange line as the BART timetable does.
+            score -= 250
+        }
         route.transferStations.indices.forEach { index ->
+            val station = route.transferStations[index]
+            if (station in TransferStationPreferences.avoidedStations
+                && !TransferStationPreferences.isPreferredMacArthurYellowOrange(route, index)
+            ) {
+                score += 80
+            } else if (station in TransferStationPreferences.busyStations) {
+                score += 3
+            }
             val preferred = preferredTransferStation(route, lines[index], lines[index + 1], index)
-            if (route.transferStations[index] != preferred) score += 10
+            if (station != preferred) {
+                score += if (preferred == Station.LAKE
+                    && station == Station.BAYF
+                ) 4 else 10
+            }
         }
         return score
+    }
+
+    private fun isYellowSouthToBlueViaOrange(route: Route): Boolean {
+        if (route.lines != listOf(Line.YELLOW, Line.ORANGE, Line.BLUE)
+            || route.transferStations.firstOrNull() != Station.MCAR
+        ) return false
+        return TransferStationPreferences.yellowTravelIsSouthbound(route) == true
     }
 
     private fun preferredTransferStation(
@@ -760,34 +790,25 @@ class Schedule private constructor(
         transferIndex: Int,
     ): Station? {
         if (isEastBayToSanFranciscoTrunk(first, second)) return Station.BALB
-        if (samePair(first, second, Line.BLUE, Line.ORANGE)) return Station.BAYF
-        if (samePair(first, second, Line.GREEN, Line.BLUE)) return Station.BAYF
-        if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {
-            if (first == Line.ORANGE) {
-                val orangeStart = if (transferIndex == 0) route.origin
-                else route.transferStations[transferIndex - 1]
-                val orangeEnd = route.transferStations[transferIndex]
-                val direction = network.routePatternsForLine(Line.ORANGE)
-                    .firstOrNull { pattern ->
-                        val startIndex = pattern.stations.indexOf(orangeStart)
-                        val endIndex = pattern.stations.indexOf(orangeEnd)
-                        startIndex >= 0 && endIndex > startIndex
-                    }
-                    ?.direction
-                return when (direction) {
-                    "s" -> Station.MCAR
-                    "n" -> Station._19TH
-                    else -> Station.MCAR
-                }
-            }
-            val orangeStart = route.transferStations[transferIndex]
-            val orangeEnd = if (transferIndex + 1 < route.transferStations.size) {
+        if (samePair(first, second, Line.BLUE, Line.ORANGE)
+            || samePair(first, second, Line.GREEN, Line.BLUE)
+        ) {
+            val segmentOrigin = if (transferIndex == 0) route.origin
+            else route.transferStations[transferIndex - 1]
+            val segmentDestination = if (transferIndex + 1 < route.transferStations.size) {
                 route.transferStations[transferIndex + 1]
             } else {
                 route.destination
             }
-            val stations = route.getStationSequence(Line.ORANGE)
-            return if (stations.indexOf(orangeStart) > stations.indexOf(orangeEnd)) {
+            if (segmentOrigin != null && segmentDestination != null
+                && segment(first, segmentOrigin, Station.LAKE) != null
+                && segment(second, Station.LAKE, segmentDestination) != null
+                && network.canTransfer(Station.LAKE, first, second)
+            ) return Station.LAKE
+            return Station.BAYF
+        }
+        if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {
+            return if (TransferStationPreferences.yellowTravelIsSouthbound(route) == true) {
                 Station.MCAR
             } else {
                 Station._19TH
