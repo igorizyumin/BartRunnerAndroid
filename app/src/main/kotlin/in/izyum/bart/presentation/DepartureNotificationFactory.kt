@@ -26,11 +26,7 @@ object DepartureNotificationFactory {
         timeSource: TimeSource,
     ): Notification {
         val nowMillis = timeSource.nowMillis()
-        val secondsLeft = departure.getMeanSecondsLeft(
-            departure.minEstimate,
-            departure.maxEstimate,
-            nowMillis,
-        )
+        val secondsLeft = ((departure.maxEstimate - nowMillis) / 1000L).toInt()
         val minutes = (secondsLeft + 15) / 30 / 2f
         val minutesText = when {
             minutes < 1 -> context.getString(R.string.notification_less_than_minute)

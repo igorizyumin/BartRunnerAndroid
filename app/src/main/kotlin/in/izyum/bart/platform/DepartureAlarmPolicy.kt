@@ -5,12 +5,12 @@ object DepartureAlarmPolicy {
     fun shouldRestore(pending: Boolean, departed: Boolean, expired: Boolean): Boolean =
         pending && !departed && !expired
 
-    fun alarmTime(meanEstimateMillis: Long, leadTimeMinutes: Int): Long =
-        meanEstimateMillis - leadTimeMinutes * 60_000L
+    fun alarmTime(departureEstimateMillis: Long, leadTimeMinutes: Int): Long =
+        departureEstimateMillis - leadTimeMinutes * 60_000L
 
-    fun secondsUntilAlarm(meanEstimateMillis: Long,
+    fun secondsUntilAlarm(departureEstimateMillis: Long,
                           leadTimeMinutes: Int,
                           nowMillis: Long): Int =
-        ((alarmTime(meanEstimateMillis, leadTimeMinutes) - nowMillis) / 1_000L)
+        ((alarmTime(departureEstimateMillis, leadTimeMinutes) - nowMillis) / 1_000L)
             .toInt()
 }

@@ -316,20 +316,13 @@ object DepartureTextFormatter {
 
     @JvmStatic
     fun countdown(context: Context, departure: Departure, nowMillis: Long): String {
-        val secondsLeft = departure.getMeanSecondsLeft(
-            departure.minEstimate,
-            departure.maxEstimate,
-            nowMillis,
-        )
+        val arrivalTime = departure.getInitialArrivalTime(pessimistic = true)
+        val departureTime = departure.getInitialDepartureTime(pessimistic = true)
+        val secondsLeft = ((arrivalTime - nowMillis) / 1000L).toInt()
         return when {
             departure.isCanceled() -> context.getString(R.string.departure_canceled)
-            departure.hasDeparted(nowMillis) -> if (
-                departure.origin?.longStationLinger == true && departure.beganAsDeparted()
-            ) {
-                context.getString(R.string.departure_at_station)
-            } else {
-                context.getString(if (departure.isListedInETDs()) R.string.leaving else R.string.departed)
-            }
+            nowMillis >= departureTime -> context.getString(if (departure.isListedInETDs()) R.string.leaving else R.string.departed)
+            nowMillis >= arrivalTime -> context.getString(R.string.departure_at_station)
             else -> context.getString(R.string.departure_countdown, secondsLeft / 60, secondsLeft % 60)
         }
     }

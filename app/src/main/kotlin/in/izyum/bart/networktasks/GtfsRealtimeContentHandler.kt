@@ -320,6 +320,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             arrival?.scheduledArrivalTime ?: 0L,
             departure?.departureSource ?: PredictionSource.UNKNOWN,
             arrival?.arrivalSource ?: PredictionSource.UNKNOWN,
+            departure?.platform,
         )
     }
 
@@ -455,6 +456,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 stop.scheduledArrivalTime,
                 stop.departureSource,
                 stop.arrivalSource,
+                stop.platform,
             )
         }
         result.lastOrder = trip.stops.lastIndex
@@ -479,6 +481,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                     existing.scheduledArrivalTime,
                     PredictionSource.REALTIME,
                     PredictionSource.REALTIME,
+                    realtimePoint.platform ?: existing.platform,
                 )
             }
         }
@@ -535,6 +538,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             existing.scheduledArrivalTime,
             originPoint?.departureSource ?: existing.departureSource,
             destinationPoint?.arrivalSource ?: existing.arrivalSource,
+            originPoint?.platform ?: existing.platform,
         )
     }
 
@@ -665,6 +669,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                     arrivalTime = if (arrival > 0) arrival else departure,
                     departureSource = PredictionSource.REALTIME,
                     arrivalSource = PredictionSource.REALTIME,
+                    platform = platformForStopId(update.getStopId()),
                 )
                 result.points += point
                 if (result.trainDestination == null || point.order > result.lastOrder) {
@@ -788,6 +793,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 arrival?.scheduledArrivalTime ?: 0L,
                 departure.departureSource,
                 arrival?.arrivalSource ?: PredictionSource.UNKNOWN,
+                departure.platform,
             )
             legOrigin = legDestination
         }
@@ -849,6 +855,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         val scheduledArrivalTime: Long = 0L,
         val departureSource: PredictionSource = PredictionSource.UNKNOWN,
         val arrivalSource: PredictionSource = PredictionSource.UNKNOWN,
+        var platform: String? = null,
     )
 
     private class TripSnapshot(

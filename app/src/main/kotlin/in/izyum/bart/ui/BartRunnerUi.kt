@@ -1270,7 +1270,7 @@ fun TripScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             if (alarmPending) {
                                 FilledTonalButton(onClick = onCancelAlarm, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.alarm_minutes, alarmLeadTimeMinutes)) }
-                            } else if (current.getMeanSecondsLeft(tick) > 60) {
+                            } else if (current.getInitialDepartureTime(pessimistic = true) - tick > 60_000L) {
                                 OutlinedButton(onClick = { showAlarm = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.set_alarm)) }
                             }
                             OutlinedButton(onClick = { showClear = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.end_trip)) }
@@ -1304,7 +1304,16 @@ private fun TripHero(departure: Departure, pair: StationPair?, fare: String?, ti
     val status = tripStatus(context, departure, timeSource, tick)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(20.dp)) {
-            Text(status, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(status.title, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            status.subtitle?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
             Text(stringResource(R.string.route_arrow, origin, destination), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp))
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Metric(Icons.Filled.AccessTime, stringResource(R.string.departs), DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
@@ -1600,6 +1609,18 @@ private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
         Box(Modifier.width(2.dp).height(34.dp).background(if (warning) Warning else MaterialTheme.colorScheme.outline))
         Column(Modifier.padding(start = 12.dp)) {
             Text(stringResource(R.string.transfer_at, arriving.destination?.getName().orEmpty()), fontWeight = FontWeight.SemiBold, color = if (warning) Warning else MaterialTheme.colorScheme.primary)
+            next.platform?.takeIf { it.isNotBlank() }?.let { platform ->
+                Text(
+                    stringResource(
+                        R.string.board_train_at_platform,
+                        next.line?.getDisplayName() ?: stringResource(R.string.train_label),
+                        platform,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (warning) Warning else MaterialTheme.colorScheme.onSurface,
+                )
+            }
             Text(
                 connectionText,
                 style = MaterialTheme.typography.bodySmall,
@@ -1623,7 +1644,8 @@ private fun LineBadge(line: Line?) {
 
 @Composable
 private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
-    val max = (departure.getMeanSecondsLeft(timeSource) / 60).coerceAtLeast(1)
+    val max = (((departure.getInitialDepartureTime(pessimistic = true) - timeSource.nowMillis()) / 60_000L).toInt())
+        .coerceAtLeast(1)
     var value by remember { mutableIntStateOf(5.coerceAtMost(max)) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.set_departure_alarm)) }, text = {
         Column {
@@ -1704,27 +1726,112 @@ private fun lineColor(line: Line?): Color = when (line) {
     else -> Color(0xFF546E7A)
 }
 
-private fun tripStatus(context: Context, departure: Departure, timeSource: TimeSource, now: Long): String {
-    if (departure.isCanceled()) return context.getString(R.string.trip_canceled)
-    if (!departure.hasDeparted(now)) return context.getString(R.string.trip_leaves_in, DepartureTextFormatter.countdown(context, departure, now))
+private data class TripStatusPresentation(val title: String, val subtitle: String? = null)
+
+private fun tripStatus(context: Context, departure: Departure, timeSource: TimeSource, now: Long): TripStatusPresentation {
+    if (departure.isCanceled()) return TripStatusPresentation(context.getString(R.string.trip_canceled))
+
+    val initialArrival = departure.getInitialArrivalTime(pessimistic = true)
+    val initialDeparture = departure.getInitialDepartureTime(pessimistic = true)
+    val initialStation = departure.origin?.getName().orEmpty()
+    if (now < initialArrival - STATION_ARRIVAL_NOTICE_MILLIS) {
+        return TripStatusPresentation(
+            context.getString(R.string.trip_arrives_in, etaText(context, initialArrival, now)),
+        )
+    }
+    if (now < initialArrival) {
+        return TripStatusPresentation(context.getString(R.string.trip_arriving_at, initialStation))
+    }
+    if (now < initialDeparture) {
+        return TripStatusPresentation(context.getString(R.string.trip_leaving_station, initialStation))
+    }
+
     departure.tripLegs.forEachIndexed { index, leg ->
-        if (index < departure.tripLegs.lastIndex) {
-            val arrival = leg.stops.lastOrNull()?.arrivalTime ?: leg.arrivalTime
-            val nextLeg = departure.tripLegs[index + 1]
-            val nextDeparture = nextLeg.stops.firstOrNull()?.departureTime ?: nextLeg.departureTime
-            if (arrival in 1..now && nextDeparture > now) {
-                return context.getString(
-                    R.string.trip_transfer_now,
-                    nextLeg.line?.getDisplayName() ?: context.getString(R.string.train_label),
-                ).let { status -> context.getString(R.string.trip_transfer_status, status, etaText(context, nextDeparture, now)) }
+        val nextLeg = departure.tripLegs.getOrNull(index + 1)
+        val transferStation = nextLeg?.origin ?: leg.destination
+        val stops = if (leg.stops.isNotEmpty()) leg.stops.drop(1) else emptyList()
+        stops.forEach { stop ->
+            val arrival = stop.arrivalTime
+            if (arrival <= 0L) return@forEach
+            if (now < arrival) {
+                if (now >= arrival - STATION_ARRIVAL_NOTICE_MILLIS) {
+                    return TripStatusPresentation(
+                        context.getString(R.string.trip_arriving_at, stop.station?.getName().orEmpty()),
+                        nextLeg?.takeIf { stop.station == transferStation }?.let {
+                            context.getString(
+                                R.string.trip_transfer_to,
+                                it.line?.getDisplayName() ?: context.getString(R.string.train_label),
+                            )
+                        },
+                    )
+                }
+                return TripStatusPresentation(
+                    context.getString(
+                        R.string.trip_next_stop,
+                        stop.station?.getName().orEmpty(),
+                        etaText(context, arrival, now),
+                    ),
+                )
+            }
+            if (nextLeg == null && stop.station == leg.destination) {
+                return@forEach
+            }
+            if (stop.station == transferStation && nextLeg != null) {
+                val nextDeparture = nextLeg.departureTime
+                if (nextDeparture > now) {
+                    return TripStatusPresentation(
+                        context.getString(R.string.trip_leaving_station, stop.station?.getName().orEmpty()),
+                        transferNowText(context, nextLeg),
+                    )
+                }
+            } else if (stop.departureTime > now) {
+                return TripStatusPresentation(context.getString(R.string.trip_leaving_station, stop.station?.getName().orEmpty()))
+            }
+        }
+
+        if (leg.stops.isEmpty() && leg.arrivalTime > 0L) {
+            val arrival = leg.arrivalTime
+            if (now < arrival) {
+                if (now >= arrival - STATION_ARRIVAL_NOTICE_MILLIS) {
+                    return TripStatusPresentation(
+                        context.getString(R.string.trip_arriving_at, leg.destination?.getName().orEmpty()),
+                        nextLeg?.let {
+                            context.getString(
+                                R.string.trip_transfer_to,
+                                it.line?.getDisplayName() ?: context.getString(R.string.train_label),
+                            )
+                        },
+                    )
+                }
+                return TripStatusPresentation(
+                    context.getString(
+                        R.string.trip_next_stop,
+                        leg.destination?.getName().orEmpty(),
+                        etaText(context, arrival, now),
+                    ),
+                )
+            }
+            if (nextLeg != null && nextLeg.departureTime > now) {
+                return TripStatusPresentation(
+                    context.getString(R.string.trip_leaving_station, leg.destination?.getName().orEmpty()),
+                    transferNowText(context, nextLeg),
+                )
             }
         }
     }
-    val nextStop = departure.tripLegs.asSequence().flatMap { it.stops.asSequence() }.firstOrNull { it.arrivalTime > now }
-    if (nextStop != null) return context.getString(R.string.trip_next_stop, nextStop.station?.getName(), etaText(context, nextStop.arrivalTime, now))
-    if (departure.getEstimatedArrivalTime() in 1..now) return context.getString(R.string.trip_arrived)
-    return context.getString(R.string.trip_current_train)
+    if (departure.getEstimatedArrivalTime() in 1..now) return TripStatusPresentation(context.getString(R.string.trip_arrived))
+    return TripStatusPresentation(context.getString(R.string.trip_current_train))
 }
+
+private fun transferNowText(context: Context, leg: TripLeg): String {
+    val line = leg.line?.getDisplayName() ?: context.getString(R.string.train_label)
+    val platform = leg.platform?.takeIf { it.isNotBlank() }?.let {
+        context.getString(R.string.platform, it)
+    }?.let { ", $it" }.orEmpty()
+    return context.getString(R.string.trip_transfer_now_details, line, platform)
+}
+
+private const val STATION_ARRIVAL_NOTICE_MILLIS = 45_000L
 
 private fun legHasPassed(leg: TripLeg, now: Long): Boolean = if (leg.stops.isNotEmpty()) leg.stops.all { it.arrivalTime > 0 && it.arrivalTime <= now } else leg.arrivalTime > 0 && leg.arrivalTime <= now
 

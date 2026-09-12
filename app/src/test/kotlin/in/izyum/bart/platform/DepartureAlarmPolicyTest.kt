@@ -16,10 +16,10 @@ class DepartureAlarmPolicyTest {
 
     @Test
     fun alarmTimeAndCountdownUseTheSameLeadTimeCalculation() {
-        val meanEstimate = 1_000_000L
+        val latestEstimate = 1_030_000L
         val now = 700_000L
-        assertEquals(700_000L, DepartureAlarmPolicy.alarmTime(meanEstimate, 5))
-        assertEquals(0, DepartureAlarmPolicy.secondsUntilAlarm(meanEstimate, 5, now))
-        assertEquals(-60, DepartureAlarmPolicy.secondsUntilAlarm(meanEstimate, 6, now))
+        assertEquals(730_000L, DepartureAlarmPolicy.alarmTime(latestEstimate, 5))
+        assertEquals(30, DepartureAlarmPolicy.secondsUntilAlarm(latestEstimate, 5, now))
+        assertEquals(-30, DepartureAlarmPolicy.secondsUntilAlarm(latestEstimate, 6, now))
     }
 }

@@ -58,6 +58,29 @@ class DepartureTest {
         assertNotEquals(first.identity, second.identity)
     }
 
+    @Test
+    fun initialArrivalRemovesStationDwellAndCanUseTheLatestEstimate() {
+        val departure = Departure.builder()
+            .setOrigin(Station.CAST)
+            .setMinEstimate(1_000_000L)
+            .setMaxEstimate(1_060_000L)
+            .setTripLegs(listOf(TripLeg(
+                Line.ORANGE,
+                Station.CAST,
+                Station.MLPT,
+                Station.MLPT,
+                "trip-1",
+                1_000_000L,
+                2_000_000L,
+                listOf(TripStop(Station.CAST, 940_000L, 1_000_000L)),
+            )))
+            .build()
+
+        assertEquals(970_000L, departure.getInitialArrivalTime())
+        assertEquals(1_000_000L, departure.getInitialArrivalTime(pessimistic = true))
+        assertEquals(1_060_000L, departure.getInitialDepartureTime(pessimistic = true))
+    }
+
     private fun departure(minEstimate: Long, maxEstimate: Long, tripId: String?): Departure =
         Departure.builder()
             .setOrigin(Station.CAST).setTrainDestination(Station.MLPT)

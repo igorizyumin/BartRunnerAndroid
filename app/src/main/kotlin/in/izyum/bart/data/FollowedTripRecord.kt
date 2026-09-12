@@ -110,6 +110,7 @@ class FollowedTripRecord constructor() {
         @JvmField var scheduledArrivalTime = 0L
         @JvmField var departureSource: String? = null
         @JvmField var arrivalSource: String? = null
+        @JvmField var platform: String? = null
         @JvmField var stops: MutableList<TripStopRecord> = mutableListOf()
 
         fun toTripLeg(): TripLeg = TripLeg(
@@ -126,6 +127,7 @@ class FollowedTripRecord constructor() {
             scheduledArrivalTime,
             predictionSource(departureSource),
             predictionSource(arrivalSource),
+            platform,
         )
 
         companion object {
@@ -143,6 +145,7 @@ class FollowedTripRecord constructor() {
                 scheduledArrivalTime = leg.scheduledArrivalTime
                 departureSource = leg.departureSource.name
                 arrivalSource = leg.arrivalSource.name
+                platform = leg.platform
                 stops = leg.stops.map(TripStopRecord::fromTripStop).toMutableList()
             }
         }

@@ -31,6 +31,7 @@ class GtfsRealtimeContentHandlerTest {
             .getDepartures()
             .single()
         assertEquals("2", southDeparture.platform)
+        assertEquals("2", southDeparture.tripLegs.single().platform)
 
         val northRoute = schedule.routesFor(Station.CAST, Station.DUBL).single()
         val northDeparture = GtfsRealtimeContentHandler(
@@ -39,6 +40,7 @@ class GtfsRealtimeContentHandlerTest {
             .getDepartures()
             .single()
         assertEquals("1", northDeparture.platform)
+        assertEquals("1", northDeparture.tripLegs.single().platform)
 
         val realtimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
             .setTime(epoch("2026-09-07T08:31:00-07:00") / 1000L)
@@ -70,6 +72,7 @@ class GtfsRealtimeContentHandlerTest {
             .getDepartures()
             .single()
         assertEquals("1", overriddenDeparture.platform)
+        assertEquals("1", overriddenDeparture.tripLegs.single().platform)
     }
 
     @Test

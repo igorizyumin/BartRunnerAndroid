@@ -55,7 +55,8 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     init {
         val nowMillis = timeSource.nowMillis()
         if (DepartureAlarmPolicy.shouldRestore(isPending,
-                departure.hasDeparted(nowMillis), departure.hasExpired(nowMillis))) {
+                departure.hasInitialDeparturePassed(nowMillis, pessimistic = true),
+                departure.hasExpired(nowMillis))) {
             schedule()
         } else if (isPending) {
             cancel()
@@ -73,7 +74,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
 
     val secondsUntilAlarm: Int
         get() = DepartureAlarmPolicy.secondsUntilAlarm(
-            departure.getMeanEstimate(), leadTimeMinutes, timeSource.nowMillis())
+            departure.maxEstimate, leadTimeMinutes, timeSource.nowMillis())
 
     fun setUp(leadTimeMinutes: Int) {
         require(leadTimeMinutes >= 0) {
@@ -135,7 +136,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     private fun alarmClockTime(): Long = DepartureAlarmPolicy.alarmTime(
-        departure.getMeanEstimate(), leadTimeMinutes)
+        departure.maxEstimate, leadTimeMinutes)
 
     private fun schedule() {
         val manager = alarmManager

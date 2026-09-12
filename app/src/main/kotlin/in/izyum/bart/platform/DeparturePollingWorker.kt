@@ -48,7 +48,7 @@ class DeparturePollingWorker(context: Context, params: WorkerParameters) :
         }
 
         val departure = repository.getFollowedDeparture()
-        if (departure == null || departure.hasDeparted(app.timeSource) ||
+        if (departure == null || departure.hasInitialDeparturePassed(app.timeSource.nowMillis(), pessimistic = true) ||
             !repository.backgroundPollingNeeded.value
         ) {
             if (departure?.hasDeparted(app.timeSource) == true) repository.stopTracking()

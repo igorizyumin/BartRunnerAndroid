@@ -18,6 +18,7 @@ class TripLeg @JvmOverloads constructor(
     val scheduledArrivalTime: Long = 0L,
     val departureSource: PredictionSource = PredictionSource.UNKNOWN,
     val arrivalSource: PredictionSource = PredictionSource.UNKNOWN,
+    val platform: String? = null,
 ) {
     val stops: List<TripStop> = immutableTripLegList(stops)
 
