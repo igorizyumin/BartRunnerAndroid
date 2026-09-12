@@ -462,26 +462,6 @@ public class LiveGtfsRoutingTest {
     }
 
     @Test
-    public void diagnosticCapturedPittsburgDepartures() throws Exception {
-        GtfsRealtime.FeedMessage feed = antiochLiveTripUpdates();
-        TransitFeedSnapshot snapshot = new TransitFeedSnapshot(
-                feed, emptyFeed(), feed.getHeader().getTimestamp() * 1000L);
-        RealTimeDepartures departures = new RouteDepartureProjection(
-                new StationPair(Station.PITT, null), NETWORK).project(snapshot);
-        StringBuilder dump = new StringBuilder();
-        for (Departure departure : departures.getDepartures()) {
-            TripLeg leg = departure.getTripLegs().get(0);
-            dump.append(leg.getTripId()).append('/')
-                    .append(leg.getDestination()).append('/')
-                    .append(leg.getScheduledDepartureTime()).append("->")
-                    .append(leg.getDepartureTime()).append('/')
-                    .append(leg.getDepartureSource()).append(';');
-        }
-        assertEquals("PITT departures=" + dump, -1,
-                departures.getDepartures().size());
-    }
-
-    @Test
     public void unknownDmuTripIdDoesNotCreatePassengerDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PITT, Station.PCTR,
