@@ -15,20 +15,24 @@ import java.time.ZoneId
 
 class ScheduleTest {
     @Test
-    fun staticGraphProvidesAnEstimatedAntiochContinuation() {
+    fun staticGraphPreservesPittsburgShortTurnsAsPittsburgTrips() {
         val feedTime = epoch("2026-09-07T09:50:00-07:00")
         val schedule = Schedule.fromStatic(network(), feedTime, setOf(Line.YELLOW))
 
-        val continuation = schedule.trips.first { it.key.tripId == "main-after-dmu" }
-        assertEquals(Line.YELLOW_DMU, continuation.line)
-        assertEquals(listOf(Station.PITT, Station.PCTR, Station.ANTC), continuation.stops.map { it.station })
-        assertEquals(PredictionSource.ESTIMATE, continuation.stops[1].arrivalSource)
+        val main = schedule.trips.first { it.key.tripId == "main" }
+        assertEquals(Line.YELLOW, main.line)
+        assertEquals(listOf(Station.MONT, Station.PITT), main.stops.map { it.station })
+        assertEquals(Station.PITT, main.trainDestination)
         assertEquals(12 * 60 * 1000L, schedule.nominalTravelTimeMillis(Station.PITT, Station.PCTR))
-        assertTrue(schedule.edgesFrom(Station.PITT).any { it.trip.key.tripId == "main-after-dmu" })
+        assertTrue(schedule.edgesFrom(Station.PITT).none { it.trip.key.tripId == "main" })
+        assertEquals(
+            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
+            schedule.trips.first { it.key.tripId == "terminal-pattern" }.stops.map { it.station },
+        )
     }
 
     @Test
-    fun realtimeDepartureCorrectsTheMainTripAndMovesItsContinuation() {
+    fun realtimeDepartureCorrectsPittsburgShortTurnWithoutChangingItsDestination() {
         val feedTime = epoch("2026-09-07T09:50:00-07:00")
         val schedule = Schedule.fromStatic(network(), feedTime, setOf(Line.YELLOW))
         val update = GtfsRealtime.TripUpdate.newBuilder()
@@ -59,13 +63,12 @@ class ScheduleTest {
 
         val corrected = schedule.applyRealtime(GtfsRealtimeFeedIndex.from(feed))
         val main = corrected.trips.first { it.key.tripId == "main" }
-        val continuation = corrected.trips.first { it.key.tripId == "main-after-dmu" }
         assertEquals(epoch("2026-09-07T10:05:00-07:00"), main.stops[0].departureTime)
         assertEquals(PredictionSource.REALTIME, main.stops[0].departureSource)
         assertEquals(epoch("2026-09-07T10:25:00-07:00"), main.stops[1].arrivalTime)
         assertEquals(PredictionSource.ESTIMATE, main.stops[1].arrivalSource)
-        assertEquals(epoch("2026-09-07T10:25:00-07:00"), continuation.stops[0].departureTime)
-        assertEquals(epoch("2026-09-07T10:44:00-07:00"), continuation.stops[2].arrivalTime)
+        assertEquals(Station.PITT, main.trainDestination)
+        assertEquals(listOf(Station.MONT, Station.PITT), main.stops.map { it.station })
     }
 
     private fun network(): BartGtfsNetwork = BartGtfsNetwork.fromCatalog(

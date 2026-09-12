@@ -141,10 +141,9 @@ public class ScheduleRoutingTest {
 
         assertFalse(routes.isEmpty());
         Route route = routes.get(0);
-        assertEquals(asLines(Line.BLUE, Line.ORANGE, Line.YELLOW,
-                        Line.YELLOW_DMU),
+        assertEquals(asLines(Line.BLUE, Line.ORANGE, Line.YELLOW),
                 route.getLines());
-        assertEquals(asStations(Station.BAYF, Station._19TH, Station.PITT),
+        assertEquals(asStations(Station.BAYF, Station._19TH),
                 route.getTransferStations());
     }
 

@@ -1,6 +1,7 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.Line
+import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.networktasks.EtdDeparture
@@ -100,7 +101,50 @@ class EtdCorroborationTest {
         )
     }
 
-    private fun leg(departureTime: Long) = TripLeg(
+    @Test
+    fun realtimeTrainClaimsOnlyItsClosestEtdSlot() {
+        val realtime = leg(
+            now + 1 * 60_000L,
+            departureSource = PredictionSource.REALTIME,
+        )
+        val schedule = leg(now + 8 * 60_000L)
+        val board = EtdStationBoard(
+            Station.MLPT,
+            now,
+            listOf(
+                EtdDeparture(
+                    Station.BERY,
+                    Line.ORANGE,
+                    now + 1 * 60_000L,
+                    "1",
+                    "South",
+                    false,
+                ),
+                EtdDeparture(
+                    Station.BERY,
+                    Line.ORANGE,
+                    now + 8 * 60_000L,
+                    "1",
+                    "South",
+                    false,
+                ),
+            ),
+        )
+
+        val decision = EtdCorroborator.decideDetailed(
+            listOf(schedule),
+            mapOf(Station.MLPT to EtdLookup(board)),
+            listOf(realtime),
+        )[EtdLegKey("trip-1", Station.MLPT, Station.BERY, schedule.scheduledDepartureTime)]
+
+        assertEquals(EtdMatch.MATCHED, decision?.match)
+        assertEquals(now + 8 * 60_000L, decision?.departureTimeMillis)
+    }
+
+    private fun leg(
+        departureTime: Long,
+        departureSource: PredictionSource = PredictionSource.SCHEDULE,
+    ) = TripLeg(
         line = Line.ORANGE,
         origin = Station.MLPT,
         destination = Station.BERY,
@@ -111,6 +155,7 @@ class EtdCorroborationTest {
         stops = emptyList(),
         scheduledDepartureTime = departureTime,
         scheduledArrivalTime = departureTime + 5 * 60_000L,
+        departureSource = departureSource,
     )
 
     private fun board(departureTime: Long) = EtdStationBoard(

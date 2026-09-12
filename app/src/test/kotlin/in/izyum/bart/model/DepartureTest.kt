@@ -50,7 +50,15 @@ class DepartureTest {
         assertNotEquals(first.identity, different.identity)
     }
 
-    private fun departure(minEstimate: Long, maxEstimate: Long, tripId: String): Departure =
+    @Test
+    fun identitySeparatesEtDOnlyPredictionsWithoutTripIds() {
+        val first = departure(1_000L, 2_000L, null)
+        val second = departure(3_000L, 4_000L, null)
+
+        assertNotEquals(first.identity, second.identity)
+    }
+
+    private fun departure(minEstimate: Long, maxEstimate: Long, tripId: String?): Departure =
         Departure.builder()
             .setOrigin(Station.CAST).setTrainDestination(Station.MLPT)
             .setPassengerDestination(Station.MLPT).setLine(Line.ORANGE)

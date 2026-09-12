@@ -207,10 +207,9 @@ public class LiveGtfsRoutingTest {
         assertFalse("routes=" + routes, routes.isEmpty());
         Route route = routes.get(0);
         assertEquals("routes=" + routes,
-                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW,
-                        Line.YELLOW_DMU),
+                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW),
                 route.getLines());
-        assertEquals(Arrays.asList(Station.BAYF, Station._19TH, Station.PITT),
+        assertEquals(Arrays.asList(Station.BAYF, Station._19TH),
                 route.getTransferStations());
         assertEquals(Station.PCTR, route.getDestination());
     }
@@ -222,9 +221,9 @@ public class LiveGtfsRoutingTest {
 
         assertFalse("routes=" + routes, routes.isEmpty());
         Route route = routes.get(0);
-        assertEquals(Arrays.asList(Line.YELLOW, Line.YELLOW_DMU),
+        assertEquals(Arrays.asList(Line.YELLOW),
                 route.getLines());
-        assertEquals(Arrays.asList(Station.PITT), route.getTransferStations());
+        assertEquals(Collections.<Station>emptyList(), route.getTransferStations());
         assertEquals(Station.PCTR, route.getDestination());
     }
 
@@ -242,10 +241,10 @@ public class LiveGtfsRoutingTest {
         for (Departure departure : departures.getDepartures()) {
             TripLeg terminal = departure.getTripLegs()
                     .get(departure.getTripLegs().size() - 1);
-            assertEquals(Station.PITT, departure.getTripLegs()
-                    .get(departure.getTripLegs().size() - 2).getDestination());
             assertEquals(Station.PCTR, terminal.getDestination());
-            assertEquals(Line.YELLOW_DMU, terminal.getLine());
+            assertEquals(Line.YELLOW, terminal.getLine());
+            assertEquals(3, departure.getTripLegs().size());
+            assertFalse(linesOf(departure.getTripLegs()).contains(Line.YELLOW_DMU));
             assertTrue("terminal=" + terminal.getTripId() + " scheduled="
                             + terminal.getScheduledDepartureTime() + " effective="
                             + terminal.getDepartureTime(),
@@ -267,16 +266,13 @@ public class LiveGtfsRoutingTest {
                 departures.getDepartures().isEmpty());
         boolean hasShuttle = false;
         for (Departure departure : departures.getDepartures()) {
-            if (linesOf(departure.getTripLegs()).contains(Line.YELLOW_DMU)) {
+            if (linesOf(departure.getTripLegs()).contains(Line.YELLOW)) {
                 hasShuttle = true;
-                for (TripLeg leg : departure.getTripLegs()) {
-                    if (leg.getLine() == Line.YELLOW_DMU) {
-                        assertTrue("departure=" + departure,
-                                leg.getDepartureTime() > 0);
-                        assertEquals(Arrays.asList(Station.PITT, Station.PCTR),
-                                stationsOf(leg.getStops()));
-                    }
-                }
+                TripLeg leg = departure.getTripLegs()
+                        .get(departure.getTripLegs().size() - 1);
+                assertTrue("departure=" + departure,
+                        leg.getDepartureTime() > 0);
+                assertTrue(stationsOf(leg.getStops()).contains(Station.PCTR));
                 break;
             }
         }
@@ -290,10 +286,9 @@ public class LiveGtfsRoutingTest {
 
         assertFalse("routes=" + routes, routes.isEmpty());
         Route route = routes.get(0);
-        assertEquals(Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW,
-                        Line.YELLOW_DMU),
+                assertEquals(Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW),
                 route.getLines());
-        assertEquals(Arrays.asList(Station.BAYF, Station._19TH, Station.PITT),
+        assertEquals(Arrays.asList(Station.BAYF, Station._19TH),
                 route.getTransferStations());
         assertEquals(Station.ANTC, route.getDestination());
     }
@@ -312,10 +307,10 @@ public class LiveGtfsRoutingTest {
         for (Departure departure : departures.getDepartures()) {
             TripLeg terminal = departure.getTripLegs()
                     .get(departure.getTripLegs().size() - 1);
-            assertEquals(Station.PITT, departure.getTripLegs()
-                    .get(departure.getTripLegs().size() - 2).getDestination());
             assertEquals(Station.ANTC, terminal.getDestination());
-            assertEquals(Line.YELLOW_DMU, terminal.getLine());
+            assertEquals(Line.YELLOW, terminal.getLine());
+            assertEquals(3, departure.getTripLegs().size());
+            assertFalse(linesOf(departure.getTripLegs()).contains(Line.YELLOW_DMU));
             assertTrue("terminal=" + terminal.getTripId() + " scheduled="
                             + terminal.getScheduledDepartureTime() + " effective="
                             + terminal.getDepartureTime(),
@@ -335,7 +330,7 @@ public class LiveGtfsRoutingTest {
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty());
         for (Departure departure : departures.getDepartures()) {
-            assertEquals(Line.YELLOW_DMU, departure.getLine());
+            assertEquals(Line.YELLOW, departure.getLine());
             assertEquals(Station.ANTC, departure.getTripLegs().get(0)
                     .getDestination());
         }
@@ -353,14 +348,141 @@ public class LiveGtfsRoutingTest {
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty());
         for (Departure departure : departures.getDepartures()) {
-            assertEquals(Line.YELLOW_DMU, departure.getLine());
+            assertEquals(Line.YELLOW, departure.getLine());
             assertEquals(Station.PITT, departure.getTripLegs().get(0)
                     .getDestination());
         }
     }
 
     @Test
-    public void unknownDmuTripIdCanSupplyPittsburgCenterDeparture() {
+    public void capturedAntiochFeedBuildsPassengerDeparturesFromNormalTrips()
+            throws Exception {
+        GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
+                Station.ANTC, null,
+                routesFor(Station.ANTC, null, NETWORK),
+                false, NETWORK);
+        RealTimeDepartures departures = handler.getRealTimeDepartures(
+                antiochLiveTripUpdates());
+
+        assertFalse("departures=" + departures.getDepartures(),
+                departures.getDepartures().isEmpty());
+        Set<Long> departureTimes = new HashSet<>();
+        for (Departure departure : departures.getDepartures()) {
+            assertEquals(Station.ANTC, departure.getOrigin());
+            assertEquals(Line.YELLOW, departure.getLine());
+            assertFalse("technical terminal feed leaked into passenger output",
+                    linesOf(departure.getTripLegs()).contains(Line.YELLOW_DMU));
+            assertEquals(1, departure.getTripLegs().size());
+            assertEquals(Station.ANTC, departure.getTripLegs().get(0).getOrigin());
+            assertTrue("departure=" + departure,
+                    departure.getTripLegs().get(0).getDepartureTime() > 0L);
+            assertTrue("normal Yellow service lacks its static schedule: "
+                            + departure,
+                    departure.getTripLegs().get(0).getScheduledDepartureTime()
+                            > 0L);
+            assertTrue("duplicate Antioch departure: " + departure,
+                    departureTimes.add(
+                            departure.getTripLegs().get(0).getDepartureTime()));
+        }
+    }
+
+    @Test
+    public void capturedAntiochFeedUsesTerminalUpdatesWithoutExtraTrips()
+            throws Exception {
+        GtfsRealtime.FeedMessage feed = antiochLiveTripUpdates();
+        TransitFeedSnapshot snapshot = new TransitFeedSnapshot(
+                feed, emptyFeed(), feed.getHeader().getTimestamp() * 1000L);
+        RouteDepartureProjection projection = new RouteDepartureProjection(
+                new StationPair(Station.ANTC, null), NETWORK);
+        RealTimeDepartures base = projection.project(snapshot);
+        assertEquals("captured Antioch departures=" + base.getDepartures().stream()
+                        .map(departure -> departure.getTripLegs().get(0).getTripId())
+                        .collect(java.util.stream.Collectors.toList()),
+                7, base.getDepartures().size());
+        assertEquals(new HashSet<>(Arrays.asList(
+                        "1965196", "1965197", "1965198", "1965199", "1965200", "1965201", "1965202")),
+                base.getDepartures().stream()
+                        .map(departure -> departure.getTripLegs().get(0).getTripId())
+                        .collect(java.util.stream.Collectors.toSet()));
+        for (String tripId : Arrays.asList("1965196", "1965197", "1965198", "1965199", "1965200", "1965201")) {
+            Schedule.Trip terminalTrip = snapshot.getCorrectedSchedule(NETWORK).getTrips()
+                    .stream()
+                    .filter(trip -> tripId.equals(trip.getKey().getTripId()))
+                    .findFirst()
+                    .orElseThrow(AssertionError::new);
+            assertEquals(tripId,
+                    PredictionSource.REALTIME,
+                    terminalTrip.stopAt(Station.ANTC).getArrivalSource());
+        }
+        Schedule.Trip finalScheduledTrip = snapshot.getCorrectedSchedule(NETWORK).getTrips()
+                .stream()
+                .filter(trip -> "1965202".equals(trip.getKey().getTripId()))
+                .findFirst()
+                .orElseThrow(AssertionError::new);
+        assertEquals(PredictionSource.SCHEDULE,
+                finalScheduledTrip.stopAt(Station.ANTC).getArrivalSource());
+        Set<Long> departureTimes = new HashSet<>();
+        for (Departure departure : base.getDepartures()) {
+            assertTrue("normal Yellow service lacks its static schedule: "
+                            + departure,
+                    departure.getTripLegs().get(0).getScheduledDepartureTime()
+                            > 0L);
+            assertTrue("duplicate Antioch departure: " + departure,
+                    departureTimes.add(
+                            departure.getTripLegs().get(0).getDepartureTime()));
+        }
+    }
+
+    @Test
+    public void currentTerminalFeedDoesNotShowStaticDuplicateNearRealtimeDeparture()
+            throws Exception {
+        GtfsRealtime.FeedMessage feed = tripUpdates(
+                "/bart_live_terminals_20260911_183436/trip_updates.pb");
+        TransitFeedSnapshot snapshot = new TransitFeedSnapshot(
+                feed, emptyFeed(), feed.getHeader().getTimestamp() * 1000L);
+        List<Departure> departures = new RouteDepartureProjection(
+                new StationPair(Station.ANTC, null), NETWORK).project(snapshot)
+                .getDepartures();
+        Set<String> tripIds = new HashSet<>();
+        for (Departure departure : departures) {
+            tripIds.add(departure.getTripLegs().get(0).getTripId());
+        }
+        assertEquals(new HashSet<>(Arrays.asList(
+                        "1965118", "1965119", "1965207", "1965208",
+                        "1965209", "1965210")), tripIds);
+        assertFalse("static duplicate beside realtime terminal departure",
+                tripIds.contains("1965206"));
+        Departure matchedRealtime = departures.stream()
+                .filter(departure -> "1965119".equals(
+                        departure.getTripLegs().get(0).getTripId()))
+                .findFirst()
+                .orElseThrow(AssertionError::new);
+        assertEquals(PredictionSource.REALTIME,
+                matchedRealtime.getTripLegs().get(0).getDepartureSource());
+    }
+
+    @Test
+    public void diagnosticCapturedPittsburgDepartures() throws Exception {
+        GtfsRealtime.FeedMessage feed = antiochLiveTripUpdates();
+        TransitFeedSnapshot snapshot = new TransitFeedSnapshot(
+                feed, emptyFeed(), feed.getHeader().getTimestamp() * 1000L);
+        RealTimeDepartures departures = new RouteDepartureProjection(
+                new StationPair(Station.PITT, null), NETWORK).project(snapshot);
+        StringBuilder dump = new StringBuilder();
+        for (Departure departure : departures.getDepartures()) {
+            TripLeg leg = departure.getTripLegs().get(0);
+            dump.append(leg.getTripId()).append('/')
+                    .append(leg.getDestination()).append('/')
+                    .append(leg.getScheduledDepartureTime()).append("->")
+                    .append(leg.getDepartureTime()).append('/')
+                    .append(leg.getDepartureSource()).append(';');
+        }
+        assertEquals("PITT departures=" + dump, -1,
+                departures.getDepartures().size());
+    }
+
+    @Test
+    public void unknownDmuTripIdDoesNotCreatePassengerDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PITT, Station.PCTR,
                 routesFor(Station.PITT, Station.PCTR, NETWORK),
@@ -375,16 +497,12 @@ public class LiveGtfsRoutingTest {
                 .build();
 
         RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
-        assertEquals(1, departures.getDepartures().size());
-        assertEquals(Line.YELLOW_DMU,
-                departures.getDepartures().get(0).getLine());
-        assertEquals(Station.PCTR,
-                departures.getDepartures().get(0).getTripLegs().get(0)
-                        .getDestination());
+        assertTrue("technical DMU updates must not create a passenger trip",
+                departures.getDepartures().isEmpty());
     }
 
     @Test
-    public void separatePittsburgPlatformAndDmuUpdatesBuildAntiochDeparture() {
+    public void separatePittsburgPlatformAndDmuUpdatesDoNotBuildPassengerDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.PITT, Station.ANTC,
                 routesFor(Station.PITT, Station.ANTC, NETWORK),
@@ -400,17 +518,12 @@ public class LiveGtfsRoutingTest {
                 .build();
 
         RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
-        assertEquals(1, departures.getDepartures().size());
-        Departure departure = departures.getDepartures().get(0);
-        assertEquals(Line.YELLOW_DMU, departure.getLine());
-        assertEquals(1000_000L, departure.getTripLegs().get(0)
-                .getDepartureTime());
-        assertEquals(Station.ANTC, departure.getTripLegs().get(0)
-                .getDestination());
+        assertTrue("technical DMU updates must not create a passenger trip",
+                departures.getDepartures().isEmpty());
     }
 
     @Test
-    public void separateReversePlatformAndDmuUpdatesBuildPittsburgDeparture() {
+    public void separateReversePlatformAndDmuUpdatesDoNotBuildPassengerDeparture() {
         GtfsRealtimeContentHandler handler = new GtfsRealtimeContentHandler(
                 Station.ANTC, Station.PITT,
                 routesFor(Station.ANTC, Station.PITT, NETWORK),
@@ -427,13 +540,8 @@ public class LiveGtfsRoutingTest {
                 .build();
 
         RealTimeDepartures departures = handler.getRealTimeDepartures(feed);
-        assertEquals(1, departures.getDepartures().size());
-        Departure departure = departures.getDepartures().get(0);
-        assertEquals(Line.YELLOW_DMU, departure.getLine());
-        assertEquals(800_000L, departure.getTripLegs().get(0)
-                .getDepartureTime());
-        assertEquals(Station.PITT, departure.getTripLegs().get(0)
-                .getDestination());
+        assertTrue("technical DMU updates must not create a passenger trip",
+                departures.getDepartures().isEmpty());
     }
 
     @Test
@@ -776,15 +884,15 @@ public class LiveGtfsRoutingTest {
         assertRoute(NETWORK, Station.PITT, Station.SFIA,
                 Arrays.asList(Line.YELLOW), Collections.<Station>emptyList());
         assertRoute(NETWORK, Station.PITT, Station.ANTC,
-                Arrays.asList(Line.YELLOW_DMU), Collections.<Station>emptyList());
+                Arrays.asList(Line.YELLOW), Collections.<Station>emptyList());
         assertRoute(NETWORK, Station.ANTC, Station.PITT,
-                Arrays.asList(Line.YELLOW_DMU), Collections.<Station>emptyList());
+                Arrays.asList(Line.YELLOW), Collections.<Station>emptyList());
         assertRoute(NETWORK, Station.CAST, Station.PITT,
                 Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW),
                 Arrays.asList(Station.BAYF, Station._19TH));
         assertRoute(NETWORK, Station.CAST, Station.ANTC,
-                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW, Line.YELLOW_DMU),
-                Arrays.asList(Station.BAYF, Station._19TH, Station.PITT));
+                Arrays.asList(Line.BLUE, Line.ORANGE, Line.YELLOW),
+                Arrays.asList(Station.BAYF, Station._19TH));
         assertRoute(NIGHT_NETWORK, Station.ASHB, Station.DALY,
                 Arrays.asList(Line.RED), Collections.<Station>emptyList());
     }
@@ -810,18 +918,18 @@ public class LiveGtfsRoutingTest {
                 1788801975L * 1000L, 1788801999L * 1000L,
                 PredictionSource.REALTIME);
 
-        Schedule.Trip dayShuttle = trip(correctedDay, "1973207-after-dmu");
-        assertScheduleStop(dayShuttle, Station.PITT,
+        Schedule.Trip dayLogicalTrip = trip(correctedDay, "1973207");
+        assertScheduleStop(dayLogicalTrip, Station.PITT,
                 1788803580L * 1000L, 1788803640L * 1000L,
                 1788803659L * 1000L, 1788803683L * 1000L,
                 PredictionSource.REALTIME);
-        assertScheduleStop(dayShuttle, Station.PCTR,
+        assertScheduleStop(dayLogicalTrip, Station.PCTR,
                 1788804300L * 1000L, 1788804300L * 1000L,
-                1788804343L * 1000L, 1788804343L * 1000L,
-                PredictionSource.ESTIMATE);
-        assertScheduleStop(dayShuttle, Station.ANTC,
+                1788804359L * 1000L, 1788804389L * 1000L,
+                PredictionSource.REALTIME);
+        assertScheduleStop(dayLogicalTrip, Station.ANTC,
                 1788804720L * 1000L, 1788804780L * 1000L,
-                1788804763L * 1000L, 1788804823L * 1000L,
+                1788804809L * 1000L, 1788804869L * 1000L,
                 PredictionSource.ESTIMATE);
 
         Schedule correctedNight = Schedule.fromStatic(
@@ -840,7 +948,7 @@ public class LiveGtfsRoutingTest {
     }
 
     @Test
-    public void routeProjectionUsesExactCorrectedAntiochShuttlePrediction()
+    public void routeProjectionUsesNormalYellowPredictionThroughAntioch()
             throws Exception {
         RealTimeDepartures departures = new RouteDepartureProjection(
                 new StationPair(Station.PITT, Station.ANTC), NETWORK)
@@ -850,20 +958,20 @@ public class LiveGtfsRoutingTest {
         TripLeg matching = null;
         for (Departure departure : departures.getDepartures()) {
             for (TripLeg leg : departure.getTripLegs()) {
-                if ("1973207-after-dmu".equals(leg.getTripId())) {
+                if ("1973207".equals(leg.getTripId())) {
                     matching = leg;
                     break;
                 }
             }
         }
         assertTrue("departures=" + departures.getDepartures(), matching != null);
-        assertEquals(Line.YELLOW_DMU, matching.getLine());
+        assertEquals(Line.YELLOW, matching.getLine());
         assertEquals(Station.PITT, matching.getOrigin());
         assertEquals(Station.ANTC, matching.getDestination());
         assertEquals(1788803640L * 1000L, matching.getScheduledDepartureTime());
         assertEquals(1788803683L * 1000L, matching.getDepartureTime());
         assertEquals(1788804720L * 1000L, matching.getScheduledArrivalTime());
-        assertEquals(1788804763L * 1000L, matching.getArrivalTime());
+        assertEquals(1788804809L * 1000L, matching.getArrivalTime());
         assertEquals(PredictionSource.REALTIME, matching.getDepartureSource());
         assertEquals(PredictionSource.ESTIMATE, matching.getArrivalSource());
     }
@@ -998,6 +1106,12 @@ public class LiveGtfsRoutingTest {
 
     private static GtfsRealtime.FeedMessage currentTripUpdates() throws Exception {
         return tripUpdates("/gtfsrt/bart_trip_updates.pb");
+    }
+
+    private static GtfsRealtime.FeedMessage antiochLiveTripUpdates()
+            throws Exception {
+        return tripUpdates(
+                "/gtfsrt/bart_trip_updates_antioch_live_20260911_153326.pb");
     }
 
     private static GtfsRealtime.FeedMessage refreshedTripUpdates()

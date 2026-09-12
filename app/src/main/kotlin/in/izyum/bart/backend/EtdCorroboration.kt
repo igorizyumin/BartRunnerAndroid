@@ -2,9 +2,11 @@ package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Line
+import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.RealTimeDepartures
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
+import `in`.izyum.bart.networktasks.EtdDeparture
 import `in`.izyum.bart.networktasks.EtdStationCache
 import `in`.izyum.bart.networktasks.EtdLookup
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +48,7 @@ object EtdCorroborator {
                 val tripId = leg.tripId
                 tripId != null
                     && tripId !in feedIds
+                    && leg.departureSource == PredictionSource.SCHEDULE
                     && leg.origin != null
                     && leg.scheduledDepartureTime in
                     feedTime..(feedTime + SUSPICIOUS_WINDOW_MILLIS)
@@ -58,7 +61,11 @@ object EtdCorroborator {
         suspicious: List<TripLeg>,
         boards: Map<Station, EtdLookup>,
     ): RealTimeDepartures {
-        val decisions = decide(suspicious, boards)
+        val realtime = departures.getDepartures()
+            .flatMap { it.tripLegs }
+            .filter { it.departureSource == PredictionSource.REALTIME }
+        val decisions = decideDetailed(suspicious, boards, realtime)
+            .mapValues { it.value.match }
         return departures.filterDepartures { departure ->
             departure.tripLegs.none { leg ->
                 decisions[keyOrNull(leg)] in setOf(EtdMatch.ABSENT, EtdMatch.CANCELED)
@@ -75,6 +82,7 @@ object EtdCorroborator {
     fun decideDetailed(
         suspicious: List<TripLeg>,
         boards: Map<Station, EtdLookup>,
+        occupiedRealtime: List<TripLeg> = emptyList(),
     ): Map<EtdLegKey, EtdLegDecision> {
         val decisions = LinkedHashMap<EtdLegKey, EtdLegDecision>()
         suspicious
@@ -82,7 +90,7 @@ object EtdCorroborator {
             .forEach { (group, legs) ->
                 val board = group.station?.let { boards[it]?.board }
                 val candidates = board?.departuresFor(group.line, group.destination).orEmpty()
-                val used = mutableSetOf<Int>()
+                val used = occupiedSlots(group, candidates, occupiedRealtime)
                 legs.sortedBy { it.scheduledDepartureTime }.forEach { leg ->
                     val matchIndex = candidates.indices
                         .filter { it !in used }
@@ -113,6 +121,38 @@ object EtdCorroborator {
                 }
             }
         return decisions
+    }
+
+    private fun occupiedSlots(
+        group: MatchGroup,
+        candidates: List<EtdDeparture>,
+        occupiedRealtime: List<TripLeg>,
+    ): MutableSet<Int> {
+        val used = mutableSetOf<Int>()
+        occupiedRealtime
+            .filter { realtime ->
+                realtime.origin == group.station
+                    && realtime.line == group.line
+                    && realtime.trainDestination == group.destination
+                    && realtime.departureSource == PredictionSource.REALTIME
+            }
+            .sortedBy { it.departureTime }
+            .forEach { realtime ->
+                val matchIndex = candidates.indices
+                    .filter { it !in used }
+                    .minByOrNull {
+                        kotlin.math.abs(
+                            candidates[it].departureTimeMillis - realtime.departureTime
+                        )
+                    }
+                if (matchIndex != null && kotlin.math.abs(
+                        candidates[matchIndex].departureTimeMillis - realtime.departureTime
+                    ) <= MATCH_TOLERANCE_MILLIS
+                ) {
+                    used += matchIndex
+                }
+            }
+        return used
     }
 
     /**
@@ -183,13 +223,16 @@ class EtdAwareRouteDepartureProjection(
     private val cache: EtdStationCache,
 ) {
     suspend fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures {
-        val result = projection.project(snapshot)
+        val result = projection.projectForEtd(snapshot)
         val suspicious = EtdCorroborator.suspiciousLegs(result.getDepartures(), snapshot)
-        if (suspicious.isEmpty()) return result
+        if (suspicious.isEmpty()) return projection.project(snapshot)
         val boards = withContext(Dispatchers.IO) {
             cache.getAll(suspicious.mapNotNull { it.origin }.toSet())
         }
-        val detailed = EtdCorroborator.decideDetailed(suspicious, boards)
+        val realtime = result.getDepartures()
+            .flatMap { it.tripLegs }
+            .filter { it.departureSource == PredictionSource.REALTIME }
+        val detailed = EtdCorroborator.decideDetailed(suspicious, boards, realtime)
         val excludedTripIds = detailed
             .filterValues {
                 it.match == EtdMatch.ABSENT || it.match == EtdMatch.CANCELED
@@ -208,11 +251,18 @@ class EtdAwareRouteDepartureProjection(
                 }
             }
             .toMap()
-        return if (excludedTripIds.isEmpty() && departureOverrides.isEmpty()) {
-            result
-        } else {
-            projection.project(snapshot, excludedTripIds, departureOverrides)
-        }
+        // Reconcile against the ordinary projection so unrelated schedule
+        // candidates remain subject to the realtime cutoff. Only trips that
+        // ETD positively matched may bypass that cutoff.
+        val forcedScheduleTripIds = departureOverrides.keys
+            .map { it.first }
+            .toSet()
+        return projection.project(
+            snapshot,
+            excludedTripIds,
+            departureOverrides,
+            forcedScheduleTripIds,
+        )
     }
 
     fun areEquivalent(

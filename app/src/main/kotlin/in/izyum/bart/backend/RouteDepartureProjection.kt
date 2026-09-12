@@ -34,19 +34,53 @@ class RouteDepartureProjection private constructor(
     }
 
     fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures =
-        project(snapshot, emptySet())
+        project(snapshot, emptySet(), emptyMap(), true, emptySet())
 
     /** Projects while excluding trips corroborated as unavailable by ETD. */
     fun project(
         snapshot: TransitFeedSnapshot,
         excludedTripIds: Set<String>,
-    ): RealTimeDepartures = project(snapshot, excludedTripIds, emptyMap())
+    ): RealTimeDepartures = project(
+        snapshot, excludedTripIds, emptyMap(), true, emptySet()
+    )
+
+    /**
+     * Builds the uncut candidate set for ETD reconciliation. Schedule-only
+     * candidates covered by realtime are admitted temporarily so ETD can
+     * corroborate a real departure that the GTFS-RT feed omitted.
+     */
+    internal fun projectForEtd(
+        snapshot: TransitFeedSnapshot,
+        excludedTripIds: Set<String> = emptySet(),
+        departureOverrides: Map<Pair<String, Station>, Long> = emptyMap(),
+    ): RealTimeDepartures = project(
+        snapshot,
+        excludedTripIds,
+        departureOverrides,
+        false,
+        emptySet(),
+    )
 
     /** Projects with operational departure times for ETD-correlated trips. */
     fun project(
         snapshot: TransitFeedSnapshot,
         excludedTripIds: Set<String>,
         departureOverrides: Map<Pair<String, Station>, Long>,
+        forcedScheduleTripIds: Set<String> = emptySet(),
+    ): RealTimeDepartures = project(
+        snapshot,
+        excludedTripIds,
+        departureOverrides,
+        true,
+        forcedScheduleTripIds,
+    )
+
+    private fun project(
+        snapshot: TransitFeedSnapshot,
+        excludedTripIds: Set<String>,
+        departureOverrides: Map<Pair<String, Station>, Long>,
+        suppressScheduleCoveredByRealtime: Boolean,
+        forcedScheduleTripIds: Set<String>,
     ): RealTimeDepartures {
         val name = "BART route ${query.origin?.abbreviation.orEmpty()}-${query.destination?.abbreviation.orEmpty()}"
         return PerformanceTrace.section(name) {
@@ -66,6 +100,8 @@ class RouteDepartureProjection private constructor(
                 feedTime,
                 schedule,
                 excludedTripIds,
+                suppressScheduleCoveredByRealtime,
+                forcedScheduleTripIds,
             )
         }
     }
@@ -77,9 +113,18 @@ class RouteDepartureProjection private constructor(
         feedTime: Long,
         schedule: Schedule,
         excludedTripIds: Set<String>,
+        suppressScheduleCoveredByRealtime: Boolean,
+        forcedScheduleTripIds: Set<String>,
     ): RealTimeDepartures {
         var result = projectRoutes(
-            routes, network, feedIndex, feedTime, schedule, excludedTripIds
+            routes,
+            network,
+            feedIndex,
+            feedTime,
+            schedule,
+            excludedTripIds,
+            suppressScheduleCoveredByRealtime,
+            forcedScheduleTripIds,
         )
 
         if (result.getDepartures().isEmpty() && query.destination != null) {
@@ -102,6 +147,8 @@ class RouteDepartureProjection private constructor(
                 feedTime,
                 schedule,
                 excludedTripIds,
+                suppressScheduleCoveredByRealtime,
+                forcedScheduleTripIds,
             )
             if (transferResult.getDepartures().isNotEmpty()) {
                 result = transferResult.includeTransferRoutes()
@@ -120,6 +167,8 @@ class RouteDepartureProjection private constructor(
                 feedTime,
                 schedule,
                 excludedTripIds,
+                suppressScheduleCoveredByRealtime,
+                forcedScheduleTripIds,
             )
             if (doubleTransferResult.getDepartures().isNotEmpty()) {
                 result = doubleTransferResult.includeDoubleTransferRoutes()
@@ -142,12 +191,21 @@ class RouteDepartureProjection private constructor(
         feedTime: Long,
         schedule: Schedule,
         excludedTripIds: Set<String>,
+        suppressScheduleCoveredByRealtime: Boolean,
+        forcedScheduleTripIds: Set<String>,
     ): RealTimeDepartures = GtfsRealtimeContentHandler(
         query.origin!!,
         query.destination,
         routes,
         ignoreDirection,
         network
-    ).getRealTimeDepartures(feedIndex, feedTime, schedule, excludedTripIds)
+    ).getRealTimeDepartures(
+        feedIndex,
+        feedTime,
+        schedule,
+        excludedTripIds,
+        suppressScheduleCoveredByRealtime,
+        forcedScheduleTripIds,
+    )
 
 }

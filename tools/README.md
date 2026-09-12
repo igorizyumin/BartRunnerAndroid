@@ -1,5 +1,15 @@
 # GTFS-Realtime tooling
 
+Capture a complete current fixture (trip updates, alerts, and raw XML ETD
+boards for every app station):
+
+```text
+powershell -ExecutionPolicy Bypass -File tools/capture_bart_live_fixture.ps1
+```
+
+The capture script updates `app/src/test/resources/bart_live_fixture.txt`, which
+is the fixture selected by `LiveEtdStationBoardAuditTest`.
+
 Install the small Python dependency once:
 
 ```text

@@ -230,12 +230,6 @@ class BartGtfsNetwork private constructor(
         if (station == null || fromLine == null || toLine == null || fromLine == toLine) {
             return false
         }
-        if (station == Station.PITT
-            && ((fromLine == Line.YELLOW && toLine == Line.YELLOW_DMU)
-                || (fromLine == Line.YELLOW_DMU && toLine == Line.YELLOW))
-        ) {
-            return true
-        }
         var matchedRule = false
         val stationRules = transferRules.filter {
             it.fromStation == station && it.toStation == station

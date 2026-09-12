@@ -28,13 +28,24 @@ data class EtdStationBoard(
     fun departuresFor(line: Line?, destination: Station?): List<EtdDeparture> =
         departures.filter { departure ->
             normalizeLine(departure.line) == normalizeLine(line)
-                && departure.destination == destination
+                && normalizeDestination(departure.destination, departure.line) ==
+                normalizeDestination(destination, line)
         }
 
     private fun normalizeLine(line: Line?): Line? = when (line) {
         Line.YELLOW_LATE_NIGHT -> Line.YELLOW
         else -> line
     }
+
+    /** BART's ETD board labels the Yellow SFO terminus as MLBR. */
+    private fun normalizeDestination(destination: Station?, line: Line?): Station? =
+        if (normalizeLine(line) == Line.YELLOW
+            && destination in setOf(Station.MLBR, Station.SFIA)
+        ) {
+            Station.SFIA
+        } else {
+            destination
+        }
 }
 
 interface EtdClient {
@@ -87,13 +98,15 @@ class HttpEtdClient @JvmOverloads constructor(
                 val destination = Station.getByAbbreviation(
                     text(etd.path("abbreviation"))
                 )
-                val line = lineForColor(text(etd.path("color")))
                 asList(etd.path("estimate")).mapNotNull { estimate ->
                     val minutes = parseMinutes(text(estimate.path("minutes")))
                         ?: return@mapNotNull null
                     EtdDeparture(
                         destination = destination,
-                        line = line,
+                        line = lineForColor(
+                            text(estimate.path("color"))
+                                ?: text(etd.path("color"))
+                        ),
                         departureTimeMillis = receivedAtMillis + minutes * 60_000L,
                         platform = text(estimate.path("platform")),
                         direction = text(estimate.path("direction")),

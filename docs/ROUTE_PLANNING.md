@@ -47,7 +47,7 @@ time-scoped graph used for predictions. It selects in this order:
 
 - direct catalog-backed routes, one for each usable direction/pattern;
 - preferred one- or two-transfer catalog routes when no direct route exists;
-- terminal shuttle extensions for Pittsburg Center and Antioch;
+- the Yellow line's Pittsburg Center and Antioch terminal stops;
 - special late-night SFO-to-Millbrae routing when the destination is Millbrae.
 
 Routes contain line sequences, transfer stations, direction, and the station
@@ -123,8 +123,9 @@ effective time retains a provenance of `REALTIME`, `SCHEDULE`, or `ESTIMATE`.
 ### Route IDs may be absent
 
 Some trip descriptors do not carry a route ID. The parser resolves the route
-from the static `trip_id` catalog. Unknown trips are ignored unless their stop
-pattern clearly identifies the Antioch/Pittsburg DMU shuttle.
+from the static `trip_id` catalog. Unknown terminal-vehicle trips are treated
+as technical prediction updates only; they do not create a passenger-facing
+line or itinerary.
 
 ### Platform stop IDs are not passenger stations
 
@@ -136,15 +137,16 @@ identifying the direction/platform of special shuttle updates.
 ### Pittsburg Center and Antioch use separate update streams
 
 The main schedule update can describe the train to or from Pittsburg, while a
-separate DMU update describes the terminal shuttle between Pittsburg, Pittsburg
-Center, and Antioch. Their trip IDs are not necessarily joinable.
+separate terminal-vehicle update describes the movement between Pittsburg,
+Pittsburg Center, and Antioch. Their trip IDs are not necessarily joinable.
 
-The Schedule always extends a Yellow trip through the terminal shuttle when
-the main trip ends at Pittsburg. It uses static nominal Pittsburg-to-Pittsburg
-Center and Pittsburg Center-to-Antioch timings, and marks the continuation as
-estimated unless the separate DMU update can be joined using platform,
-direction, and a bounded timing window. The result is an explicit
-`YELLOW_DMU` terminal leg rather than a parser-only special case.
+Passenger routing treats the Yellow service as one ride through Antioch. When
+the static trip ends at Pittsburg, `Schedule` extends that same Yellow trip
+with estimated Pittsburg Center and Antioch stop times using nominal segment
+durations. A matching terminal-vehicle GTFS-RT update then replaces those
+estimates at the terminal stops (and estimates only any terminal stop that the
+update omits). The technical feed is therefore authoritative for predictions,
+without exposing a Pittsburg transfer in the itinerary.
 
 ### The late-night SFO/Millbrae change is a transfer
 

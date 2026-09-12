@@ -39,7 +39,11 @@ data class Departure(
             if (tripLegs.isEmpty()) {
                 append("no-legs")
             } else {
-                tripLegs.forEach { append(it.tripId).append(';') }
+                tripLegs.forEach {
+                    append(it.tripId ?: "etd@").append(
+                        if (it.tripId == null) it.departureTime else ""
+                    ).append(';')
+                }
             }
         }
 

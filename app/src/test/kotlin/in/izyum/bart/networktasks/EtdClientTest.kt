@@ -30,4 +30,23 @@ class EtdClientTest {
             board.departuresFor(Line.ORANGE, Station.BERY).size,
         )
     }
+
+    @Test
+    fun parsesCapturedAntiochBoardAndItsSfoAlias() {
+        val json = checkNotNull(
+            javaClass.getResourceAsStream(
+                "/etd/bart_etd_antioch_live_20260911_153326.json"
+            )
+        ).bufferedReader().use { it.readText() }
+        val board = HttpEtdClient.parseBoard(
+            Station.ANTC,
+            1_789_166_006_000L,
+            json,
+        )
+
+        assertEquals(4, board.departures.size)
+        assertEquals(Line.YELLOW, board.departures.first().line)
+        assertEquals(Station.ANTC, board.departures.first().destination)
+        assertEquals(3, board.departuresFor(Line.YELLOW, Station.SFIA).size)
+    }
 }
