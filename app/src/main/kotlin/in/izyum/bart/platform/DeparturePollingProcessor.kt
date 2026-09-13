@@ -5,7 +5,6 @@ import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.data.BackgroundPollingPreferences
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.backend.RouteDepartureProjection
-import `in`.izyum.bart.presentation.DepartureNotificationFactory
 import `in`.izyum.bart.receivers.AlarmBroadcastReceiver
 
 /** Performs one background departure refresh and arranges the next alarm. */
@@ -61,19 +60,12 @@ object DeparturePollingProcessor {
             if (departure?.hasDeparted(app.timeSource) == true) repository.stopTracking()
             stop(applicationContext)
         } else {
-            DepartureNotificationFactory.show(
-                applicationContext,
-                departure,
-                repository,
-                app.timeSource,
-            )
             DeparturePollingAlarm.refresh(applicationContext, repository)
         }
     }
 
     private fun stop(context: Context) {
         DeparturePollingAlarm.cancel(context)
-        DepartureNotificationFactory.cancel(context)
         AlarmBroadcastReceiver.cancelNotification(context)
     }
 }

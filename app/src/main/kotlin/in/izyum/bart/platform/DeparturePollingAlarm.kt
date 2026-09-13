@@ -8,7 +8,6 @@ import android.util.Log
 import `in`.izyum.bart.data.BackgroundPollingPreferences
 import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.activities.RoutesListActivity
-import `in`.izyum.bart.presentation.DepartureNotificationFactory
 import `in`.izyum.bart.model.Constants
 import `in`.izyum.bart.receivers.DeparturePollingReceiver
 
@@ -63,7 +62,6 @@ object DeparturePollingAlarm {
             )
         } else {
             cancel(applicationContext)
-            DepartureNotificationFactory.cancel(applicationContext)
         }
     }
 

@@ -144,19 +144,8 @@
     <string name="platform">platform %1$s</string>
     <string name="train_length_platform">%1$s, platform %2$s</string>
     <string name="uncertainty_seconds">(±%1$ds)</string>
-    <string name="notification_less_than_minute">Less than one minute until departure</string>
-    <string name="notification_minutes_until_departure">~%1$.1f minute until departure</string>
-    <string name="notification_minutes_until_departures">~%1$.1f minutes until departure</string>
-    <string name="notification_direction">%1$s to %2$s</string>
-    <plurals name="notification_alarm">
-        <item quantity="one">Alarm %1$d minute before departure</item>
-        <item quantity="other">Alarm %1$d minutes before departure</item>
-    </plurals>
-    <string name="notification_cancel_alarm">Cancel alarm</string>
     <string name="share_trip_subject">My BART trip</string>
     <string name="route_title_arrow">%1$s → %2$s</string>
-    <string name="notification_channel_id">BART_Runner_notifications</string>
-    <string name="notification_channel_name">BART Runner departure notifications</string>
     <string name="alarm_notification_channel_id">BART_Runner_alarm_notifications_v2</string>
     <string name="alarm_notification_channel_name">BART Runner departure alarms</string>
     <string name="alarm_notification_title">Your train is leaving soon</string>
