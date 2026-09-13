@@ -62,6 +62,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -77,7 +78,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -283,8 +283,8 @@ fun HomeScreen(
     fareDiscountId: String? = null,
     fareDiscountOptions: List<RiderCategory> = emptyList(),
     onFareDiscountChanged: (String?) -> Unit = {},
-    backgroundPollingEnabled: Boolean = true,
-    onBackgroundPollingChanged: (Boolean) -> Unit = {},
+    alarmVibrationEnabled: Boolean = true,
+    onAlarmVibrationChanged: (Boolean) -> Unit = {},
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var pickerAddsFavorite by remember { mutableStateOf(false) }
@@ -556,8 +556,8 @@ fun HomeScreen(
             fareDiscountId = fareDiscountId,
             fareDiscountOptions = fareDiscountOptions,
             onFareDiscountChanged = onFareDiscountChanged,
-            backgroundPollingEnabled = backgroundPollingEnabled,
-            onBackgroundPollingChanged = onBackgroundPollingChanged,
+            alarmVibrationEnabled = alarmVibrationEnabled,
+            onAlarmVibrationChanged = onAlarmVibrationChanged,
             onDismiss = { showSettingsDialog = false },
         )
     }
@@ -621,8 +621,8 @@ private fun SettingsDialog(
     fareDiscountId: String?,
     fareDiscountOptions: List<RiderCategory>,
     onFareDiscountChanged: (String?) -> Unit,
-    backgroundPollingEnabled: Boolean,
-    onBackgroundPollingChanged: (Boolean) -> Unit,
+    alarmVibrationEnabled: Boolean,
+    onAlarmVibrationChanged: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var showFareDiscountMenu by remember { mutableStateOf(false) }
@@ -678,17 +678,17 @@ private fun SettingsDialog(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.background_departure_updates),
+                            text = stringResource(R.string.alarm_vibration),
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            text = stringResource(R.string.background_departure_updates_description),
+                            text = stringResource(R.string.alarm_vibration_description),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    Switch(
-                        checked = backgroundPollingEnabled,
-                        onCheckedChange = onBackgroundPollingChanged,
+                    Checkbox(
+                        checked = alarmVibrationEnabled,
+                        onCheckedChange = onAlarmVibrationChanged,
                     )
                 }
             }
@@ -696,28 +696,6 @@ private fun SettingsDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.done))
-            }
-        },
-    )
-}
-
-@Composable
-fun ExactAlarmPermissionDialog(
-    onAllow: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.exact_alarm_permission_title)) },
-        text = { Text(stringResource(R.string.exact_alarm_permission_message)) },
-        confirmButton = {
-            TextButton(onClick = onAllow) {
-                Text(stringResource(R.string.exact_alarm_permission_allow))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.exact_alarm_permission_not_now))
             }
         },
     )

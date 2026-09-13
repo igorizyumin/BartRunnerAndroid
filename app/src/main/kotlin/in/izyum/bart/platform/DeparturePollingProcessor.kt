@@ -2,7 +2,6 @@ package `in`.izyum.bart.platform
 
 import android.content.Context
 import `in`.izyum.bart.BartRunnerApplication
-import `in`.izyum.bart.data.BackgroundPollingPreferences
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.receivers.AlarmBroadcastReceiver
@@ -13,9 +12,7 @@ object DeparturePollingProcessor {
         val applicationContext = context.applicationContext
         val app = applicationContext as BartRunnerApplication
         val repository = app.followedTripRepository
-        if (!BackgroundPollingPreferences.isEnabled(applicationContext) ||
-            !repository.backgroundPollingNeeded.value
-        ) {
+        if (!repository.backgroundPollingNeeded.value) {
             stop(applicationContext)
             return
         }

@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import `in`.izyum.bart.data.BackgroundPollingPreferences
 import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.activities.RoutesListActivity
 import `in`.izyum.bart.model.Constants
@@ -18,9 +17,7 @@ object DeparturePollingAlarm {
 
     fun schedule(context: Context, delayMillis: Long = 0L) {
         val applicationContext = context.applicationContext
-        if (!BackgroundPollingPreferences.isEnabled(applicationContext) ||
-            !ExactAlarmPermission.isGranted(applicationContext)
-        ) {
+        if (!ExactAlarmPermission.isGranted(applicationContext)) {
             cancel(applicationContext)
             return
         }
@@ -51,8 +48,7 @@ object DeparturePollingAlarm {
     fun refresh(context: Context, repository: FollowedTripRepository) {
         val applicationContext = context.applicationContext
         val departure = repository.peekFollowedDeparture()
-        if (BackgroundPollingPreferences.isEnabled(applicationContext) &&
-            repository.backgroundPollingNeeded.value &&
+        if (repository.backgroundPollingNeeded.value &&
             departure != null &&
             ExactAlarmPermission.isGranted(applicationContext)
         ) {

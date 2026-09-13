@@ -6,6 +6,10 @@ import android.content.Intent
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.VibrationAttributes
+import android.os.Vibrator
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
@@ -14,6 +18,7 @@ import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.RouteArguments
 import `in`.izyum.bart.activities.TripInProgressActivity
+import `in`.izyum.bart.data.AlarmPreferences
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Constants
 
@@ -63,7 +68,14 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
         targetIntent: Intent,
         departure: Departure,
     ) {
-        val channelId = context.getString(R.string.alarm_notification_channel_id)
+        val vibrationEnabled = AlarmPreferences.isVibrationEnabled(context)
+        val channelId = context.getString(
+            if (vibrationEnabled) {
+                R.string.alarm_notification_channel_id
+            } else {
+                R.string.alarm_notification_silent_channel_id
+            },
+        )
         context.getSystemService(NotificationManager::class.java)
             .createNotificationChannel(
                 NotificationChannel(
@@ -78,8 +90,9 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build(),
                     )
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 500, 500)
+                    // Vibration is triggered directly below with alarm usage so
+                    // it remains perceptible when the phone is set to silent.
+                    enableVibration(false)
                 },
             )
 
@@ -113,6 +126,31 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                 .notify(ALARM_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
             // Notification permission can be revoked independently of alarms.
+        }
+        if (vibrationEnabled) vibrateForAlarm(context)
+    }
+
+    private fun vibrateForAlarm(context: Context) {
+        val vibrator = context.getSystemService(Vibrator::class.java)
+        if (vibrator == null || !vibrator.hasVibrator()) return
+        val pattern = longArrayOf(0L, 500L, 500L)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(pattern, -1),
+                VibrationAttributes.Builder()
+                    .setUsage(VibrationAttributes.USAGE_ALARM)
+                    .build(),
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(pattern, -1),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .build(),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(pattern, -1)
         }
     }
 
