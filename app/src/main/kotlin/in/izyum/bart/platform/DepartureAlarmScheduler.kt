@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import androidx.core.content.edit
 import java.time.Instant
@@ -148,22 +147,15 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
 
         val alarmTime = alarmClockTime()
         val intent = alarmIntent()
-        if (alarmTime < timeSource.nowMillis()) {
-            manager.set(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            !manager.canScheduleExactAlarms()) {
-            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-            Log.w(Constants.TAG,
-                "Exact alarm permission is unavailable; using an inexact alarm")
-        } else {
-            try {
-                manager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP, alarmTime, intent)
-            } catch (exception: SecurityException) {
-                manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
-                Log.w(Constants.TAG,
-                    "Exact alarm permission is unavailable; using an inexact alarm")
-            }
+        if (!ExactAlarmPermission.isGranted(applicationContext)) {
+            Log.w(Constants.TAG, "Exact alarm permission is unavailable")
+            return
+        }
+        try {
+            manager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP, alarmTime, intent)
+        } catch (exception: SecurityException) {
+            Log.w(Constants.TAG, "Could not schedule departure alarm", exception)
         }
 
         val alarmText = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)

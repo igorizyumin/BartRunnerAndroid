@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import `in`.izyum.bart.BartRunnerApplication
-import `in`.izyum.bart.platform.DeparturePollingWork
+import `in`.izyum.bart.platform.DeparturePollingAlarm
 import `in`.izyum.bart.presentation.DepartureNotificationFactory
 
 class DepartureTrackingReceiver : BroadcastReceiver() {
@@ -14,7 +14,7 @@ class DepartureTrackingReceiver : BroadcastReceiver() {
             ACTION_CANCEL_ALARM -> app.followedTripRepository.cancelAlarm()
             ACTION_CLEAR_DEPARTURE -> app.followedTripRepository.clearFollowedDeparture()
         }
-        DeparturePollingWork.refresh(context, app.followedTripRepository)
+        DeparturePollingAlarm.refresh(context, app.followedTripRepository)
         if (intent.action == ACTION_CLEAR_DEPARTURE) {
             DepartureNotificationFactory.cancel(context)
             AlarmBroadcastReceiver.cancelNotification(context)

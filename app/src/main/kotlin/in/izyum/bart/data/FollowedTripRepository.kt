@@ -5,7 +5,7 @@ import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.platform.DepartureAlarmScheduler
-import `in`.izyum.bart.platform.DeparturePollingWork
+import `in`.izyum.bart.platform.DeparturePollingAlarm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,7 +93,7 @@ class FollowedTripRepository @JvmOverloads constructor(
 
         persist(departure)
         if (refreshBackgroundWork) {
-            DeparturePollingWork.refresh(applicationContext, this)
+            DeparturePollingAlarm.refresh(applicationContext, this)
         }
     }
 
@@ -143,6 +143,10 @@ class FollowedTripRepository @JvmOverloads constructor(
         return departure
     }
 
+    /** Reads the cached trip without applying expiry or tracking side effects. */
+    internal fun peekFollowedDeparture(): Departure? =
+        synchronized(stateLock) { followedDeparture }
+
     private fun refreshBackgroundPollingStateInternal() {
         synchronized(stateLock) { refreshBackgroundPollingStateLocked() }
     }
@@ -150,7 +154,7 @@ class FollowedTripRepository @JvmOverloads constructor(
     /** Refreshes the background polling cadence as the departure countdown changes. */
     fun refreshBackgroundPollingState() {
         refreshBackgroundPollingStateInternal()
-        DeparturePollingWork.refresh(applicationContext, this)
+        DeparturePollingAlarm.refresh(applicationContext, this)
     }
 
     private fun refreshBackgroundPollingStateLocked() {

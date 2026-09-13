@@ -16,7 +16,6 @@ import `in`.izyum.bart.activities.RouteArguments
 import `in`.izyum.bart.activities.TripInProgressActivity
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Constants
-import `in`.izyum.bart.platform.DeparturePollingWork
 
 class AlarmBroadcastReceiver : BroadcastReceiver() {
     companion object {
@@ -57,7 +56,6 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
 
         postAlarmNotification(context, targetIntent, boardedDeparture)
 
-        DeparturePollingWork.schedule(context)
     }
 
     private fun postAlarmNotification(

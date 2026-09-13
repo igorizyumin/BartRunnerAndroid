@@ -23,6 +23,7 @@ import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.model.TripLeg
+import `in`.izyum.bart.model.TripStop
 import `in`.izyum.bart.networktasks.RiderCategory
 import org.junit.Rule
 import org.junit.Test
@@ -355,6 +356,62 @@ class BartRunnerUiTest {
     }
 
     @Test
+    fun transferStatusUsesConnectingTrainDetails() {
+        val now = 1_000_000L
+        setTestContent {
+            BartRunnerTheme {
+                TripScreen(
+                    departure = transferDeparture(now, connectingArrival = now + 120_000L),
+                    route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
+                    isFollowingInitially = true,
+                    alarmVisible = false,
+                    timeSource = TimeSource { now },
+                    alarmPending = false,
+                    alarmLeadTimeMinutes = 0,
+                    onBack = {},
+                    onFollow = {},
+                    onSetAlarm = {},
+                    onCancelAlarm = {},
+                    onClear = {},
+                    onShare = {},
+                    onSilenceAlarm = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Transfer to ORANGE train on platform 2.").assertIsDisplayed()
+        composeRule.onNodeWithText("Connecting train arriving in 2:00").assertIsDisplayed()
+    }
+
+    @Test
+    fun transferStatusSaysBoardWhenConnectingTrainHasArrived() {
+        val now = 1_000_000L
+        setTestContent {
+            BartRunnerTheme {
+                TripScreen(
+                    departure = transferDeparture(now, connectingArrival = now - 1_000L),
+                    route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
+                    isFollowingInitially = true,
+                    alarmVisible = false,
+                    timeSource = TimeSource { now },
+                    alarmPending = false,
+                    alarmLeadTimeMinutes = 0,
+                    onBack = {},
+                    onFollow = {},
+                    onSetAlarm = {},
+                    onCancelAlarm = {},
+                    onClear = {},
+                    onShare = {},
+                    onSilenceAlarm = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Transfer to ORANGE train on platform 2.").assertIsDisplayed()
+        composeRule.onNodeWithText("Connecting train arrived, board now").assertIsDisplayed()
+    }
+
+    @Test
     fun systemMapExposesZoomControls() {
         setTestContent {
             BartRunnerTheme { SystemMapScreen(onBack = {}) }
@@ -383,6 +440,48 @@ class BartRunnerUiTest {
             )))
             .build()
     }
+
+    private fun transferDeparture(now: Long, connectingArrival: Long): Departure =
+        Departure.builder()
+            .setOrigin(Station.CAST)
+            .setTrainDestination(Station.MLPT)
+            .setPassengerDestination(Station.MLPT)
+            .setLine(Line.BLUE)
+            .setTrainDestinationColorHex("#0099cc")
+            .setDirection("transfer-test")
+            .setMinEstimate(now - 600_000L)
+            .setMaxEstimate(now - 590_000L)
+            .setTripLegs(listOf(
+                TripLeg(
+                    Line.BLUE,
+                    Station.CAST,
+                    Station.MCAR,
+                    Station.MLPT,
+                    "transfer-first",
+                    now - 600_000L,
+                    now - 60_000L,
+                    listOf(
+                        TripStop(Station.CAST, now - 600_000L),
+                        TripStop(Station.MCAR, now - 60_000L),
+                    ),
+                    platform = "1",
+                ),
+                TripLeg(
+                    Line.ORANGE,
+                    Station.MCAR,
+                    Station.MLPT,
+                    Station.MLPT,
+                    "transfer-connecting",
+                    now + 300_000L,
+                    now + 1_500_000L,
+                    listOf(
+                        TripStop(Station.MCAR, connectingArrival, now + 300_000L),
+                        TripStop(Station.MLPT, now + 1_500_000L),
+                    ),
+                    platform = "2",
+                ),
+            ))
+            .build()
 
     private fun setTestContent(content: @Composable () -> Unit) {
         composeRule.runOnUiThread {

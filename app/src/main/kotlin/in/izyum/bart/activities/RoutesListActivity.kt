@@ -1,7 +1,9 @@
 package `in`.izyum.bart.activities
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -31,10 +33,13 @@ import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.performance.PerformanceTrace
 import `in`.izyum.bart.data.BackgroundPollingPreferences
-import `in`.izyum.bart.platform.DeparturePollingWork
+import `in`.izyum.bart.platform.DeparturePollingAlarm
+import `in`.izyum.bart.platform.ExactAlarmPermission
 import `in`.izyum.bart.networktasks.RiderCategory
 import `in`.izyum.bart.ui.BartRunnerTheme
+import `in`.izyum.bart.ui.ExactAlarmPermissionDialog
 import `in`.izyum.bart.ui.HomeScreen
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,9 +50,23 @@ class RoutesListActivity : ComponentActivity() {
     private var riderCategories by mutableStateOf<List<RiderCategory>>(emptyList())
     private var riderCategoryId by mutableStateOf<String?>(null)
     private var backgroundPollingEnabled by mutableStateOf(true)
+    private var showExactAlarmDialog by mutableStateOf(false)
+    private var awaitingExactAlarmPermission by mutableStateOf(false)
 
     fun addFavorite(route: `in`.izyum.bart.model.StationPair) {
         routesViewModel.addFavorite(route)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (awaitingExactAlarmPermission) {
+            awaitingExactAlarmPermission = false
+            if (ExactAlarmPermission.isGranted(this)) {
+                enableBackgroundPolling()
+            } else {
+                disableBackgroundPolling()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +75,12 @@ class RoutesListActivity : ComponentActivity() {
         riderCategoryId = `in`.izyum.bart.data.FareDiscountPreferences
             .getRiderCategoryId(this)
         backgroundPollingEnabled = BackgroundPollingPreferences.isEnabled(this)
+        if (backgroundPollingEnabled && !ExactAlarmPermission.isGranted(this)) {
+            if (!BackgroundPollingPreferences.hasShownExactAlarmPrompt(this)) {
+                BackgroundPollingPreferences.markExactAlarmPromptShown(this)
+            }
+            showExactAlarmDialog = true
+        }
         val needsInitialStaticLoad = !application.gtfsStaticData.hasDatabaseCache()
         staticDataReady = !needsInitialStaticLoad
         lifecycleScope.launch(Dispatchers.IO) {
@@ -141,14 +166,66 @@ class RoutesListActivity : ComponentActivity() {
                             routesViewModel.setRiderCategoryId(selectedId)
                         },
                         backgroundPollingEnabled = backgroundPollingEnabled,
-                        onBackgroundPollingChanged = { enabled ->
-                            backgroundPollingEnabled = enabled
-                            BackgroundPollingPreferences.setEnabled(this, enabled)
-                            DeparturePollingWork.refresh(this, application.followedTripRepository)
-                        },
+                        onBackgroundPollingChanged = ::onBackgroundPollingChanged,
                     )
                 }
             }
+            if (showExactAlarmDialog) {
+                ExactAlarmPermissionDialog(
+                    onAllow = ::requestExactAlarmPermission,
+                    onDismiss = ::disableBackgroundPolling,
+                )
+            }
+        }
+    }
+
+    private fun onBackgroundPollingChanged(enabled: Boolean) {
+        if (enabled) {
+            if (ExactAlarmPermission.isGranted(this)) {
+                enableBackgroundPolling()
+            } else {
+                showExactAlarmDialog = true
+            }
+        } else {
+            disableBackgroundPolling()
+        }
+    }
+
+    private fun enableBackgroundPolling() {
+        showExactAlarmDialog = false
+        backgroundPollingEnabled = true
+        BackgroundPollingPreferences.setEnabled(this, true)
+        DeparturePollingAlarm.refresh(this, (application as BartRunnerApplication).followedTripRepository)
+    }
+
+    private fun disableBackgroundPolling() {
+        showExactAlarmDialog = false
+        awaitingExactAlarmPermission = false
+        backgroundPollingEnabled = false
+        BackgroundPollingPreferences.setEnabled(this, false)
+        DeparturePollingAlarm.refresh(this, (application as BartRunnerApplication).followedTripRepository)
+    }
+
+    private fun requestExactAlarmPermission() {
+        showExactAlarmDialog = false
+        awaitingExactAlarmPermission = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val settingsIntent = Intent(
+                Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                "package:$packageName".toUri(),
+            )
+            try {
+                startActivity(settingsIntent)
+            } catch (_: android.content.ActivityNotFoundException) {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        "package:$packageName".toUri(),
+                    ),
+                )
+            }
+        } else {
+            enableBackgroundPolling()
         }
     }
 

@@ -1,7 +1,6 @@
 package `in`.izyum.bart.activities
 
 import android.Manifest
-import android.app.AlarmManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -30,7 +29,8 @@ import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.presentation.DepartureTextFormatter
 import `in`.izyum.bart.receivers.AlarmBroadcastReceiver
-import `in`.izyum.bart.platform.DeparturePollingWork
+import `in`.izyum.bart.platform.DeparturePollingAlarm
+import `in`.izyum.bart.platform.ExactAlarmPermission
 import `in`.izyum.bart.ui.BartRunnerTheme
 import `in`.izyum.bart.ui.TripScreen
 import kotlinx.coroutines.Dispatchers
@@ -204,7 +204,7 @@ class TripInProgressActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             return true
         }
-        return getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == true
+        return ExactAlarmPermission.isGranted(this)
     }
 
     private fun hasFullScreenIntentPermission(): Boolean {
@@ -300,11 +300,11 @@ class TripInProgressActivity : ComponentActivity() {
     }
 
     private fun startAlarmTrackingService() {
-        DeparturePollingWork.schedule(this)
+        DeparturePollingAlarm.schedule(this)
     }
 
     private fun stopAlarmTrackingService() {
-        DeparturePollingWork.refresh(this, (application as BartRunnerApplication).followedTripRepository)
+        DeparturePollingAlarm.refresh(this, (application as BartRunnerApplication).followedTripRepository)
     }
 
     private fun requestNotificationPermissionIfNeeded() {

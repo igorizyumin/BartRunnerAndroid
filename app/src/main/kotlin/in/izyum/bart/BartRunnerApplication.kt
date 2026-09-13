@@ -15,7 +15,7 @@ import `in`.izyum.bart.networktasks.EtdStationCache
 import `in`.izyum.bart.networktasks.HttpEtdClient
 import `in`.izyum.bart.platform.OfflineStatusController
 import `in`.izyum.bart.receivers.DownloadRetryReceiver
-import `in`.izyum.bart.platform.DeparturePollingWork
+import `in`.izyum.bart.platform.DeparturePollingAlarm
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.io.IOException
 import java.util.function.Supplier
@@ -54,7 +54,7 @@ class BartRunnerApplication : Application() {
             transitRepository.refreshNow()
         }
         DownloadRetryReceiver.schedule(this)
-        DeparturePollingWork.refresh(this, followedTripRepository)
+        DeparturePollingAlarm.refresh(this, followedTripRepository)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var startedActivityCount = 0
 
