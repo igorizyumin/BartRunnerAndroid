@@ -40,14 +40,14 @@ data class TransitFeedState(
 class TransitRepository(
     private val feedClient: TransitFeedClient,
     private val refreshIntervalMillis: Long,
-    private val backgroundPollingNeeded: StateFlow<Boolean> = MutableStateFlow(false),
+    private val backgroundPollingNeeded: StateFlow<Boolean> = MutableStateFlow(value = false),
     private val offlineSnapshotProvider: (() -> TransitFeedSnapshot)? = null,
     private val backgroundPollingIntervalMillis: StateFlow<Long> =
         MutableStateFlow(refreshIntervalMillis),
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
-    private val appInForeground = MutableStateFlow(false)
+    private val appInForeground = MutableStateFlow(value = false)
     private val _state = MutableStateFlow(TransitFeedState())
     private val feedUpdates = MutableSharedFlow<TransitFeedState>(
         replay = 1,
@@ -81,7 +81,7 @@ class TransitRepository(
             }
                 .distinctUntilChanged()
                 .collectLatest { pollingIntervalMillis ->
-                    while (isActive && pollingIntervalMillis != null) {
+                    while (isActive && (pollingIntervalMillis != null)) {
                         refreshIfStaleCancellable()
                         delay(pollingIntervalMillis)
                     }
@@ -131,7 +131,7 @@ class TransitRepository(
             .mapLatest { feedState ->
                 if (feedState.snapshot == null) {
                     feedState.error?.let {
-                        return@mapLatest Result.failure<T>(it)
+                        return@mapLatest Result.failure(it)
                     }
                     return@mapLatest Result.failure<T>(
                         IllegalStateException("Transit feed is unavailable"),

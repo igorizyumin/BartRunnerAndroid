@@ -10,13 +10,13 @@ class StationPair @JsonCreator constructor(
     @param:JsonProperty("destination") val destination: Station?,
 ) {
     @JsonIgnore
-    fun isStationOnly(): Boolean = origin != null && destination == null
+    fun isStationOnly(): Boolean = (origin != null) && (destination == null)
 
     fun isBetweenStations(station1: Station?, station2: Station?): Boolean =
-        origin != null
-            && destination != null
-            && ((origin == station1 && destination == station2)
-            || (origin == station2 && destination == station1))
+        (origin != null)
+            && (destination != null)
+            && (((origin == station1) && (destination == station2))
+            || ((origin == station2) && (destination == station1)))
 
     override fun hashCode(): Int =
         31 * (31 + (destination?.hashCode() ?: 0)) + (origin?.hashCode() ?: 0)

@@ -55,7 +55,7 @@ class FavoritesRepository(context: Context) : AutoCloseable {
 
     fun moveFavorite(from: Int, to: Int) {
         updateFavorites { favorites ->
-            if (from in favorites.indices && to in favorites.indices && from != to) {
+            if ((from in favorites.indices) && (to in favorites.indices) && (from != to)) {
                 val favorite = favorites.removeAt(from)
                 favorites.add(to, favorite)
             }
@@ -98,7 +98,7 @@ class FavoritesRepository(context: Context) : AutoCloseable {
                     object : TypeReference<ArrayList<StationPair>>() {}
                 )
             }
-        } catch (exception: java.io.FileNotFoundException) {
+        } catch (_: java.io.FileNotFoundException) {
             emptyList()
         } catch (exception: Exception) {
             Log.e(TAG, "Could not read favorite routes", exception)

@@ -60,13 +60,13 @@ class BartRunnerApplication : Application() {
 
             override fun onActivityStarted(activity: Activity) {
                 startedActivityCount++
-                transitRepository.setAppInForeground(true)
+                transitRepository.setAppInForeground(inForeground = true)
             }
 
             override fun onActivityStopped(activity: Activity) {
                 startedActivityCount = (startedActivityCount - 1).coerceAtLeast(0)
                 if (startedActivityCount == 0) {
-                    transitRepository.setAppInForeground(false)
+                    transitRepository.setAppInForeground(inForeground = false)
                 }
             }
 

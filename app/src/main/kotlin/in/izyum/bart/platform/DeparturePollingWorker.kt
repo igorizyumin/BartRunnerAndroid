@@ -5,7 +5,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.data.BackgroundPollingPreferences
-import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.presentation.DepartureNotificationFactory

@@ -53,13 +53,13 @@ class TripInProgressActivity : ComponentActivity() {
     private var fareEligible = false
     private var fareLookupKey: String? = null
     private var pendingAlarmLeadTimeMinutes: Int? = null
-    private var alarmVisible by mutableStateOf(false)
+    private var alarmVisible by mutableStateOf(value = false)
 
     override fun onResume() {
         super.onResume()
         tripActionsViewModel.refreshAlarmState()
         val pendingLeadTime = pendingAlarmLeadTimeMinutes
-        if (pendingLeadTime != null && hasExactAlarmPermission()) {
+        if ((pendingLeadTime != null) && hasExactAlarmPermission()) {
             pendingAlarmLeadTimeMinutes = null
             enableAlarm(pendingLeadTime)
         }
@@ -91,7 +91,7 @@ class TripInProgressActivity : ComponentActivity() {
             finish()
             return
         }
-        if (route == null && followed != null && (screenMode == null || screenMode == RouteArguments.MODE_FOLLOWED)) {
+        if ((route == null) && (followed != null) && ((screenMode == null) || (screenMode == RouteArguments.MODE_FOLLOWED))) {
             identity = followed.identity
             route = followed.getStationPair()
         }
@@ -286,7 +286,7 @@ class TripInProgressActivity : ComponentActivity() {
         val message = getString(
             R.string.arrival_message,
             destination.getName(),
-            DepartureTextFormatter.estimatedArrivalTime(this, departure, false),
+            DepartureTextFormatter.estimatedArrivalTime(this, departure, compact = false),
         )
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

@@ -29,9 +29,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private val bartGtfsNetwork: BartGtfsNetwork,
     private val timeSource: TimeSource = SystemTimeSource,
 ) {
-    init {
-        requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
-    }
+
 
     fun getRealTimeDepartures(feed: GtfsRealtime.FeedMessage): RealTimeDepartures {
         val feedIndex = GtfsRealtimeFeedIndex.from(feed)
@@ -381,7 +379,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     ): Schedule = Schedule.fromStatic(
         bartGtfsNetwork,
         feedTime,
-        Line.values().toSet(),
+        Line.entries.toSet(),
     ).applyRealtime(feedIndex)
 
     private fun snapshotFromSchedule(trip: Schedule.Trip): TripSnapshot {

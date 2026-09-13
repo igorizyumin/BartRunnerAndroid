@@ -25,10 +25,10 @@ object DepartureTextFormatter {
         val predictionLabel: String? = null,
         val isPositiveDelay: Boolean = false,
     ) {
-        fun isNotBlank(): Boolean = scheduledTime != null
-            || actualTime != null
-            || actualLabel != null
-            || predictionLabel != null
+        fun isNotBlank(): Boolean = (scheduledTime != null)
+            || (actualTime != null)
+            || (actualLabel != null)
+            || (predictionLabel != null)
     }
 
     @JvmStatic

@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -32,7 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -351,7 +349,7 @@ fun HomeScreen(
                     }
                 }
             }
-            if (!state.isOffline && state.alertKind != RoutesUiState.AlertKind.HIDDEN) {
+            if (!state.isOffline && (state.alertKind != RoutesUiState.AlertKind.HIDDEN)) {
                 item { ServiceAlert(state, context) }
             }
             item {
@@ -759,15 +757,13 @@ fun AboutScreen(
                 append(" ")
                 append(stringResource(R.string.about_license_suffix))
             }
-            ClickableText(
+            Text(
                 text = apacheLicenseText,
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
-                onClick = { offset ->
-                    if (apacheLicenseText.getStringAnnotations("URL", offset, offset).isNotEmpty()) {
-                        onOpenApacheLicense()
-                    }
+                modifier = Modifier.clickable {
+                    onOpenApacheLicense()
                 },
             )
             TextButton(onClick = onOpenGithub) {
@@ -1115,7 +1111,6 @@ fun DeparturesScreen(
                     DepartureCard(
                         departure = departure,
                         context = context,
-                        timeSource = timeSource,
                         tick = tick,
                         onClick = { onOpenTrip(departure) },
                     )
@@ -1126,7 +1121,7 @@ fun DeparturesScreen(
 }
 
 @Composable
-private fun DepartureCard(departure: Departure, context: Context, timeSource: TimeSource, tick: Long, onClick: () -> Unit) {
+private fun DepartureCard(departure: Departure, context: Context, tick: Long, onClick: () -> Unit) {
     val primary = if (departure.isCanceled()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     val scheduleDetails = DepartureTextFormatter.departureSchedulePresentation(context, departure)
     val arrivalTime = if (departure.isCanceled()) {
@@ -1296,7 +1291,7 @@ private fun TripHero(departure: Departure, pair: StationPair?, fare: String?, ti
     val context = androidx.compose.ui.platform.LocalContext.current
     val origin = pair?.origin?.getName() ?: departure.origin?.getName().orEmpty()
     val destination = pair?.destination?.getName() ?: departure.trainDestination?.getName().orEmpty()
-    val status = tripStatus(context, departure, timeSource, tick)
+    val status = tripStatus(context, departure, tick)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(20.dp)) {
             Text(status, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -1698,7 +1693,7 @@ private fun lineColor(line: Line?): Color = when (line) {
     else -> Color(0xFF546E7A)
 }
 
-private fun tripStatus(context: Context, departure: Departure, timeSource: TimeSource, now: Long): String {
+private fun tripStatus(context: Context, departure: Departure, now: Long): String {
     if (departure.isCanceled()) return context.getString(R.string.trip_canceled)
     if (!departure.hasDeparted(now)) return context.getString(R.string.trip_leaves_in, DepartureTextFormatter.countdown(context, departure, now))
     departure.tripLegs.forEachIndexed { index, leg ->

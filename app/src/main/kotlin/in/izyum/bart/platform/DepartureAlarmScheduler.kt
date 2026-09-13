@@ -158,7 +158,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             try {
                 manager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, alarmTime, intent)
-            } catch (exception: SecurityException) {
+            } catch (_: SecurityException) {
                 manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, intent)
                 Log.w(Constants.TAG,
                     "Exact alarm permission is unavailable; using an inexact alarm")

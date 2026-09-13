@@ -469,7 +469,7 @@ class Schedule private constructor(
         ) return route
         return Route.transfer(
             route.origin!!,
-            destination!!,
+            destination,
             route.lines + Line.YELLOW_DMU,
             route.transferStations + Station.PITT,
             route.direction,
@@ -728,7 +728,7 @@ class Schedule private constructor(
         fun fromStatic(
             network: BartGtfsNetwork,
             feedTime: Long,
-            lines: Set<Line> = Line.values().toSet(),
+            lines: Set<Line> = Line.entries.toSet(),
         ): Schedule {
             if (feedTime <= 0L) {
                 return create(emptyList(), emptyMap(), network::stationForStopId, network, feedTime)

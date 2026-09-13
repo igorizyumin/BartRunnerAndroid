@@ -41,16 +41,17 @@ object EtdCorroborator {
         val feedIds = snapshot.getTripUpdateIndex().tripUpdatesById.keys
         val feedTime = snapshot.getTripUpdatesTimestampMillis()
         return departures
+            .asSequence()
             .flatMap { it.tripLegs }
             .filter { leg ->
                 val tripId = leg.tripId
-                tripId != null
-                    && tripId !in feedIds
-                    && leg.origin != null
-                    && leg.scheduledDepartureTime in
-                    feedTime..(feedTime + SUSPICIOUS_WINDOW_MILLIS)
+                (tripId != null)
+                    && (tripId !in feedIds)
+                    && (leg.origin != null)
+                    && (leg.scheduledDepartureTime in feedTime..(feedTime + SUSPICIOUS_WINDOW_MILLIS))
             }
             .distinctBy(::key)
+            .toList()
     }
 
     fun applyBoards(

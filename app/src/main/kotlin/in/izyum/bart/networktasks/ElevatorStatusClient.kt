@@ -20,7 +20,6 @@ class ElevatorStatusClient @JvmOverloads constructor(
                 throw IOException("Elevator status returned ${response.code}")
             }
             val body = response.body
-                ?: throw IOException("Elevator status returned an empty body")
             parseDescription(body.string()).ifBlank {
                 throw IOException("Elevator status response did not contain a description")
             }

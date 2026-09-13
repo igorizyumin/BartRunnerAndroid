@@ -19,9 +19,7 @@ class RealTimeDepartures internal constructor(
     private val unfilteredDepartures = immutableList(unfilteredDepartures)
     private val departures = immutableList(departures)
 
-    init {
-        requireNotNull(schedule) { "A schedule is required" }
-    }
+
 
     fun getOrigin(): Station? = origin
 
@@ -121,8 +119,8 @@ class RealTimeDepartures internal constructor(
         val line = departure.line ?: return null
         return routes.firstOrNull { route ->
             route.trainDestinationIsApplicable(trainDestination, line)
-                && (route.destination == null
-                || route.destination!!.includedInLimitedService
+                && ((route.destination == null)
+                || route.destination.includedInLimitedService
                 || !departure.limited)
         }
     }

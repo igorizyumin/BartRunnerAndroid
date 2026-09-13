@@ -69,14 +69,14 @@ class TripProgressViewModel(application: Application) :
         } ?: incoming
         val current = departureState.value
         val updated = current?.let {
-            Departure.merge(it, normalizedIncoming, true, timeSource)
+            Departure.merge(it, normalizedIncoming, updateTripLegs = true, timeSource = timeSource)
         } ?: normalizedIncoming
         publish(updated)
         startTripProgress(updated)
     }
 
     private fun startTripProgress(departure: Departure) {
-        if (tripProgressCollectionJob?.isActive == true
+        if ((tripProgressCollectionJob?.isActive == true)
             || departure.tripLegs.isEmpty()
         ) {
             return

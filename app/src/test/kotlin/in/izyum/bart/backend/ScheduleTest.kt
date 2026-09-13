@@ -10,7 +10,6 @@ import com.google.transit.realtime.GtfsRealtime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 import java.time.ZoneId
 
 class ScheduleTest {

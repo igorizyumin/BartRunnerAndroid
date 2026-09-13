@@ -185,7 +185,7 @@ class FollowedTripRepository @JvmOverloads constructor(
                 }
                 try {
                     store.save(nextDeparture)
-                } catch (exception: Exception) {
+                } catch (_: Exception) {
                     // Persistence is best effort; the in-memory state remains authoritative.
                 }
             }

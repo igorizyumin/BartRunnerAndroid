@@ -8,7 +8,7 @@ import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.TripStop
 
 /** Versioned JSON schema for the durable followed-trip state. */
-class FollowedTripRecord constructor() {
+class FollowedTripRecord {
     @JvmField var version: Int = CURRENT_VERSION
     @JvmField var origin: String? = null
     @JvmField var trainDestination: String? = null
@@ -97,7 +97,7 @@ class FollowedTripRecord constructor() {
             abbreviation?.let(Station::getByAbbreviation)
     }
 
-    class TripLegRecord constructor() {
+    class TripLegRecord {
         @JvmField var line: String? = null
         @JvmField var origin: String? = null
         @JvmField var destination: String? = null
@@ -148,7 +148,7 @@ class FollowedTripRecord constructor() {
         }
     }
 
-    class TripStopRecord constructor() {
+    class TripStopRecord {
         @JvmField var station: String? = null
         @JvmField var arrivalTime = 0L
         @JvmField var departureTime = 0L

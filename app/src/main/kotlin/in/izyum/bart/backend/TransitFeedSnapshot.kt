@@ -59,7 +59,7 @@ class TransitFeedSnapshot(
             return correctedSchedules[network] ?: Schedule.fromStatic(
                 network,
                 getTripUpdatesTimestampMillis(),
-                Line.values().toSet(),
+                Line.entries.toSet(),
             ).applyRealtime(getTripUpdateIndex()).also {
                 correctedSchedules[network] = it
             }

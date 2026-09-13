@@ -27,8 +27,8 @@ data class EtdStationBoard(
 ) {
     fun departuresFor(line: Line?, destination: Station?): List<EtdDeparture> =
         departures.filter { departure ->
-            normalizeLine(departure.line) == normalizeLine(line)
-                && departure.destination == destination
+            (normalizeLine(departure.line) == normalizeLine(line))
+                && (departure.destination == destination)
         }
 
     private fun normalizeLine(line: Line?): Line? = when (line) {
@@ -55,7 +55,6 @@ class HttpEtdClient @JvmOverloads constructor(
                 throw IOException("ETD status returned ${response.code}")
             }
             val body = response.body
-                ?: throw IOException("ETD status returned an empty body")
             parseBoard(station, receivedAtMillis, body.string())
         }
     }

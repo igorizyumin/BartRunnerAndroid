@@ -40,7 +40,7 @@ class OfflineStatusController(
     private val notificationManager = NotificationManagerCompat.from(applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val lock = Any()
-    private val _isOffline = MutableStateFlow(false)
+    private val _isOffline = MutableStateFlow(value = false)
     private var networkAvailable: Boolean? = null
     private var downloadFailed = false
     private var retryJob: Job? = null

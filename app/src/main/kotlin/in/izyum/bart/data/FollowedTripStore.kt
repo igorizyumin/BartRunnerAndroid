@@ -20,7 +20,7 @@ class FollowedTripStore @JvmOverloads constructor(
                 objectMapper.readValue(input, FollowedTripRecord::class.java)
                     .toDeparture()
             }
-        } catch (exception: Exception) {
+        } catch (_: Exception) {
             delete()
             null
         }

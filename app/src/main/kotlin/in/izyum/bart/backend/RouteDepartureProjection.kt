@@ -8,7 +8,6 @@ import `in`.izyum.bart.networktasks.GtfsRealtimeContentHandler
 import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
 import `in`.izyum.bart.performance.PerformanceTrace
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
-import com.google.transit.realtime.GtfsRealtime
 import java.util.function.Supplier
 
 /** Builds departures for one route from the already-downloaded feed. */
@@ -82,7 +81,7 @@ class RouteDepartureProjection private constructor(
             routes, network, feedIndex, feedTime, schedule, excludedTripIds
         )
 
-        if (result.getDepartures().isEmpty() && query.destination != null) {
+        if (result.getDepartures().isEmpty() && (query.destination != null)) {
             val lateNightRoutes = if (schedule.isLateNightSfoMillbraeService()) {
                 schedule.lateNightSfoMillbraeRoutes(
                     query.origin,

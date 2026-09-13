@@ -50,9 +50,9 @@ class AlertProjection {
         if (previous === current) {
             return true
         }
-        if (previous == null || current == null
-            || previous.areNoDelaysReported() != current.areNoDelaysReported()
-            || previous.getAlerts().size != current.getAlerts().size
+        if ((previous == null) || (current == null)
+            || (previous.areNoDelaysReported() != current.areNoDelaysReported())
+            || (previous.getAlerts().size != current.getAlerts().size)
         ) {
             return false
         }

@@ -42,11 +42,11 @@ import kotlinx.coroutines.withContext
 
 class RoutesListActivity : ComponentActivity() {
     private val routesViewModel: RoutesViewModel by viewModels()
-    private var staticDataReady by mutableStateOf(false)
+    private var staticDataReady by mutableStateOf(value = false)
     private var riderCategories by mutableStateOf<List<RiderCategory>>(emptyList())
     private var riderCategoryId by mutableStateOf<String?>(null)
-    private var backgroundPollingEnabled by mutableStateOf(true)
-    private var defaultTransferViewEnabled by mutableStateOf(true)
+    private var backgroundPollingEnabled by mutableStateOf(value = true)
+    private var defaultTransferViewEnabled by mutableStateOf(value = true)
 
     fun addFavorite(route: `in`.izyum.bart.model.StationPair) {
         routesViewModel.addFavorite(route)
@@ -72,7 +72,7 @@ class RoutesListActivity : ComponentActivity() {
             }.getOrDefault(emptyList())
             withContext(Dispatchers.Main.immediate) {
                 riderCategories = categories
-                if (riderCategoryId != null && categories.none { it.id == riderCategoryId }) {
+                if ((riderCategoryId != null) && categories.none { it.id == riderCategoryId }) {
                     riderCategoryId = null
                     routesViewModel.setRiderCategoryId(null)
                 }
