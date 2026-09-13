@@ -1,4 +1,4 @@
-package `in`.izyum.bart.model
+  package `in`.izyum.bart.model
 
 import java.util.ArrayList
 import java.util.Collections

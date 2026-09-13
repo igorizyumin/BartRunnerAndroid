@@ -6,11 +6,13 @@ import `in`.izyum.bart.model.StationPair
 import java.util.ArrayList
 import java.util.Collections
 import java.util.HashMap
+import java.util.HashSet
 
 /** Immutable renderer state for the favorite-routes screen. */
 class RoutesUiState(
     favorites: List<StationPair> = emptyList(),
     firstDepartures: Map<StationPair, Departure> = emptyMap(),
+    loadedRoutes: Set<StationPair> = emptySet(),
     fares: Map<StationPair, String> = emptyMap(),
     val alerts: Alert.AlertList? = null,
     val alertKind: AlertKind = AlertKind.HIDDEN,
@@ -25,12 +27,15 @@ class RoutesUiState(
         Collections.unmodifiableList(ArrayList(favorites))
     val firstDepartures: Map<StationPair, Departure> =
         Collections.unmodifiableMap(HashMap(firstDepartures))
+    val loadedRoutes: Set<StationPair> =
+        Collections.unmodifiableSet(HashSet(loadedRoutes))
     val fares: Map<StationPair, String> =
         Collections.unmodifiableMap(HashMap(fares))
 
     fun copy(
         favorites: List<StationPair> = this.favorites,
         firstDepartures: Map<StationPair, Departure> = this.firstDepartures,
+        loadedRoutes: Set<StationPair> = this.loadedRoutes,
         fares: Map<StationPair, String> = this.fares,
         alerts: Alert.AlertList? = this.alerts,
         alertKind: AlertKind = this.alertKind,
@@ -43,6 +48,7 @@ class RoutesUiState(
     ): RoutesUiState = RoutesUiState(
         favorites,
         firstDepartures,
+        loadedRoutes,
         fares,
         alerts,
         alertKind,

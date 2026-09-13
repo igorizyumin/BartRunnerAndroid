@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 class ViewDeparturesActivity : ComponentActivity() {
     private lateinit var stationPair: StationPair
     private val departuresViewModel: DeparturesViewModel by viewModels()
+    private val serviceAlertsViewModel: ServiceAlertsViewModel by viewModels()
     private var routeFare by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,11 +55,13 @@ class ViewDeparturesActivity : ComponentActivity() {
         )
         setContent {
             val state by departuresViewModel.uiState.collectAsStateWithLifecycle()
+            val alerts by serviceAlertsViewModel.alerts.collectAsStateWithLifecycle()
             val isOffline by app.offlineStatusController.isOffline.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 DeparturesScreen(
                     route = stationPair,
                     state = state,
+                    alerts = alerts,
                     isOffline = isOffline,
                     timeSource = app.timeSource,
                     fare = routeFare,

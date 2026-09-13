@@ -1,0 +1,77 @@
+{
+  "header": {
+    "gtfs_realtime_version": "1.0",
+    "incrementality": "FULL_DATASET",
+    "timestamp": "1789222565"
+  },
+  "entity": [
+    {
+      "id": "BSA_293103",
+      "alert": {
+        "informed_entity": [
+          {
+            "agency_id": "BART"
+          }
+        ],
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.bart.gov/schedules/advisories",
+              "language": "en-US"
+            }
+          ]
+        },
+        "header_text": {
+          "translation": [
+            {
+              "text": "BART.gov Alert",
+              "language": "en-US"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Passengers traveling between Union City and Warm Springs this weekend must transfer to a free bus while crews make track upgrades. Expect delays of 30-40 minutes. Green Line service will not operate between Daly City and Berryessa this weekend. Visit bart.gov for more info. ",
+              "language": "en-US"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "BSA_293104",
+      "alert": {
+        "informed_entity": [
+          {
+            "agency_id": "BART"
+          }
+        ],
+        "url": {
+          "translation": [
+            {
+              "text": "http://www.bart.gov/schedules/advisories",
+              "language": "en-US"
+            }
+          ]
+        },
+        "header_text": {
+          "translation": [
+            {
+              "text": "BART.gov Alert",
+              "language": "en-US"
+            }
+          ]
+        },
+        "description_text": {
+          "translation": [
+            {
+              "text": "Due to the planned track work on the Orange Line, the last two evening trips from Berryessa/North San Jose normally scheduled for 11:38pm and 11:49pm are canceled.  The last train will depart Berryessa at 11:10pm. ",
+              "language": "en-US"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

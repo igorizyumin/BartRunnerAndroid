@@ -17,6 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import `in`.izyum.bart.activities.DeparturesViewModel
 import `in`.izyum.bart.activities.RoutesListActivity
 import `in`.izyum.bart.activities.RoutesUiState
+import `in`.izyum.bart.model.Alert
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
@@ -83,11 +84,16 @@ class BartRunnerUiTest {
     }
 
     @Test
-    fun homeScreenShowsOfflineWarningInsteadOfNoDelays() {
+    fun homeScreenShowsOfflineWarningInsteadOfNoAlerts() {
         setTestContent {
             BartRunnerTheme {
                 HomeScreen(
-                    state = RoutesUiState(isLoading = false, isOffline = true),
+                    state = RoutesUiState(
+                        isLoading = false,
+                        isOffline = true,
+                        alerts = Alert.AlertList(emptyList(), true),
+                        alertKind = RoutesUiState.AlertKind.NO_DELAYS,
+                    ),
                     isOffline = true,
                     followedTrip = null,
                     timeSource = timeSource,
@@ -105,6 +111,61 @@ class BartRunnerUiTest {
         composeRule.onNodeWithText(
             "Offline — using stored schedules. Realtime updates and service alerts are unavailable.",
         ).assertIsDisplayed()
+        composeRule.onNodeWithText("No alerts").assertDoesNotExist()
+    }
+
+    @Test
+    fun homeScreenShowsNoAlertsAfterConfirmedEmptyAlertResponse() {
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(
+                        isLoading = false,
+                        alerts = Alert.AlertList(emptyList(), true),
+                        alertKind = RoutesUiState.AlertKind.NO_DELAYS,
+                    ),
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("No alerts").assertIsDisplayed()
+    }
+
+    @Test
+    fun homeScreenShowsNoDeparturesAfterRouteProjectionCompletesEmpty() {
+        val route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT)
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(
+                        favorites = listOf(route),
+                        loadedRoutes = setOf(route),
+                        isLoading = false,
+                    ),
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("No departures found").assertIsDisplayed()
+        composeRule.onNodeWithText("Loading upcoming trains…").assertDoesNotExist()
     }
 
     @Test
@@ -196,6 +257,10 @@ class BartRunnerUiTest {
                 TripScreen(
                     departure = testDeparture(),
                     route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
+                    alerts = Alert.AlertList(
+                        listOf(Alert(id = "trip-alert", description = "BART test alert")),
+                        false,
+                    ),
                     isFollowingInitially = false,
                     alarmVisible = false,
                     timeSource = timeSource,
@@ -214,6 +279,7 @@ class BartRunnerUiTest {
 
         composeRule.onAllNodesWithText("Castro Valley → Milpitas").onFirst().assertIsDisplayed()
         composeRule.onNodeWithText("Follow this trip").assertIsDisplayed()
+        composeRule.onNodeWithText("BART test alert").assertIsDisplayed()
     }
 
     @Test
@@ -241,6 +307,10 @@ class BartRunnerUiTest {
                 DeparturesScreen(
                     route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
                     state = DeparturesViewModel.State.empty(),
+                    alerts = Alert.AlertList(
+                        listOf(Alert(id = "departures-alert", description = "BART test alert")),
+                        false,
+                    ),
                     timeSource = timeSource,
                     fare = null,
                     onBack = {},
@@ -251,6 +321,10 @@ class BartRunnerUiTest {
         }
 
         composeRule.onNodeWithText("No departures found").assertIsDisplayed()
+        composeRule.onNodeWithText(
+            "This route may require a temporary or non-standard transfer.",
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("BART test alert").assertIsDisplayed()
     }
 
     @Test

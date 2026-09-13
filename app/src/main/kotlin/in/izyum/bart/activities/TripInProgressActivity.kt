@@ -47,6 +47,7 @@ class TripInProgressActivity : ComponentActivity() {
 
     private val tripProgressViewModel: TripProgressViewModel by viewModels()
     private val tripActionsViewModel: TripActionsViewModel by viewModels()
+    private val serviceAlertsViewModel: ServiceAlertsViewModel by viewModels()
     private var isFollowing = false
     private var routeDestination: Station? = null
     private var tripRoute: StationPair? = null
@@ -134,11 +135,13 @@ class TripInProgressActivity : ComponentActivity() {
         setContent {
             val departure by tripProgressViewModel.departureState.collectAsStateWithLifecycle()
             val tripActionsState by tripActionsViewModel.uiState.collectAsStateWithLifecycle()
+            val alerts by serviceAlertsViewModel.alerts.collectAsStateWithLifecycle()
             val isOffline by app.offlineStatusController.isOffline.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 TripScreen(
                     departure = departure,
                     route = tripRoute,
+                    alerts = alerts,
                     isOffline = isOffline,
                     fare = tripFare,
                     isFollowingInitially = isFollowing,

@@ -110,6 +110,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.text.googlefonts.Font as DownloadableFont
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.buildAnnotatedString
@@ -124,6 +125,7 @@ import android.widget.ImageView
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.DeparturesViewModel
 import `in`.izyum.bart.activities.RoutesUiState
+import `in`.izyum.bart.model.Alert
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
@@ -148,6 +150,10 @@ private val Teal = Color(0xFF006B6B)
 private val SuccessGreen = Color(0xFF2E7D32)
 private val SuccessGreenContainer = Color(0xFFDDF5E3)
 private val Warning = Color(0xFFB3261E)
+private val OfflineYellowContainer = Color(0xFFFFF3CD)
+private val OfflineOnYellowContainer = Color(0xFF5A4300)
+private val DarkOfflineYellowContainer = Color(0xFF4D3F00)
+private val DarkOfflineOnYellowContainer = Color(0xFFFFE082)
 private val LightConnectingTrainTile = Color(0xFFE6E6E6)
 private val LightYellowLine = Color(0xFFE6C400)
 
@@ -235,11 +241,12 @@ fun BartRunnerTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun OfflineBanner() {
+private fun OfflineBanner(modifier: Modifier = Modifier) {
+    val isDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.errorContainer,
-        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = modifier.fillMaxWidth(),
+        color = if (isDarkTheme) DarkOfflineYellowContainer else OfflineYellowContainer,
+        contentColor = if (isDarkTheme) DarkOfflineOnYellowContainer else OfflineOnYellowContainer,
         shadowElevation = 2.dp,
     ) {
         Row(
@@ -291,7 +298,6 @@ fun HomeScreen(
     val currentFavorites by rememberUpdatedState(state.favorites)
     val currentMoveFavorite by rememberUpdatedState(onMoveFavorite)
     val tick = rememberSecondTick(timeSource)
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -363,8 +369,8 @@ fun HomeScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (isOffline) {
-                item { OfflineBanner() }
+            if (shouldShowServiceStatus(state.alerts, isOffline)) {
+                item { ServiceStatusBanner(state.alerts, isOffline) }
             }
             if (followedTrip != null) {
                 item {
@@ -391,9 +397,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
-            if (!state.isOffline && state.alertKind != RoutesUiState.AlertKind.HIDDEN) {
-                item { ServiceAlert(state, context) }
             }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -442,6 +445,7 @@ fun HomeScreen(
                     FavoriteRouteCard(
                         route = route,
                         departure = state.firstDepartures[route],
+                        isLoading = route !in state.loadedRoutes,
                         fare = state.fares[route],
                         timeSource = timeSource,
                         tick = tick,
@@ -815,33 +819,48 @@ fun AboutScreen(
     }
 }
 
+private fun shouldShowServiceStatus(alerts: Alert.AlertList?, isOffline: Boolean): Boolean =
+    isOffline || alerts?.hasAlerts() == true || alerts?.areNoDelaysReported() == true
+
 @Composable
-private fun ServiceAlert(state: RoutesUiState, context: Context) {
-    val isGood = !state.isOffline && state.alertKind == RoutesUiState.AlertKind.NO_DELAYS
-    val messages = state.alerts?.getAlerts()?.joinToString("\n\n") { it.description.orEmpty() }.orEmpty()
+private fun ServiceStatusBanner(
+    alerts: Alert.AlertList?,
+    isOffline: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (isOffline) {
+        OfflineBanner(modifier)
+    } else if (alerts != null) {
+        ServiceAlert(alerts, modifier)
+    }
+}
+
+@Composable
+private fun ServiceAlert(alerts: Alert.AlertList, modifier: Modifier = Modifier) {
+    val isNoAlerts = alerts.areNoDelaysReported() && alerts.getAlerts().isEmpty()
+    val messages = alerts.getAlerts().joinToString("\n\n") { it.description.orEmpty() }
     var expanded by remember { mutableStateOf(false) }
-    val containerColor = if (isGood) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer
-    val contentColor = if (isGood) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onErrorContainer
-    val accentColor = if (isGood) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+    val containerColor = if (isNoAlerts) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.errorContainer
+    val contentColor = if (isNoAlerts) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onErrorContainer
+    val accentColor = if (isNoAlerts) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
     Card(
-        modifier = Modifier.clickable(enabled = !isGood) { expanded = !expanded },
+        modifier = modifier.fillMaxWidth().clickable(enabled = !isNoAlerts) { expanded = !expanded },
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (isGood) Icons.Filled.CheckCircle else Icons.Filled.Warning, null, tint = accentColor)
+            Icon(if (isNoAlerts) Icons.Filled.CheckCircle else Icons.Filled.Warning, null, tint = accentColor)
             Spacer(Modifier.width(10.dp))
             Text(
                 text = when {
-                    state.isOffline -> context.getString(R.string.offline_in_app_message)
-                    isGood -> context.getString(R.string.no_delays_reported)
-                    else -> messages.ifBlank { context.getString(R.string.service_advisory) }
+                    isNoAlerts -> stringResource(R.string.no_delays_reported)
+                    else -> messages.ifBlank { stringResource(R.string.service_advisory) }
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = if (expanded || isGood) Int.MAX_VALUE else 3,
+                maxLines = if (expanded || isNoAlerts) Int.MAX_VALUE else 3,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (!isGood) {
+            if (!isNoAlerts) {
                 Icon(
                     if (expanded) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowForward,
                     stringResource(R.string.expand_service_alert),
@@ -869,6 +888,7 @@ private fun EmptyFavorites(onAdd: () -> Unit) {
 private fun FavoriteRouteCard(
     route: StationPair,
     departure: Departure?,
+    isLoading: Boolean,
     fare: String?,
     timeSource: TimeSource,
     tick: Long,
@@ -913,8 +933,10 @@ private fun FavoriteRouteCard(
                         Text(DepartureTextFormatter.countdown(context, departure, tick), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 }
-            } else {
+            } else if (isLoading) {
                 Text(stringResource(R.string.loading_upcoming_trains), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
+            } else {
+                Text(stringResource(R.string.no_departures_found), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
             }
             if (scheduleDetails?.isNotBlank() == true || fare != null) {
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1021,6 +1043,7 @@ private fun CheckboxRow(text: String, checked: Boolean, onCheckedChange: (Boolea
 fun DeparturesScreen(
     route: StationPair,
     state: DeparturesViewModel.State,
+    alerts: Alert.AlertList? = null,
     isOffline: Boolean = false,
     timeSource: TimeSource,
     fare: String? = null,
@@ -1099,12 +1122,9 @@ fun DeparturesScreen(
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { padding ->
         when (state.status) {
-            DeparturesViewModel.Status.LOADING -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            DeparturesViewModel.Status.ERROR -> EmptyState(stringResource(R.string.could_not_connect), stringResource(R.string.try_again_connection), modifier = Modifier.padding(padding))
-            DeparturesViewModel.Status.EMPTY -> EmptyState(stringResource(R.string.no_departures_found), stringResource(R.string.no_departures_message), modifier = Modifier.padding(padding))
             DeparturesViewModel.Status.CONTENT -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (isOffline) {
-                    item { OfflineBanner() }
+                if (shouldShowServiceStatus(alerts, isOffline)) {
+                    item { ServiceStatusBanner(alerts, isOffline) }
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1122,6 +1142,32 @@ fun DeparturesScreen(
                         tick = tick,
                         onClick = { onOpenTrip(departure) },
                     )
+                }
+            }
+            else -> Column(Modifier.fillMaxSize().padding(padding)) {
+                if (shouldShowServiceStatus(alerts, isOffline)) {
+                    ServiceStatusBanner(alerts, isOffline)
+                }
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    when (state.status) {
+                        DeparturesViewModel.Status.LOADING -> Box(
+                            Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) { CircularProgressIndicator() }
+                        DeparturesViewModel.Status.ERROR -> EmptyState(
+                            stringResource(R.string.could_not_connect),
+                            stringResource(R.string.try_again_connection),
+                            icon = Icons.Filled.Warning,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        DeparturesViewModel.Status.EMPTY -> EmptyState(
+                            stringResource(R.string.no_departures_found),
+                            stringResource(R.string.no_departures_message),
+                            icon = Icons.Filled.Schedule,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        DeparturesViewModel.Status.CONTENT -> Unit
+                    }
                 }
             }
         }
@@ -1205,11 +1251,21 @@ private fun DepartureCard(departure: Departure, context: Context, timeSource: Ti
 }
 
 @Composable
-private fun EmptyState(title: String, message: String, modifier: Modifier = Modifier) {
+private fun EmptyState(
+    title: String,
+    message: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Icon(Icons.Filled.Refresh, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 14.dp))
-        Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+        Text(
+            message,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        )
     }
 }
 
@@ -1218,6 +1274,7 @@ private fun EmptyState(title: String, message: String, modifier: Modifier = Modi
 fun TripScreen(
     departure: Departure?,
     route: StationPair?,
+    alerts: Alert.AlertList? = null,
     isOffline: Boolean = false,
     fare: String? = null,
     isFollowingInitially: Boolean,
@@ -1257,8 +1314,8 @@ fun TripScreen(
         } else {
             val pair = current.getStationPair()
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                if (isOffline) {
-                    item { OfflineBanner() }
+                if (shouldShowServiceStatus(alerts, isOffline)) {
+                    item { ServiceStatusBanner(alerts, isOffline) }
                 }
                 item {
                     TripHero(current, route ?: pair, fare, timeSource, tick)
@@ -1606,7 +1663,7 @@ private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
         stringResource(R.string.station_eta, arrivalText, marginText)
     }
     Row(Modifier.fillMaxWidth().padding(start = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.width(2.dp).height(34.dp).background(if (warning) Warning else MaterialTheme.colorScheme.outline))
+        Box(Modifier.width(2.dp).height(48.dp).background(if (warning) Warning else MaterialTheme.colorScheme.outline))
         Column(Modifier.padding(start = 12.dp)) {
             Text(stringResource(R.string.transfer_at, arriving.destination?.getName().orEmpty()), fontWeight = FontWeight.SemiBold, color = if (warning) Warning else MaterialTheme.colorScheme.primary)
             next.platform?.takeIf { it.isNotBlank() }?.let { platform ->

@@ -8,8 +8,23 @@ The checked-in capture selected by
 - raw XML ETD boards for every one of the 49 passenger stations modeled by the
   app.
 
-The current capture was taken on 2026-09-11 at approximately 4:17 PM PDT in
-`app/src/test/resources/bart_live_20260911_161720/`.
+JSON decodes of the two protobuf feeds are checked in alongside the audit
+notes: [trip updates](bart_trip_updates_live_20260912_071605.json) and
+[alerts](bart_alerts_live_20260912_071605.json).
+
+The current capture was taken on 2026-09-12 at approximately 7:16 AM PDT in
+`app/src/test/resources/bart_live_20260912_071605/`. It includes an active bus
+bridge: passengers between Union City and Warm Springs/South Fremont transfer
+to a free bus, with 30–40 minute delays expected. The captured ETD boards show
+Orange-line trains north from Union City toward Richmond and south from Warm
+Springs toward Berryessa, which provides the train-side routing context for the
+bridge.
+
+This capture is intentionally a disruption snapshot. The station-board audit
+still finds the expected ETD times and rows, but reports destination-label
+mismatches for the temporary Berryessa/Richmond service because the checked-in
+static trip patterns terminate at Union City/Warm Springs during the bridge.
+That mismatch is the regression data for adding bus-bridge routing support.
 
 `LiveEtdStationBoardAuditTest` builds the same static-plus-GTFS-RT station-board
 projection used by the app, then compares each XML ETD row by line, predicted
@@ -22,13 +37,21 @@ the small capture-time gap between requests.
 Results from this capture:
 
 - 49/49 station boards loaded;
-- 592 ETD predictions compared;
-- 590 predictions matched by line and time;
-- 2 time mismatches;
-- 0 destination-label mismatches;
+- 456 ETD predictions compared;
+- 456 predictions matched by line and time;
+- 50 destination-label mismatches;
+- 0 time mismatches;
 - 0 missing predictions and 0 cancellation mismatches.
 
-## Mismatch diagnosis
+## Current-capture mismatch diagnosis
+
+The 50 destination-label mismatches are concentrated in the temporary Orange
+service around the bridge. ETD reports Berryessa- and Richmond-bound service,
+while the checked-in static trip patterns end at Union City and Warm Springs.
+The feed therefore supplies enough timing and line data to reproduce the
+station boards, but not yet enough route semantics to model the free-bus leg.
+
+## Earlier-capture mismatch diagnosis
 
 The original audit over-counted mismatches for two harness reasons. XML ETD
 stores `color` on each `estimate`, not on the surrounding destination group,

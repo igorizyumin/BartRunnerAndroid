@@ -145,7 +145,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
             .filter { it !in desired }
             .forEach { route ->
                 routeJobs.remove(route)?.cancel()
-                updateFirstDeparture(route, null)
+                clearRoute(route)
             }
 
         favorites.forEach { route ->
@@ -185,7 +185,21 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
             } else {
                 updated[route] = departure
             }
-            current.copy(firstDepartures = immutableMap(updated))
+            current.copy(
+                firstDepartures = immutableMap(updated),
+                loadedRoutes = current.loadedRoutes + route,
+            )
+        }
+    }
+
+    private fun clearRoute(route: StationPair) {
+        _uiState.update { current ->
+            val updated = current.firstDepartures.toMutableMap()
+            updated.remove(route)
+            current.copy(
+                firstDepartures = immutableMap(updated),
+                loadedRoutes = current.loadedRoutes - route,
+            )
         }
     }
 

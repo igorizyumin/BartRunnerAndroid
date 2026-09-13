@@ -124,11 +124,15 @@ class OfflineStatusController(
     }
 
     private fun updateNotification() {
-        val shouldShow = synchronized(lock) {
-            !closed && followedTripRepository.backgroundPollingNeeded.value &&
-                (networkAvailable == false || downloadFailed)
+        val offline = synchronized(lock) {
+            networkAvailable == false || downloadFailed
         }
-        _isOffline.value = shouldShow
+        val shouldShow = synchronized(lock) {
+            !closed && followedTripRepository.backgroundPollingNeeded.value && offline
+        }
+        // Foreground UI should reflect connectivity independently of whether
+        // background polling happens to be enabled for a followed trip.
+        _isOffline.value = offline
         try {
             if (shouldShow) {
                 val intent = PendingIntent.getActivity(

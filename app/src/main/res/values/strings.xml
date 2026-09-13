@@ -78,7 +78,7 @@
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
     <string name="reset_map_zoom">Reset map zoom</string>
-    <string name="no_delays_reported">No delays reported</string>
+    <string name="no_delays_reported">No alerts</string>
     <string name="system_map">System map</string>
     <string name="elevator_status">Elevator status</string>
     <string name="elevator_status_unavailable">Unable to load elevator status.</string>
