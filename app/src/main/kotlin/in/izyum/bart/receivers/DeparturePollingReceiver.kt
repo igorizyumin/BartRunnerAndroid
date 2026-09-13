@@ -13,10 +13,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class DeparturePollingReceiver : BroadcastReceiver() {
-    companion object {
-        private const val RETRY_DELAY_MILLIS = 60_000L
-    }
-
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             val application = context.applicationContext as `in`.izyum.bart.BartRunnerApplication
@@ -31,7 +27,8 @@ class DeparturePollingReceiver : BroadcastReceiver() {
                 DeparturePollingProcessor.process(context)
             } catch (exception: Exception) {
                 Log.w(Constants.TAG, "Background departure refresh failed", exception)
-                DeparturePollingAlarm.schedule(context, RETRY_DELAY_MILLIS)
+                val application = context.applicationContext as `in`.izyum.bart.BartRunnerApplication
+                DeparturePollingAlarm.refresh(context, application.followedTripRepository)
             } finally {
                 pendingResult.finish()
             }

@@ -7,11 +7,12 @@ import android.content.Intent
 import android.util.Log
 import `in`.izyum.bart.data.BackgroundPollingPreferences
 import `in`.izyum.bart.data.FollowedTripRepository
+import `in`.izyum.bart.activities.RoutesListActivity
 import `in`.izyum.bart.presentation.DepartureNotificationFactory
 import `in`.izyum.bart.model.Constants
 import `in`.izyum.bart.receivers.DeparturePollingReceiver
 
-/** Schedules one-shot exact alarms for background followed-trip refreshes. */
+/** Schedules one-shot alarm-clock wakeups for background followed-trip refreshes. */
 object DeparturePollingAlarm {
     private const val REQUEST_CODE = 1241
     private const val ACTION_POLL = "in.izyum.bart.action.POLL_DEPARTURE"
@@ -29,9 +30,11 @@ object DeparturePollingAlarm {
             ?: return
         val triggerAtMillis = System.currentTimeMillis() + delayMillis.coerceAtLeast(0L)
         try {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(
+                    triggerAtMillis,
+                    showIntent(applicationContext),
+                ),
                 pendingIntent(applicationContext),
             )
         } catch (exception: SecurityException) {
@@ -56,7 +59,7 @@ object DeparturePollingAlarm {
         ) {
             schedule(
                 applicationContext,
-                repository.backgroundPollingIntervalFor(departure),
+                repository.backgroundPollingDelayMillis(departure),
             )
         } else {
             cancel(applicationContext)
@@ -68,6 +71,15 @@ object DeparturePollingAlarm {
         context,
         REQUEST_CODE,
         Intent(context, DeparturePollingReceiver::class.java).setAction(ACTION_POLL),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    private fun showIntent(context: Context): PendingIntent = PendingIntent.getActivity(
+        context,
+        REQUEST_CODE,
+        Intent(context, RoutesListActivity::class.java).addFlags(
+            Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+        ),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 

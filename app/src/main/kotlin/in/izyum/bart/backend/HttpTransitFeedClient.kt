@@ -6,7 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
 
-/** Downloads BART's complete trip-update and alert feeds. */
+/** Downloads BART's realtime trip-update and alert feeds. */
 class HttpTransitFeedClient : TransitFeedClient {
     @JvmOverloads
     constructor(client: OkHttpClient = NetworkUtils.makeHttpClient()) {
@@ -37,6 +37,9 @@ class HttpTransitFeedClient : TransitFeedClient {
             alertsError
         )
     }
+
+    override fun fetchTripUpdates(): GtfsRealtime.FeedMessage =
+        fetchFeed(TRIP_UPDATES_URL)
 
     private fun fetchFeed(url: String): GtfsRealtime.FeedMessage {
         val request = Request.Builder()

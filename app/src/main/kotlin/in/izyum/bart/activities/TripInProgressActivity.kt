@@ -59,6 +59,9 @@ class TripInProgressActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (hasExactAlarmPermission()) {
+            (application as BartRunnerApplication).followedTripRepository.rescheduleAlarmIfPending()
+        }
         tripActionsViewModel.refreshAlarmState()
         val pendingLeadTime = pendingAlarmLeadTimeMinutes
         if (pendingLeadTime != null && hasExactAlarmPermission()) {

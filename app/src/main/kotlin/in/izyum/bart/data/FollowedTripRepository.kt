@@ -5,6 +5,7 @@ import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.platform.DepartureAlarmScheduler
+import `in`.izyum.bart.platform.DepartureAlarmPolicy
 import `in`.izyum.bart.platform.DeparturePollingAlarm
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,16 +21,6 @@ class FollowedTripRepository @JvmOverloads constructor(
 ) : AutoCloseable {
     private companion object {
         const val STORAGE_FILE_NAME = "followed_trip.json"
-
-        fun backgroundPollingIntervalFor(departure: Departure?): Long {
-            val departureSeconds = departure?.getMeanSecondsLeft(SystemTimeSource)?.toLong()
-                ?: Long.MAX_VALUE
-            return when {
-                departureSeconds > 15 * 60 -> 60_000L
-                departureSeconds >= 5 * 60 -> 30_000L
-                else -> 15_000L
-            }
-        }
     }
 
     private val applicationContext = context.applicationContext
@@ -130,6 +121,10 @@ class FollowedTripRepository @JvmOverloads constructor(
         refreshBackgroundPollingState()
     }
 
+    fun rescheduleAlarmIfPending() {
+        synchronized(stateLock) { alarmScheduler }?.rescheduleIfPending()
+    }
+
     /** Atomically claims a pending alarm and returns the departure it belongs to. */
     fun handleAlarmTriggered(): Departure? {
         val departure = synchronized(stateLock) {
@@ -161,14 +156,15 @@ class FollowedTripRepository @JvmOverloads constructor(
         _backgroundPollingNeeded.value = alarmScheduler?.isTracking == true
     }
 
-    internal fun backgroundPollingIntervalFor(departure: Departure?): Long {
-        val departureSeconds: Long = departure?.getMeanSecondsLeft(timeSource)?.toLong()
-            ?: Long.MAX_VALUE
-        return when {
-            departureSeconds > 15 * 60 -> 60_000L
-            departureSeconds >= 5 * 60 -> 30_000L
-            else -> 15_000L
+    internal fun backgroundPollingDelayMillis(departure: Departure?): Long {
+        val nowMillis = timeSource.nowMillis()
+        val scheduler = getAlarmScheduler()
+        val alarmTime = if (scheduler?.isPending == true && departure != null) {
+            DepartureAlarmPolicy.alarmTime(departure.maxEstimate, scheduler.leadTimeMinutes)
+        } else {
+            departure?.maxEstimate ?: nowMillis
         }
+        return DepartureAlarmPolicy.nextPollingDelayMillis(alarmTime - nowMillis)
     }
 
     private fun restore(): Departure? = store.load()
@@ -212,9 +208,6 @@ class FollowedTripRepository @JvmOverloads constructor(
     private fun isSameAlarmDeparture(previous: Departure, next: Departure): Boolean {
         if (previous.identity == next.identity) {
             return true
-        }
-        if (previous.tripLegs.isNotEmpty() && next.tripLegs.isNotEmpty()) {
-            return false
         }
         return previous.origin?.abbreviation == next.origin?.abbreviation
             && previous.trainDestination?.abbreviation == next.trainDestination?.abbreviation

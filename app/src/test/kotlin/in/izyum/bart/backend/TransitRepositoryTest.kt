@@ -152,6 +152,22 @@ class TransitRepositoryTest {
     }
 
     @Test
+    fun tripUpdateRefreshDoesNotDownloadAlertsAgain() {
+        val initial = snapshot(20, 200_000L)
+        val updatedTripUpdates = snapshot(21, 210_000L).tripUpdates
+        val client = TripOnlyFeedClient(initial, updatedTripUpdates)
+        repository = newRepository(client, 60_000L)
+
+        repository!!.refreshNow()
+        repository!!.refreshTripUpdatesNow()
+
+        assertEquals(1, client.fullFetchCount)
+        assertEquals(1, client.tripUpdateFetchCount)
+        assertSame(updatedTripUpdates, repository!!.state.value.snapshot?.tripUpdates)
+        assertSame(initial.alerts, repository!!.state.value.snapshot?.alerts)
+    }
+
+    @Test
     fun cancellingLastFlowCollectorStopsPolling() = runBlocking {
         val client = FakeFeedClient(generatedSnapshots = true)
         repository = newRepository(client, 25L)
@@ -373,6 +389,24 @@ class TransitRepositoryTest {
                 .setHeader(header)
                 .build()
             return TransitFeedSnapshot(tripUpdates, alerts, id * 1_000L)
+        }
+    }
+
+    private class TripOnlyFeedClient(
+        private val initialSnapshot: TransitFeedSnapshot,
+        private val updatedTripUpdates: GtfsRealtime.FeedMessage,
+    ) : TransitFeedClient {
+        var fullFetchCount = 0
+        var tripUpdateFetchCount = 0
+
+        override fun fetchFeeds(): TransitFeedFetchResult {
+            fullFetchCount++
+            return TransitFeedFetchResult.complete(initialSnapshot)
+        }
+
+        override fun fetchTripUpdates(): GtfsRealtime.FeedMessage {
+            tripUpdateFetchCount++
+            return updatedTripUpdates
         }
     }
 

@@ -59,6 +59,10 @@ class RoutesListActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        val followedTripRepository = (application as BartRunnerApplication).followedTripRepository
+        if (ExactAlarmPermission.isGranted(this)) {
+            followedTripRepository.rescheduleAlarmIfPending()
+        }
         if (awaitingExactAlarmPermission) {
             awaitingExactAlarmPermission = false
             if (ExactAlarmPermission.isGranted(this)) {

@@ -157,6 +157,61 @@ class TransitRepository(
         fetchAndPublish()
     }
 
+    /**
+     * Synchronously refreshes only trip updates, retaining the last alert feed.
+     * This is used by the departure alarm loop so each wakeup has one small feed
+     * request instead of downloading service alerts again.
+     */
+    fun refreshTripUpdatesNow() {
+        if (!beginRefresh(force = true)) {
+            return
+        }
+
+        val previousSnapshot = synchronized(lock) { latestSnapshot }
+        val result = try {
+            Result.success(feedClient.fetchTripUpdates())
+        } catch (exception: Exception) {
+            Result.failure<GtfsRealtime.FeedMessage>(exception)
+        }
+
+        var stateToPublish: TransitFeedState? = null
+        synchronized(lock) {
+            refreshInProgress = false
+            if (!closed) {
+                result.fold(
+                    onSuccess = { tripUpdates ->
+                        val alerts = previousSnapshot?.alerts
+                            ?: TransitFeedSnapshot.empty(System.currentTimeMillis()).alerts
+                        val refreshedSnapshot = TransitFeedSnapshot(
+                            tripUpdates,
+                            alerts,
+                            System.currentTimeMillis(),
+                        )
+                        if (latestSnapshot == null ||
+                            !refreshedSnapshot.hasSameFeedData(latestSnapshot)
+                        ) {
+                            latestSnapshot = refreshedSnapshot
+                            stateToPublish = TransitFeedState(snapshot = refreshedSnapshot)
+                        }
+                    },
+                    onFailure = { exception ->
+                        stateToPublish = TransitFeedState(
+                            snapshot = latestSnapshot,
+                            error = exception as? Exception
+                                ?: RuntimeException(exception),
+                            isOffline = true,
+                        )
+                    },
+                )
+            }
+        }
+
+        stateToPublish?.let {
+            _state.value = it
+            feedUpdates.tryEmit(it)
+        }
+    }
+
     /** Fetches immediately only when the feed has not been fetched recently. */
     fun refreshIfStale() {
         if (!beginRefresh(force = false)) {

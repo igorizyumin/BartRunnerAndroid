@@ -11,6 +11,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
+import `in`.izyum.bart.activities.RoutesListActivity
 import `in`.izyum.bart.model.Constants
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Station
@@ -104,6 +105,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, true) }
     }
 
+    fun rescheduleIfPending() {
+        if (isPending) schedule()
+    }
+
     /**
      * Closes this scheduler. When a live feed replaces the Departure instance for
      * the same train, the pending preference must survive long enough for the new
@@ -152,8 +157,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             return
         }
         try {
-            manager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP, alarmTime, intent)
+            manager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(alarmTime, showIntent()),
+                intent,
+            )
         } catch (exception: SecurityException) {
             Log.w(Constants.TAG, "Could not schedule departure alarm", exception)
         }
@@ -172,6 +179,15 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             putBoolean(stateKey + PENDING_SUFFIX, pending)
         }
     }
+
+    private fun showIntent(): PendingIntent = PendingIntent.getActivity(
+        applicationContext,
+        1242,
+        Intent(applicationContext, RoutesListActivity::class.java).addFlags(
+            Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+        ),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     private fun buildStateKey(departure: Departure): String = buildString {
         append("alarm.")

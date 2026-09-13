@@ -21,24 +21,32 @@ object DeparturePollingProcessor {
             return
         }
 
-        repository.getFollowedDeparture()?.let { current ->
-            app.transitRepository.refreshNow()
-            val snapshot = app.transitRepository.getLatestSnapshot()
-            val route = current.getStationPair()
-            if (snapshot != null && route != null) {
-                val departures = RouteDepartureProjection(
-                    route, app.bartGtfsNetworkSupplier,
-                ).project(snapshot).getDepartures()
-                departures.firstOrNull { it.identity == current.identity }?.let { updated ->
-                    if (current.getMeanSecondsLeft(app.timeSource) !=
-                        updated.getMeanSecondsLeft(app.timeSource) ||
-                        current.getUncertaintySeconds() != updated.getUncertaintySeconds()
-                    ) {
-                        repository.setFollowedDeparture(
-                            Departure.merge(current, updated, false, app.timeSource),
-                            refreshBackgroundWork = false,
-                        )
-                    }
+        val current = repository.getFollowedDeparture()
+        if (current == null || !repository.backgroundPollingNeeded.value) {
+            stop(applicationContext)
+            return
+        }
+
+        // Keep a future wakeup armed before doing network work. A slow request,
+        // process kill, or receiver deadline must not strand the follow-up.
+        DeparturePollingAlarm.refresh(applicationContext, repository)
+
+        app.transitRepository.refreshTripUpdatesNow()
+        val snapshot = app.transitRepository.getLatestSnapshot()
+        val route = current.getStationPair()
+        if (snapshot != null && route != null) {
+            val departures = RouteDepartureProjection(
+                route, app.bartGtfsNetworkSupplier,
+            ).project(snapshot).getDepartures()
+            departures.firstOrNull { it.identity == current.identity }?.let { updated ->
+                if (current.getMeanSecondsLeft(app.timeSource) !=
+                    updated.getMeanSecondsLeft(app.timeSource) ||
+                    current.getUncertaintySeconds() != updated.getUncertaintySeconds()
+                ) {
+                    repository.setFollowedDeparture(
+                        Departure.merge(current, updated, false, app.timeSource),
+                        refreshBackgroundWork = false,
+                    )
                 }
             }
         }
@@ -59,10 +67,7 @@ object DeparturePollingProcessor {
                 repository,
                 app.timeSource,
             )
-            DeparturePollingAlarm.schedule(
-                applicationContext,
-                repository.backgroundPollingIntervalFor(departure),
-            )
+            DeparturePollingAlarm.refresh(applicationContext, repository)
         }
     }
 

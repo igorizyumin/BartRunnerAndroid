@@ -22,4 +22,20 @@ class DepartureAlarmPolicyTest {
         assertEquals(30, DepartureAlarmPolicy.secondsUntilAlarm(latestEstimate, 5, now))
         assertEquals(-30, DepartureAlarmPolicy.secondsUntilAlarm(latestEstimate, 6, now))
     }
+
+    @Test
+    fun pollingCadenceMovesTowardTheAlarmAndIsBounded() {
+        assertEquals(
+            29 * 60_000L,
+            DepartureAlarmPolicy.nextPollingDelayMillis(60 * 60_000L),
+        )
+        assertEquals(
+            4 * 60_000L,
+            DepartureAlarmPolicy.nextPollingDelayMillis(10 * 60_000L),
+        )
+        assertEquals(
+            DepartureAlarmPolicy.MIN_POLLING_DELAY_MILLIS,
+            DepartureAlarmPolicy.nextPollingDelayMillis(90_000L),
+        )
+    }
 }
