@@ -70,8 +70,6 @@ class DeparturesViewModel @JvmOverloads constructor(
         }
     }
 
-    fun isShowingTransfers(): Boolean = showTransfers
-
     /** Configures the query; the ViewModel owns collection until it is cleared. */
     fun setQuery(
         repository: TransitRepository,
@@ -155,7 +153,7 @@ class DeparturesViewModel @JvmOverloads constructor(
         val visible = getDepartures()
         val currentStatus = _uiState.value.status
         _uiState.value = when {
-            currentStatus == Status.LOADING && departures.isEmpty() -> {
+            (currentStatus == Status.LOADING) && departures.isEmpty() -> {
                 State.loading(showTransfers)
             }
             currentStatus == Status.ERROR -> {

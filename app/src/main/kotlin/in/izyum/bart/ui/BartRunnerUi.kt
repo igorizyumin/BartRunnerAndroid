@@ -400,7 +400,6 @@ fun HomeScreen(
                         route = route,
                         departure = state.firstDepartures[route],
                         fare = state.fares[route],
-                        timeSource = timeSource,
                         tick = tick,
                         isEditing = isEditing,
                         modifier = Modifier
@@ -424,7 +423,7 @@ fun HomeScreen(
                                         draggedRoute = null
                                         draggedOffset = 0f
                                     },
-                                    onDrag = { change, dragAmount ->
+                                    onDrag = { _, dragAmount ->
                                         if (draggedRoute != route) return@detectDragGestures
                                         draggedOffset += dragAmount.y
                                         val source = favoriteListState.layoutInfo.visibleItemsInfo
@@ -599,7 +598,7 @@ private fun SettingsDialog(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(selectedDescription, modifier = Modifier.weight(1f))
-                        Icon(Icons.Filled.ArrowForward, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                     }
                     DropdownMenu(
                         expanded = showFareDiscountMenu,
@@ -827,7 +826,6 @@ private fun FavoriteRouteCard(
     route: StationPair,
     departure: Departure?,
     fare: String?,
-    timeSource: TimeSource,
     tick: Long,
     isEditing: Boolean,
     modifier: Modifier = Modifier,
@@ -1009,9 +1007,9 @@ fun DeparturesScreen(
                         val density = LocalDensity.current
                         BoxWithConstraints(Modifier.fillMaxWidth()) {
                             val requiredWidth = with(density) {
-                                textMeasurer.measure(AnnotatedString(originName), style = titleStyle).size.width
-                                    + textMeasurer.measure(AnnotatedString(destinationName), style = titleStyle).size.width
-                                    + 22.dp.toPx()
+                                textMeasurer.measure(AnnotatedString(originName), style = titleStyle).size.width +
+                                    textMeasurer.measure(AnnotatedString(destinationName), style = titleStyle).size.width +
+                                    22.dp.toPx()
                             }
                             if (requiredWidth <= with(density) { maxWidth.toPx() }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1206,56 +1204,54 @@ fun TripScreen(
     onShare: (Departure) -> Unit,
     onSilenceAlarm: () -> Unit,
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val tick = rememberSecondTick(timeSource)
     var following by remember(isFollowingInitially) { mutableStateOf(isFollowingInitially) }
     var showAlarm by remember { mutableStateOf(false) }
     var showClear by remember { mutableStateOf(false) }
-    val current = departure
     Scaffold(
         topBar = {
             TopAppBar(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 title = { Text(stringResource(if (following) R.string.trip_in_progress else R.string.trip_details), fontWeight = FontWeight.Bold) },
                 actions = {
-                    if (current != null) IconButton(onClick = { onShare(current) }) { Icon(Icons.Filled.Share, stringResource(R.string.share_arrival)) }
-                    if (following && current != null) IconButton(onClick = { showClear = true }) { Icon(Icons.Filled.Close, stringResource(R.string.stop_following)) }
+                    if (departure != null) IconButton(onClick = { onShare(departure) }) { Icon(Icons.Filled.Share, stringResource(R.string.share_arrival)) }
+                    if (following && departure != null) IconButton(onClick = { showClear = true }) { Icon(Icons.Filled.Close, stringResource(R.string.stop_following)) }
                 },
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing,
     ) { padding ->
-        if (current == null) {
+        if (departure == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else {
-            val pair = current.getStationPair()
+            val pair = departure.getStationPair()
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 12.dp, 16.dp, 32.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 if (isOffline) {
                     item { OfflineBanner() }
                 }
                 item {
-                    TripHero(current, route ?: pair, fare, timeSource, tick)
+                    TripHero(departure, route ?: pair, fare, timeSource, tick)
                 }
                 if (!following) {
-                    item { Button(onClick = { following = true; onFollow(current) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Train, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.follow_this_trip)) } }
+                    item { Button(onClick = { following = true; onFollow(departure) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Train, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.follow_this_trip)) } }
                 } else {
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             if (alarmPending) {
                                 FilledTonalButton(onClick = onCancelAlarm, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.alarm_minutes, alarmLeadTimeMinutes)) }
-                            } else if (current.getMeanSecondsLeft(tick) > 60) {
+                            } else if (departure.getMeanSecondsLeft(tick) > 60) {
                                 OutlinedButton(onClick = { showAlarm = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Alarm, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.set_alarm)) }
                             }
                             OutlinedButton(onClick = { showClear = true }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.end_trip)) }
                         }
                     }
                 }
-                item { TripTimeline(current, tick) }
+                item { TripTimeline(departure, tick) }
             }
         }
     }
-    if (showAlarm && current != null) {
-        AlarmPickerDialog(current, timeSource, onDismiss = { showAlarm = false }) { value -> showAlarm = false; onSetAlarm(value) }
+    if (showAlarm && departure != null) {
+        AlarmPickerDialog(departure, timeSource, onDismiss = { showAlarm = false }) { value -> showAlarm = false; onSetAlarm(value) }
     }
     if (showClear) {
         AlertDialog(onDismissRequest = { showClear = false }, title = { Text(stringResource(R.string.stop_following_title)) }, text = { Text(stringResource(R.string.stop_following_message)) }, confirmButton = { TextButton(onClick = { showClear = false; onClear() }) { Text(stringResource(R.string.stop_following)) } }, dismissButton = { TextButton(onClick = { showClear = false }) { Text(stringResource(R.string.cancel)) } })
@@ -1441,13 +1437,12 @@ private fun TripTimeline(departure: Departure, tick: Long) {
         OutlinedCard { Text(stringResource(R.string.detailed_stop_times_unavailable), modifier = Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
     }
-    val now = tick
-    val currentIndex = legs.indexOfFirst { leg -> !legHasPassed(leg, now) }.let { if (it < 0) legs.lastIndex else it }
+    val currentIndex = legs.indexOfFirst { leg -> !legHasPassed(leg, tick) }.let { if (it < 0) legs.lastIndex else it }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.trip_timeline), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         legs.forEachIndexed { index, leg ->
-            TimelineLeg(leg, index == currentIndex, now)
-            if (index < legs.lastIndex) ConnectionRow(leg, legs[index + 1], now)
+            TimelineLeg(leg, index == currentIndex, tick)
+            if (index < legs.lastIndex) ConnectionRow(leg, legs[index + 1])
         }
     }
 }
@@ -1516,7 +1511,7 @@ private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, co
     val name = stop.station?.getName().orEmpty()
     val displayTime = if (departure) stop.departureTime else stop.arrivalTime
     val scheduleDetails = DepartureTextFormatter.stopSchedulePresentation(context, stop, departure)
-    val reached = displayTime > 0 && displayTime <= now
+    val reached = displayTime in 1..now
     Row(Modifier.fillMaxWidth().height(54.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(24.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
             if (!isFirst) {
@@ -1552,7 +1547,7 @@ private fun StationTimelineRow(stop: TripStop, departure: Boolean, now: Long, co
 }
 
 @Composable
-private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
+private fun ConnectionRow(arriving: TripLeg, next: TripLeg) {
     val arrival = arriving.stops.lastOrNull()?.arrivalTime ?: arriving.arrivalTime
     val departure = next.stops.firstOrNull()?.departureTime ?: next.departureTime
     val margin = departure - arrival
@@ -1627,8 +1622,8 @@ fun SystemMapScreen(onBack: () -> Unit) {
     }
     Scaffold(topBar = { TopAppBar(navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } }, title = { Text(stringResource(R.string.system_map_title), fontWeight = FontWeight.Bold) }) }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(R.drawable.map),
+            Image(
+                painterResource(R.drawable.map),
                 stringResource(R.string.system_map_title),
                 Modifier
                     .fillMaxSize()
@@ -1699,7 +1694,7 @@ private fun tripStatus(context: Context, departure: Departure, timeSource: TimeS
     return context.getString(R.string.trip_current_train)
 }
 
-private fun legHasPassed(leg: TripLeg, now: Long): Boolean = if (leg.stops.isNotEmpty()) leg.stops.all { it.arrivalTime > 0 && it.arrivalTime <= now } else leg.arrivalTime > 0 && leg.arrivalTime <= now
+private fun legHasPassed(leg: TripLeg, now: Long): Boolean = if (leg.stops.isNotEmpty()) leg.stops.all { it.arrivalTime in 1..now } else leg.arrivalTime in 1..now
 
 private fun etaText(context: Context, time: Long, now: Long): String {
     if (time <= 0) return context.getString(R.string.eta_unavailable)
@@ -1716,7 +1711,7 @@ internal fun rememberSecondTick(timeSource: TimeSource): Long {
     LaunchedEffect(timeSource) {
         while (isActive) {
             tick = timeSource.nowMillis()
-            delay(1000)
+            delay(1000L)
         }
     }
     return tick
