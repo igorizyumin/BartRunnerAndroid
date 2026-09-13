@@ -116,6 +116,7 @@
     <string name="departure_canceled">Canceled</string>
     <string name="departure_at_station">At station</string>
     <string name="departure_countdown">%1$dm %2$ds</string>
+    <string name="departure_countdown_hours">%1$dh %2$dm %3$ds</string>
     <string name="estimated_arrival_unknown">Estimated arrival unknown</string>
     <string name="arrived_at_destination">Arrived at destination</string>
     <string name="arrives_around_minutes">Arrives ~%1$s (%2$d min)</string>

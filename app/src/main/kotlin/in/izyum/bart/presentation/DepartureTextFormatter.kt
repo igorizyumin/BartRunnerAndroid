@@ -330,6 +330,12 @@ object DepartureTextFormatter {
             } else {
                 context.getString(if (departure.isListedInETDs()) R.string.leaving else R.string.departed)
             }
+            secondsLeft >= 3600 -> context.getString(
+                R.string.departure_countdown_hours,
+                secondsLeft / 3600,
+                (secondsLeft % 3600) / 60,
+                secondsLeft % 60,
+            )
             else -> context.getString(R.string.departure_countdown, secondsLeft / 60, secondsLeft % 60)
         }
     }
