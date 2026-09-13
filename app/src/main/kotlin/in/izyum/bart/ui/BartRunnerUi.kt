@@ -234,6 +234,8 @@ fun HomeScreen(
     onFareDiscountChanged: (String?) -> Unit = {},
     backgroundPollingEnabled: Boolean = true,
     onBackgroundPollingChanged: (Boolean) -> Unit = {},
+    defaultTransferViewEnabled: Boolean = true,
+    onDefaultTransferViewChanged: (Boolean) -> Unit = {},
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var pickerAddsFavorite by remember { mutableStateOf(false) }
@@ -509,6 +511,8 @@ fun HomeScreen(
             onFareDiscountChanged = onFareDiscountChanged,
             backgroundPollingEnabled = backgroundPollingEnabled,
             onBackgroundPollingChanged = onBackgroundPollingChanged,
+            defaultTransferViewEnabled = defaultTransferViewEnabled,
+            onDefaultTransferViewChanged = onDefaultTransferViewChanged,
             onDismiss = { showSettingsDialog = false },
         )
     }
@@ -574,6 +578,8 @@ private fun SettingsDialog(
     onFareDiscountChanged: (String?) -> Unit,
     backgroundPollingEnabled: Boolean,
     onBackgroundPollingChanged: (Boolean) -> Unit,
+    defaultTransferViewEnabled: Boolean,
+    onDefaultTransferViewChanged: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var showFareDiscountMenu by remember { mutableStateOf(false) }
@@ -640,6 +646,26 @@ private fun SettingsDialog(
                     Switch(
                         checked = backgroundPollingEnabled,
                         onCheckedChange = onBackgroundPollingChanged,
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.default_transfer_view),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.default_transfer_view_description),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(
+                        checked = defaultTransferViewEnabled,
+                        onCheckedChange = onDefaultTransferViewChanged,
                     )
                 }
             }

@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.data.FareDiscountPreferences
+import `in`.izyum.bart.data.TransferPreferences
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.ui.BartRunnerTheme
@@ -46,6 +47,8 @@ class ViewDeparturesActivity : ComponentActivity() {
                 }
             }
         }
+        val initialShowTransfers = TransferPreferences.getShowTransfersForRoute(this, stationPair)
+        departuresViewModel.setShowTransfers(initialShowTransfers)
         departuresViewModel.setQuery(
             app.transitRepository,
             app.bartGtfsNetworkSupplier,
@@ -65,7 +68,14 @@ class ViewDeparturesActivity : ComponentActivity() {
                     onBack = { finish() },
                     onOpenTrip = ::openTripSchedule,
                     onMap = { startActivity(Intent(this, ViewMapActivity::class.java)) },
-                    onToggleShowTransfers = { departuresViewModel.toggleShowTransfers() },
+                    onToggleShowTransfers = {
+                        departuresViewModel.toggleShowTransfers()
+                        TransferPreferences.setShowTransfersForRoute(
+                            this@ViewDeparturesActivity,
+                            stationPair,
+                            departuresViewModel.uiState.value.showTransfers,
+                        )
+                    },
                 )
             }
         }

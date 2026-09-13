@@ -31,6 +31,7 @@ import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.performance.PerformanceTrace
 import `in`.izyum.bart.data.BackgroundPollingPreferences
+import `in`.izyum.bart.data.TransferPreferences
 import `in`.izyum.bart.platform.DeparturePollingWork
 import `in`.izyum.bart.networktasks.RiderCategory
 import `in`.izyum.bart.ui.BartRunnerTheme
@@ -45,6 +46,7 @@ class RoutesListActivity : ComponentActivity() {
     private var riderCategories by mutableStateOf<List<RiderCategory>>(emptyList())
     private var riderCategoryId by mutableStateOf<String?>(null)
     private var backgroundPollingEnabled by mutableStateOf(true)
+    private var defaultTransferViewEnabled by mutableStateOf(true)
 
     fun addFavorite(route: `in`.izyum.bart.model.StationPair) {
         routesViewModel.addFavorite(route)
@@ -56,6 +58,7 @@ class RoutesListActivity : ComponentActivity() {
         riderCategoryId = `in`.izyum.bart.data.FareDiscountPreferences
             .getRiderCategoryId(this)
         backgroundPollingEnabled = BackgroundPollingPreferences.isEnabled(this)
+        defaultTransferViewEnabled = TransferPreferences.getDefaultShowTransfers(this)
         val needsInitialStaticLoad = !application.gtfsStaticData.hasDatabaseCache()
         staticDataReady = !needsInitialStaticLoad
         lifecycleScope.launch(Dispatchers.IO) {
@@ -145,6 +148,11 @@ class RoutesListActivity : ComponentActivity() {
                             backgroundPollingEnabled = enabled
                             BackgroundPollingPreferences.setEnabled(this, enabled)
                             DeparturePollingWork.refresh(this, application.followedTripRepository)
+                        },
+                        defaultTransferViewEnabled = defaultTransferViewEnabled,
+                        onDefaultTransferViewChanged = { enabled ->
+                            defaultTransferViewEnabled = enabled
+                            TransferPreferences.setDefaultShowTransfers(this, enabled)
                         },
                     )
                 }

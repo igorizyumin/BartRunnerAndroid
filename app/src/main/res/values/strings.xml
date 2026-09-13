@@ -9,6 +9,8 @@
     <string name="offline_channel_name">Connection status</string>
     <string name="back">Back</string>
     <string name="show_transfers">Show transfers</string>
+    <string name="default_transfer_view">Default transfer view</string>
+    <string name="default_transfer_view_description">Show routes requiring transfers by default when viewing upcoming trains.</string>
     <string name="saved_trips">Saved trips</string>
     <string name="add">Add</string>
     <string name="drag_to_reorder">Drag to reorder</string>
