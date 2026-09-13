@@ -29,7 +29,30 @@ class DeparturesViewModelTest {
         assertEquals(0, viewModel.getState().departures.size)
     }
 
-    private fun departure(tripId: String, estimate: Long): Departure = Departure.builder()
+    @Test
+    fun togglingShowTransfersFiltersTransferDepartures() {
+        val viewModel = DeparturesViewModel { 900_000L }
+        val directDeparture = departure("trip-1", 1_000_000L)
+        val transferDeparture = departure("trip-2", 1_060_000L, requiresTransfer = true)
+
+        viewModel.replace(listOf(directDeparture, transferDeparture))
+
+        assertEquals(2, viewModel.getDepartures().size)
+        assertEquals(true, viewModel.getState().showTransfers)
+
+        viewModel.toggleShowTransfers()
+
+        assertEquals(1, viewModel.getDepartures().size)
+        assertEquals("trip-1", viewModel.getDepartures()[0].tripLegs[0].tripId)
+        assertEquals(false, viewModel.getState().showTransfers)
+
+        viewModel.toggleShowTransfers()
+
+        assertEquals(2, viewModel.getDepartures().size)
+        assertEquals(true, viewModel.getState().showTransfers)
+    }
+
+    private fun departure(tripId: String, estimate: Long, requiresTransfer: Boolean = false): Departure = Departure.builder()
         .setOrigin(Station.CAST)
         .setTrainDestination(Station.MLPT)
         .setLine(Line.ORANGE)
@@ -37,15 +60,23 @@ class DeparturesViewModelTest {
         .setPlatform("1")
         .setMinEstimate(estimate)
         .setMaxEstimate(estimate + 60_000L)
-        .setTripLegs(listOf(TripLeg(
-            Line.ORANGE,
-            Station.CAST,
-            Station.MLPT,
-            Station.MLPT,
-            tripId,
-            estimate,
-            estimate + 30 * 60_000L,
-            emptyList(),
-        )))
+        .setRequiresTransfer(requiresTransfer)
+        .setTripLegs(if (requiresTransfer) {
+            listOf(
+                TripLeg(Line.ORANGE, Station.CAST, Station.BAYF, Station.BAYF, tripId + "-1", estimate, estimate + 15 * 60_000L, emptyList()),
+                TripLeg(Line.RED, Station.BAYF, Station.MLPT, Station.MLPT, tripId + "-2", estimate + 16 * 60_000L, estimate + 30 * 60_000L, emptyList())
+            )
+        } else {
+            listOf(TripLeg(
+                Line.ORANGE,
+                Station.CAST,
+                Station.MLPT,
+                Station.MLPT,
+                tripId,
+                estimate,
+                estimate + 30 * 60_000L,
+                emptyList(),
+            ))
+        })
         .build()
 }

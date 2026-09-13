@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
@@ -70,6 +71,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
@@ -982,6 +984,7 @@ fun DeparturesScreen(
     onBack: () -> Unit,
     onOpenTrip: (Departure) -> Unit,
     onMap: () -> Unit,
+    onToggleShowTransfers: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val tick = rememberSecondTick(timeSource)
@@ -1048,7 +1051,22 @@ fun DeparturesScreen(
                         }
                     }
                 },
-                actions = { IconButton(onClick = onMap) { Icon(Icons.Filled.Map, stringResource(R.string.system_map)) } },
+                actions = {
+                    IconButton(onClick = onToggleShowTransfers) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.CompareArrows,
+                            contentDescription = stringResource(R.string.show_transfers),
+                            tint = if (state.showTransfers) {
+                                LocalContentColor.current
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            },
+                        )
+                    }
+                    IconButton(onClick = onMap) {
+                        Icon(Icons.Filled.Map, stringResource(R.string.system_map))
+                    }
+                },
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing,

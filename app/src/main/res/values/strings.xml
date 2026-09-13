@@ -8,6 +8,7 @@
     <string name="offline_in_app_message">Offline — using stored schedules. Realtime updates and service alerts are unavailable.</string>
     <string name="offline_channel_name">Connection status</string>
     <string name="back">Back</string>
+    <string name="show_transfers">Show transfers</string>
     <string name="saved_trips">Saved trips</string>
     <string name="add">Add</string>
     <string name="drag_to_reorder">Drag to reorder</string>

@@ -36,22 +36,41 @@ class DeparturesViewModel @JvmOverloads constructor(
         val status: Status,
         val departures: List<Departure>,
         val error: Exception?,
+        val showTransfers: Boolean = true,
     ) {
         companion object {
-            fun loading() = State(Status.LOADING, emptyList(), null)
-            fun content(departures: List<Departure>) =
-                State(Status.CONTENT, departures, null)
-            fun empty() = State(Status.EMPTY, emptyList(), null)
-            fun error(exception: Exception, departures: List<Departure>) =
-                State(Status.ERROR, departures, exception)
+            fun loading(showTransfers: Boolean = true) =
+                State(Status.LOADING, emptyList(), null, showTransfers)
+            fun content(departures: List<Departure>, showTransfers: Boolean = true) =
+                State(Status.CONTENT, departures, null, showTransfers)
+            fun empty(showTransfers: Boolean = true) =
+                State(Status.EMPTY, emptyList(), null, showTransfers)
+            fun error(exception: Exception, departures: List<Departure>, showTransfers: Boolean = true) =
+                State(Status.ERROR, departures, exception, showTransfers)
         }
     }
 
-    private val _uiState = MutableStateFlow(State.loading())
+    private var showTransfers: Boolean = true
+    private var departures: List<Departure> = emptyList()
+
+    private val _uiState = MutableStateFlow(State.loading(showTransfers))
     val uiState: StateFlow<State> = _uiState.asStateFlow()
 
-    private var departures: List<Departure> = emptyList()
     private var collectionJob: Job? = null
+
+    fun toggleShowTransfers() {
+        setShowTransfers(!showTransfers)
+    }
+
+    @Synchronized
+    fun setShowTransfers(show: Boolean) {
+        if (showTransfers != show) {
+            showTransfers = show
+            updateState()
+        }
+    }
+
+    fun isShowingTransfers(): Boolean = showTransfers
 
     /** Configures the query; the ViewModel owns collection until it is cleared. */
     fun setQuery(
@@ -63,7 +82,7 @@ class DeparturesViewModel @JvmOverloads constructor(
         collectionJob?.cancel()
         collectionJob = null
         departures = emptyList()
-        _uiState.value = State.loading()
+        _uiState.value = State.loading(showTransfers)
         if (stationPair == null) {
             return
         }
@@ -98,25 +117,27 @@ class DeparturesViewModel @JvmOverloads constructor(
     @Synchronized
     fun replace(incoming: List<Departure>): List<Departure> {
         departures = immutableCopy(Departure.replaceFeed(departures, incoming, timeSource))
-        _uiState.value = if (departures.isEmpty()) {
-            State.empty()
-        } else {
-            State.content(departures)
-        }
-        return departures
+        updateState()
+        return getDepartures()
     }
 
     @Synchronized
     fun clear(): List<Departure> {
         departures = emptyList()
-        _uiState.value = State.empty()
-        return departures
+        updateState()
+        return emptyList()
     }
 
     fun getState(): State = uiState.value
 
     @Synchronized
-    fun getDepartures(): List<Departure> = departures
+    fun getDepartures(): List<Departure> {
+        return if (showTransfers) {
+            departures
+        } else {
+            departures.filter { !it.requiresTransfer && !it.hasTransfers() }
+        }
+    }
 
     @Synchronized
     private fun updateFromFeed(incoming: List<Departure>) {
@@ -125,7 +146,28 @@ class DeparturesViewModel @JvmOverloads constructor(
 
     @Synchronized
     private fun updateError(exception: Exception) {
-        _uiState.value = State.error(exception, departures)
+        val visible = getDepartures()
+        _uiState.value = State.error(exception, visible, showTransfers)
+    }
+
+    @Synchronized
+    private fun updateState() {
+        val visible = getDepartures()
+        val currentStatus = _uiState.value.status
+        _uiState.value = when {
+            currentStatus == Status.LOADING && departures.isEmpty() -> {
+                State.loading(showTransfers)
+            }
+            currentStatus == Status.ERROR -> {
+                State.error(_uiState.value.error ?: RuntimeException(), visible, showTransfers)
+            }
+            visible.isEmpty() -> {
+                State.empty(showTransfers)
+            }
+            else -> {
+                State.content(visible, showTransfers)
+            }
+        }
     }
 
     private fun immutableCopy(values: List<Departure>): List<Departure> =

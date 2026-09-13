@@ -65,6 +65,7 @@ class ViewDeparturesActivity : ComponentActivity() {
                     onBack = { finish() },
                     onOpenTrip = ::openTripSchedule,
                     onMap = { startActivity(Intent(this, ViewMapActivity::class.java)) },
+                    onToggleShowTransfers = { departuresViewModel.toggleShowTransfers() },
                 )
             }
         }
