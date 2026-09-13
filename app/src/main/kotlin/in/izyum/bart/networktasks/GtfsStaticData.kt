@@ -93,7 +93,7 @@ class GtfsStaticData @JvmOverloads constructor(
     private fun loadLocked(refreshStale: Boolean): LoadedData {
         synchronized(lock) {
             val now = timeSource.nowMillis()
-            if (cachedData != null && now - cachedAt < CACHE_MILLIS) {
+            if (cachedData != null && (now - cachedAt < CACHE_MILLIS)) {
                 return cachedData!!
             }
 
@@ -185,7 +185,7 @@ class GtfsStaticData @JvmOverloads constructor(
                 cachedData = it
                 cachedAt = if (lastSuccess > 0) lastSuccess else now
             }
-        } catch (exception: Exception) {
+        } catch (_: Exception) {
             invalidateDatabase()
             null
         }
@@ -389,11 +389,12 @@ class GtfsStaticData @JvmOverloads constructor(
                     .header("Accept", "application/zip")
                     .build()
                 CLIENT.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful || response.body == null) {
+                    val body = response.body
+                    if (!response.isSuccessful || body == null) {
                         throw IOException("Static GTFS returned ${response.code}")
                     }
                     FileOutputStream(destination, false).use { output ->
-                        response.body!!.byteStream().use { input ->
+                        body.byteStream().use { input ->
                             input.copyTo(output, 8192)
                         }
                     }

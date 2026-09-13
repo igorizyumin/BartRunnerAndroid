@@ -1,11 +1,11 @@
 package `in`.izyum.bart.activities
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.net.toUri
 import `in`.izyum.bart.BuildConfig
 import `in`.izyum.bart.R
 import `in`.izyum.bart.ui.AboutScreen
@@ -25,16 +25,16 @@ class AboutActivity : ComponentActivity() {
                         startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(getString(R.string.github_url)),
-                            )
+                                getString(R.string.github_url).toUri(),
+                            ),
                         )
                     },
                     onOpenApacheLicense = {
                         startActivity(
                             Intent(
                                 Intent.ACTION_VIEW,
-                                Uri.parse(getString(R.string.apache_license_url)),
-                            )
+                                getString(R.string.apache_license_url).toUri(),
+                            ),
                         )
                     },
                     onOpenLicenses = {

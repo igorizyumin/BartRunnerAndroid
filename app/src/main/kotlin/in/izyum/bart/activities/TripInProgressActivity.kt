@@ -41,7 +41,7 @@ class TripInProgressActivity : ComponentActivity() {
         private const val POST_NOTIFICATIONS_REQUEST_CODE = 1002
 
         internal fun shouldReturnToRoutes(screenMode: String?, followed: Departure?): Boolean =
-            screenMode == RouteArguments.MODE_FOLLOWED && followed == null
+            (screenMode == RouteArguments.MODE_FOLLOWED) && (followed == null)
     }
 
     private val tripProgressViewModel: TripProgressViewModel by viewModels()

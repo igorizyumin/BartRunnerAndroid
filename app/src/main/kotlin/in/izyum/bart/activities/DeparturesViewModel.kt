@@ -172,5 +172,5 @@ class DeparturesViewModel @JvmOverloads constructor(
         Collections.unmodifiableList(ArrayList(values))
 
     private fun asException(error: Throwable): Exception =
-        error as? Exception ?: RuntimeException(error)
+        (error as? Exception) ?: RuntimeException(error)
 }

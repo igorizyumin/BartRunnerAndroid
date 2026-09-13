@@ -49,7 +49,7 @@ class Schedule private constructor(
         fun departureDelaySeconds(): Int? = delaySeconds(departureTime, scheduledDepartureTime)
 
         private fun delaySeconds(actual: Long, scheduled: Long): Int? =
-            if (actual > 0L && scheduled > 0L) {
+            if ((actual > 0L) && (scheduled > 0L)) {
                 ((actual - scheduled) / 1000L).toInt()
             } else {
                 null
@@ -518,7 +518,7 @@ class Schedule private constructor(
         // The DMU is a terminal continuation, not a normal transfer line.
         // Its topology is added explicitly after a Yellow route reaches
         // Pittsburg.
-        val lines = Line.values().filter {
+        val lines = Line.entries.filter {
             it != Line.YELLOW_DMU && network.routePatternsForLine(it).isNotEmpty()
         }
         for (first in lines) {

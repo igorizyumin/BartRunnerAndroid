@@ -141,7 +141,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
     private fun syncRouteJobs(favorites: List<StationPair>) {
         PerformanceTrace.counter("BART favorite count", favorites.size)
         val desired = favorites.toSet()
-        routeJobs.keys.toList()
+        routeJobs.keys.asSequence()
             .filter { it !in desired }
             .forEach { route ->
                 routeJobs.remove(route)?.cancel()
@@ -250,5 +250,5 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
         Collections.unmodifiableMap(HashMap(values))
 
     private fun asException(error: Throwable): Exception =
-        error as? Exception ?: RuntimeException(error)
+        (error as? Exception) ?: RuntimeException(error)
 }
