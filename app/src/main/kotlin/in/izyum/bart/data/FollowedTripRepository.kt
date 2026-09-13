@@ -160,9 +160,9 @@ class FollowedTripRepository @JvmOverloads constructor(
         val nowMillis = timeSource.nowMillis()
         val scheduler = getAlarmScheduler()
         val alarmTime = if (scheduler?.isPending == true && departure != null) {
-            DepartureAlarmPolicy.alarmTime(departure.maxEstimate, scheduler.leadTimeMinutes)
+            DepartureAlarmPolicy.alarmTime(departure, scheduler.leadTimeMinutes)
         } else {
-            departure?.maxEstimate ?: nowMillis
+            departure?.getInitialArrivalTime(pessimistic = true) ?: nowMillis
         }
         return DepartureAlarmPolicy.nextPollingDelayMillis(alarmTime - nowMillis)
     }

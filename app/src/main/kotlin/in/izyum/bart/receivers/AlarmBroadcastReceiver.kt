@@ -89,14 +89,14 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             targetIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val destination = departure.passengerDestination ?: departure.trainDestination
+        val station = departure.origin
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_stat_notification)
             .setContentTitle(context.getString(R.string.alarm_notification_title))
             .setContentText(
                 context.getString(
                     R.string.alarm_notification_text,
-                    destination?.getName().orEmpty(),
+                    station?.getName().orEmpty(),
                 ),
             )
             .setCategory(NotificationCompat.CATEGORY_ALARM)

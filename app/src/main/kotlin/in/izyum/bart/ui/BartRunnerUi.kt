@@ -1763,7 +1763,7 @@ private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDi
     var value by remember { mutableIntStateOf(5.coerceAtMost(max)) }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.set_departure_alarm)) }, text = {
         Column {
-            Text(stringResource(R.string.notify_before_train_leaves), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.notify_before_train_arrives), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(pluralStringResource(R.plurals.alarm_minutes_value, value, value), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
             Slider(value = value.toFloat(), onValueChange = { value = it.toInt().coerceIn(1, max) }, valueRange = 1f..max.toFloat(), steps = (max - 2).coerceAtLeast(0))
         }

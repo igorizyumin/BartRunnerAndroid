@@ -1,5 +1,7 @@
 package `in`.izyum.bart.platform
 
+import `in`.izyum.bart.model.Departure
+
 /** Deterministic alarm decisions shared by Android scheduling and tests. */
 object DepartureAlarmPolicy {
     const val MIN_POLLING_DELAY_MILLIS = 30_000L
@@ -9,14 +11,23 @@ object DepartureAlarmPolicy {
     fun shouldRestore(pending: Boolean, departed: Boolean, expired: Boolean): Boolean =
         pending && !departed && !expired
 
-    fun alarmTime(departureEstimateMillis: Long, leadTimeMinutes: Int): Long =
-        departureEstimateMillis - leadTimeMinutes * 60_000L
+    fun alarmTime(arrivalEstimateMillis: Long, leadTimeMinutes: Int): Long =
+        arrivalEstimateMillis - leadTimeMinutes * 60_000L
 
-    fun secondsUntilAlarm(departureEstimateMillis: Long,
+    /** Uses the same pessimistic initial-station arrival time shown by the UI. */
+    fun alarmTime(departure: Departure, leadTimeMinutes: Int): Long =
+        alarmTime(departure.getInitialArrivalTime(pessimistic = true), leadTimeMinutes)
+
+    fun secondsUntilAlarm(arrivalEstimateMillis: Long,
                           leadTimeMinutes: Int,
                           nowMillis: Long): Int =
-        ((alarmTime(departureEstimateMillis, leadTimeMinutes) - nowMillis) / 1_000L)
+        ((alarmTime(arrivalEstimateMillis, leadTimeMinutes) - nowMillis) / 1_000L)
             .toInt()
+
+    fun secondsUntilAlarm(departure: Departure,
+                          leadTimeMinutes: Int,
+                          nowMillis: Long): Int =
+        ((alarmTime(departure, leadTimeMinutes) - nowMillis) / 1_000L).toInt()
 
     /**
      * Returns the delay before the next background refresh. Refreshes happen

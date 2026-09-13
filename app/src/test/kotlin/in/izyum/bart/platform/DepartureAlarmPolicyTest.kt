@@ -4,6 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Line
+import `in`.izyum.bart.model.Station
+import `in`.izyum.bart.model.TripLeg
+import `in`.izyum.bart.model.TripStop
 
 class DepartureAlarmPolicyTest {
     @Test
@@ -21,6 +26,27 @@ class DepartureAlarmPolicyTest {
         assertEquals(730_000L, DepartureAlarmPolicy.alarmTime(latestEstimate, 5))
         assertEquals(30, DepartureAlarmPolicy.secondsUntilAlarm(latestEstimate, 5, now))
         assertEquals(-30, DepartureAlarmPolicy.secondsUntilAlarm(latestEstimate, 6, now))
+    }
+
+    @Test
+    fun alarmUsesTheSameInitialArrivalTimeAsTheDisplayCountdown() {
+        val departure = Departure.builder()
+            .setOrigin(Station.CAST)
+            .setMinEstimate(1_000_000L)
+            .setMaxEstimate(1_060_000L)
+            .setTripLegs(listOf(TripLeg(
+                Line.ORANGE,
+                Station.CAST,
+                Station.MLPT,
+                Station.MLPT,
+                "trip-1",
+                1_000_000L,
+                2_000_000L,
+                listOf(TripStop(Station.CAST, 940_000L, 1_000_000L)),
+            )))
+            .build()
+
+        assertEquals(700_000L, DepartureAlarmPolicy.alarmTime(departure, 5))
     }
 
     @Test

@@ -57,7 +57,7 @@
     <string name="connection_missed">Connection missed</string>
     <string name="connection_margin">%1$d min connection margin</string>
     <string name="set_departure_alarm">Set departure alarm</string>
-    <string name="notify_before_train_leaves">Notify me before the train leaves</string>
+    <string name="notify_before_train_arrives">Notify me before the train arrives</string>
     <plurals name="transfer_count">
         <item quantity="one">%d transfer</item>
         <item quantity="other">%d transfers</item>
@@ -148,8 +148,8 @@
     <string name="route_title_arrow">%1$s → %2$s</string>
     <string name="alarm_notification_channel_id">BART_Runner_alarm_notifications_v2</string>
     <string name="alarm_notification_channel_name">BART Runner departure alarms</string>
-    <string name="alarm_notification_title">Your train is leaving soon</string>
-    <string name="alarm_notification_text">Departing for %1$s</string>
+    <string name="alarm_notification_title">Your train is arriving soon</string>
+    <string name="alarm_notification_text">Arriving at %1$s</string>
     <string name="trip_in_progress">Trip in progress</string>
     <string name="trip_current_train">Current train</string>
     <string name="trip_arrives_in">Train arrives in %1$s</string>

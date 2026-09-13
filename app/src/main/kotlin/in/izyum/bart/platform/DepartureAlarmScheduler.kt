@@ -74,7 +74,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
 
     val secondsUntilAlarm: Int
         get() = DepartureAlarmPolicy.secondsUntilAlarm(
-            departure.maxEstimate, leadTimeMinutes, timeSource.nowMillis())
+            departure, leadTimeMinutes, timeSource.nowMillis())
 
     fun setUp(leadTimeMinutes: Int) {
         require(leadTimeMinutes >= 0) {
@@ -140,7 +140,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     private fun alarmClockTime(): Long = DepartureAlarmPolicy.alarmTime(
-        departure.maxEstimate, leadTimeMinutes)
+        departure, leadTimeMinutes)
 
     private fun schedule() {
         val manager = alarmManager
