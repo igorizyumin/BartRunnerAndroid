@@ -142,13 +142,13 @@ import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.TripStop
 import `in`.izyum.bart.networktasks.RiderCategory
 import `in`.izyum.bart.presentation.DepartureTextFormatter
+import `in`.izyum.bart.presentation.DurationTextFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.Locale
 
 private val Blue = Color(0xFF0B63CE)
 private val BlueDark = Color(0xFF064B9B)
@@ -2009,12 +2009,12 @@ private fun etaText(context: Context, time: Long, now: Long): String {
     if (time <= 0) return context.getString(R.string.eta_unavailable)
     val seconds = (time - now) / 1000
     if (seconds <= 0) return context.getString(R.string.passed)
-    return context.getString(R.string.eta_in, seconds / 60, seconds % 60)
+    return context.getString(R.string.eta_in, DurationTextFormatter.clock(seconds))
 }
 
 private fun countdownText(time: Long, now: Long): String {
     val seconds = ((time - now) / 1000L).coerceAtLeast(0L)
-    return "%d:%02d".format(Locale.US, seconds / 60L, seconds % 60L)
+    return DurationTextFormatter.clock(seconds)
 }
 
 private fun formatTime(time: Long): String = if (time <= 0) "—" else DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(time))

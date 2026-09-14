@@ -362,32 +362,30 @@ class Schedule private constructor(
                 "2" -> "s"
                 else -> null
             }
-            val antcDepartureTime = if (direction == "s") {
-                points[Station.ANTC]?.let { point ->
-                    terminalEventTime(point.departure)
-                        ?: terminalEventTime(point.arrival)
+            // DMU telemetry has its own 600-series trip IDs and only covers
+            // the terminal segment. Prefer joining it to an electric trip
+            // whose passenger update supplies a realtime PITT time; the
+            // static terminal time can belong to a different train.
+            val realtimeElectricMatch = result.indices
+                .filter { index ->
+                    val trip = result[index]
+                    if (index in usedTrips || !isTerminalCandidate(trip, direction, platform)) {
+                        return@filter false
+                    }
+                    val pitt = trip.stopAt(Station.PITT) ?: return@filter false
+                    pitt.arrivalSource == PredictionSource.REALTIME ||
+                        pitt.departureSource == PredictionSource.REALTIME
                 }
-            } else {
-                null
-            }
-            val nextPittRealtimeMatch = if (direction == "s" && antcDepartureTime != null) {
-                result.indices
-                    .filter { index ->
-                        val trip = result[index]
-                        if (index in usedTrips || !isTerminalCandidate(trip, direction, platform)) {
-                            return@filter false
-                        }
-                        val pitt = trip.stopAt(Station.PITT) ?: return@filter false
-                        pitt.arrivalSource == PredictionSource.REALTIME
-                            && pitt.arrivalTime >= antcDepartureTime
-                    }
-                    .minByOrNull { index ->
-                        result[index].stopAt(Station.PITT)?.arrivalTime ?: Long.MAX_VALUE
-                    }
-            } else {
-                null
-            }
-            val match = nextPittRealtimeMatch ?: result.indices
+                .mapNotNull { index ->
+                    val projected = projectRealtimeTerminalTime(
+                        result[index], terminalStation, direction
+                    ) ?: return@mapNotNull null
+                    index to kotlin.math.abs(projected - terminalTime)
+                }
+                .filter { (_, delta) -> delta <= TERMINAL_MATCH_MAX_MILLIS }
+                .minByOrNull { (_, delta) -> delta }
+                ?.first
+            val match = realtimeElectricMatch ?: result.indices
                 .filter { index ->
                     val trip = result[index]
                     if (index in usedTrips || !isTerminalCandidate(trip, direction, platform)) {
@@ -490,6 +488,39 @@ class Schedule private constructor(
             }
         }
         return trip.copy(stops = immutableList(stops))
+    }
+
+    private fun projectRealtimeTerminalTime(
+        trip: Trip,
+        terminalStation: Station,
+        direction: String?,
+    ): Long? {
+        val pittIndex = trip.stops.indexOfFirst { it.station == Station.PITT }
+        val terminalIndex = trip.stops.indexOfFirst { it.station == terminalStation }
+        if (pittIndex < 0 || terminalIndex < 0 || pittIndex == terminalIndex) return null
+        val pitt = trip.stops[pittIndex]
+        var time = pitt.arrivalTime.takeIf { it > 0L }
+            ?: pitt.departureTime.takeIf { it > 0L }
+            ?: return null
+        if (direction == "n" && terminalIndex > pittIndex) {
+            for (index in pittIndex until terminalIndex) {
+                time += nominalTravelTimeMillis(
+                    trip.stops[index].station,
+                    trip.stops[index + 1].station,
+                ) ?: return null
+            }
+            return time
+        }
+        if (direction == "s" && terminalIndex < pittIndex) {
+            for (index in pittIndex downTo terminalIndex + 1) {
+                time -= nominalTravelTimeMillis(
+                    trip.stops[index - 1].station,
+                    trip.stops[index].station,
+                ) ?: return null
+            }
+            return time
+        }
+        return null
     }
 
     private fun estimateBefore(next: Stop, previous: Stop): Stop? {

@@ -40,6 +40,46 @@ class TransitFeedSnapshotTest {
         assertEquals(alert, alertIndex.alertsById["alert-1"])
     }
 
+    @Test
+    fun doesNotUseEntityIdAsTripIdWhenTripDescriptorOmitsTripId() {
+        val sparseTechnicalUpdate = GtfsRealtime.FeedEntity.newBuilder()
+            .setId("scheduled-passenger-trip")
+            .setTripUpdate(GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setRouteId("8"))
+                .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+                    .setStopId("ANTC-2")
+                    .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setTime(1_000L)))
+                .buildPartial()
+            )
+            .buildPartial()
+
+        val index = GtfsRealtimeFeedIndex.from(
+            GtfsRealtime.FeedMessage.newBuilder()
+                .addEntity(sparseTechnicalUpdate)
+                .buildPartial()
+        )
+
+        assertEquals(1, index.tripUpdateEntities.size)
+        assertEquals(emptyMap<String, GtfsRealtime.FeedEntity>(), index.tripUpdatesById)
+    }
+
+    @Test
+    fun keepsDmuTelemetryAvailableButDoesNotIndexIts600SeriesTripId() {
+        val dmu = GtfsRealtime.FeedEntity.newBuilder()
+            .setId("682")
+            .setTripUpdate(GtfsRealtime.TripUpdate.newBuilder()
+                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("682"))
+                .buildPartial())
+            .buildPartial()
+
+        val index = GtfsRealtimeFeedIndex.from(
+            GtfsRealtime.FeedMessage.newBuilder().addEntity(dmu).buildPartial()
+        )
+
+        assertEquals(listOf(dmu), index.tripUpdateEntities)
+        assertEquals(emptyMap<String, GtfsRealtime.FeedEntity>(), index.tripUpdatesById)
+    }
+
     @Test(expected = UnsupportedOperationException::class)
     fun tripEntityIndexCannotBeMutatedByAConsumer() {
         (TransitFeedSnapshot(emptyFeed(), emptyFeed(), 123L)

@@ -318,12 +318,15 @@ object DepartureTextFormatter {
     fun countdown(context: Context, departure: Departure, nowMillis: Long): String {
         val arrivalTime = departure.getInitialArrivalTime(pessimistic = true)
         val departureTime = departure.getInitialDepartureTime(pessimistic = true)
-        val secondsLeft = ((arrivalTime - nowMillis) / 1000L).toInt()
+        val secondsLeft = (arrivalTime - nowMillis) / 1000L
         return when {
             departure.isCanceled() -> context.getString(R.string.departure_canceled)
             nowMillis >= departureTime -> context.getString(if (departure.isListedInETDs()) R.string.leaving else R.string.departed)
             nowMillis >= arrivalTime -> context.getString(R.string.departure_at_station)
-            else -> context.getString(R.string.departure_countdown, secondsLeft / 60, secondsLeft % 60)
+            else -> context.getString(
+                R.string.departure_countdown,
+                DurationTextFormatter.clock(secondsLeft),
+            )
         }
     }
 

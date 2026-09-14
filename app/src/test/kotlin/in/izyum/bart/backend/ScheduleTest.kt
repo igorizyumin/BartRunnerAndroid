@@ -70,6 +70,71 @@ class ScheduleTest {
         assertEquals(listOf(Station.MONT, Station.PITT), main.stops.map { it.station })
     }
 
+    @Test
+    fun dmuTerminalUpdateJoinsNearestElectricRealtimeTrip() {
+        val feedTime = epoch("2026-09-07T09:50:00-07:00")
+        val schedule = Schedule.fromStatic(heuristicNetwork(), feedTime, setOf(Line.YELLOW))
+        val electricPittTime = epoch("2026-09-07T10:05:00-07:00")
+        val dmuPctrTime = epoch("2026-09-07T10:17:00-07:00")
+        val electricUpdate = GtfsRealtime.TripUpdate.newBuilder()
+            .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("electric").build())
+            .addStopTimeUpdate(stopUpdate("PITT-1", electricPittTime))
+            .build()
+        val dmuUpdate = GtfsRealtime.TripUpdate.newBuilder()
+            .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("682").build())
+            .addStopTimeUpdate(stopUpdate("PCTR-1", dmuPctrTime))
+            .build()
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder().setGtfsRealtimeVersion("2.0"))
+            .addEntity(GtfsRealtime.FeedEntity.newBuilder().setId("electric").setTripUpdate(electricUpdate))
+            .addEntity(GtfsRealtime.FeedEntity.newBuilder().setId("682").setTripUpdate(dmuUpdate))
+            .build()
+
+        val corrected = schedule.applyRealtime(GtfsRealtimeFeedIndex.from(feed))
+        val electric = corrected.trips.first { it.key.tripId == "electric" }
+        val decoy = corrected.trips.first { it.key.tripId == "decoy" }
+
+        assertEquals(PredictionSource.REALTIME, electric.stopAt(Station.PITT)?.arrivalSource)
+        assertEquals(dmuPctrTime, electric.stopAt(Station.PCTR)?.arrivalTime)
+        assertEquals(PredictionSource.REALTIME, electric.stopAt(Station.PCTR)?.arrivalSource)
+        assertEquals(PredictionSource.SCHEDULE, decoy.stopAt(Station.PCTR)?.arrivalSource)
+    }
+
+    private fun stopUpdate(stopId: String, timeMillis: Long) =
+        GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
+            .setStopId(stopId)
+            .setArrival(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                .setTime(timeMillis / 1000L).build())
+            .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder()
+                .setTime(timeMillis / 1000L).build())
+            .build()
+
+    private fun heuristicNetwork(): BartGtfsNetwork = BartGtfsNetwork.fromCatalog(
+        GtfsNetworkCatalog.fromFiles(
+            mapOf(
+                "stops.txt" to "stop_id,stop_name,zone_id\n" +
+                    "MONT-1,Montgomery,MONT\n" +
+                    "PITT-1,Pittsburg,PITT\n" +
+                    "PCTR-1,Pittsburg Center,PCTR\n" +
+                    "ANTC-1,Antioch,ANTC\n",
+                "routes.txt" to "route_id,route_short_name\n2,Yellow-N\n",
+                "trips.txt" to "route_id,service_id,trip_id\n" +
+                    "2,weekday,electric\n2,weekday,decoy\n",
+                "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                    "electric,09:00:00,09:00:00,MONT-1,1\n" +
+                    "electric,09:20:00,09:20:00,PITT-1,2\n" +
+                    "electric,09:32:00,09:32:00,PCTR-1,3\n" +
+                    "electric,09:39:00,09:39:00,ANTC-1,4\n" +
+                    "decoy,09:44:00,09:44:00,MONT-1,1\n" +
+                    "decoy,10:04:00,10:04:00,PITT-1,2\n" +
+                    "decoy,10:16:00,10:16:00,PCTR-1,3\n" +
+                    "decoy,10:23:00,10:23:00,ANTC-1,4\n",
+                "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
+                    "weekday,1,1,1,1,1,0,0,20260901,20260930\n",
+            )
+        )
+    )
+
     private fun network(): BartGtfsNetwork = BartGtfsNetwork.fromCatalog(
         GtfsNetworkCatalog.fromFiles(
             mapOf(

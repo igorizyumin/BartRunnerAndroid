@@ -72,7 +72,7 @@
     <string name="eta_unavailable">ETA unavailable</string>
     <string name="timeline_no_data">No data</string>
     <string name="passed">Passed</string>
-    <string name="eta_in">in %1$d:%2$02d</string>
+    <string name="eta_in">in %1$s</string>
     <string name="train_label">Train</string>
     <string name="system_map_title">BART system map</string>
     <string name="map_day">Day</string>
@@ -114,7 +114,7 @@
     <string name="train">Train</string>
     <string name="departure_canceled">Canceled</string>
     <string name="departure_at_station">At station</string>
-    <string name="departure_countdown">%1$dm %2$ds</string>
+    <string name="departure_countdown">%1$s</string>
     <string name="estimated_arrival_unknown">Estimated arrival unknown</string>
     <string name="arrived_at_destination">Arrived at destination</string>
     <string name="arrives_around_minutes">Arrives ~%1$s (%2$d min)</string>

@@ -24,14 +24,14 @@ class GtfsRealtimeFeedIndex private constructor(
                 tripEntities += entity
                 val tripUpdate = entity.tripUpdate
                 val trip = if (tripUpdate.hasTrip()) tripUpdate.trip else null
-                if (trip != null && trip.hasTripId() && trip.tripId.isNotEmpty()) {
+                if (trip != null && trip.hasTripId() && trip.tripId.isNotEmpty()
+                    && !isDmuTripId(trip.tripId)
+                ) {
                     val tripId = trip.tripId
                     val existing = trips[tripId]
                     if (existing == null || shouldReplaceTrip(existing, entity)) {
                         trips[tripId] = entity
                     }
-                } else if (entity.hasId()) {
-                    trips[entity.id] = entity
                 }
             }
             if (entity.hasAlert()) {
@@ -78,6 +78,9 @@ class GtfsRealtimeFeedIndex private constructor(
             } else {
                 null
             }
+
+        private fun isDmuTripId(tripId: String): Boolean =
+            tripId.toIntOrNull()?.let { it in 600..799 } == true
 
         private fun shouldReplaceTrip(
             existing: GtfsRealtime.FeedEntity,

@@ -5,16 +5,60 @@ import `in`.izyum.bart.model.RealTimeDepartures
 import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
+import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.backend.Schedule
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.gtfs.GtfsNetworkCatalog
 import com.google.transit.realtime.GtfsRealtime
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GtfsRealtimeContentHandlerTest {
+    @Test
+    fun joinsDmuTerminalUpdateOntoRealtimeOnlyElectricTrip() {
+        val network = antiochNetwork()
+        val feedTime = epoch("2026-09-07T10:00:00-07:00")
+        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
+        val route = schedule.routesFor(Station.ANTC, null).single()
+        val electricTime = epoch("2026-09-07T10:05:00-07:00")
+        val dmuPctrTime = epoch("2026-09-07T10:17:00-07:00")
+        val dmuAntcTime = epoch("2026-09-07T10:24:00-07:00")
+        val feed = GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0")
+                .setTimestamp(feedTime / 1000L))
+            .addEntity(entity(
+                "yellow-s",
+                "electric-live",
+                arrayOf("PITT", "MONT"),
+                longArrayOf(electricTime / 1000L, (electricTime - 15 * 60_000L) / 1000L),
+            ))
+            .addEntity(entity(
+                "",
+                "682",
+                arrayOf("PCTR-2", "ANTC-2"),
+                longArrayOf(dmuPctrTime / 1000L, dmuAntcTime / 1000L),
+            ))
+            .build()
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.ANTC, null, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        val electric = departures.getDepartures().firstOrNull {
+            it.tripLegs.singleOrNull()?.tripId == "electric-live"
+        } ?: throw AssertionError("joined electric departure missing: ${departures.getDepartures()}")
+        val leg = electric.tripLegs.single()
+        assertEquals(Station.ANTC, leg.origin)
+        assertEquals(PredictionSource.REALTIME, leg.departureSource)
+        assertEquals(dmuAntcTime, leg.departureTime)
+        assertFalse("technical DMU update leaked into passenger output",
+            departures.getDepartures().any { it.tripLegs.any { trip -> trip.tripId == "682" } })
+    }
+
     @Test
     fun platformsBelongToOriginStopsAndRealtimeCanOverrideStaticPlatform() {
         val network = platformNetwork()
@@ -273,6 +317,26 @@ class GtfsRealtimeContentHandlerTest {
             "trips.txt" to "route_id,service_id,trip_id\n1,weekday,yellow-first\n12,weekday,blue-early\n12,weekday,blue-valid\n",
             "stop_times.txt" to "trip_id,stop_id,stop_sequence\nyellow-first,LAKE,1\nyellow-first,MONT,2\nblue-early,MONT,1\nblue-early,DALY,2\nblue-valid,MONT,1\nblue-valid,DALY,2\n",
             "transfers.txt" to "from_stop_id,to_stop_id,transfer_type,min_transfer_time,from_route_id,to_route_id\nMONT,MONT,2,90,1,12\n",
+        )
+        return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
+    }
+
+    private fun antiochNetwork(): BartGtfsNetwork {
+        val files = mapOf(
+            "stops.txt" to "stop_id,stop_name,zone_id\n" +
+                "MONT,Montgomery St.,MONT\n" +
+                "PITT,Pittsburg/Bay Point,PITT\n" +
+                "PCTR-2,Pittsburg Center,PCTR\n" +
+                "ANTC-2,Antioch,ANTC\n",
+            "routes.txt" to "route_id,route_short_name\nyellow-s,Yellow-S\n",
+            "trips.txt" to "route_id,service_id,trip_id\nyellow-s,weekday,scheduled\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                "scheduled,10:30:00,10:30:00,MONT,1\n" +
+                "scheduled,10:45:00,10:45:00,PITT,2\n" +
+                "scheduled,10:57:00,10:57:00,PCTR-2,3\n" +
+                "scheduled,11:04:00,11:04:00,ANTC-2,4\n",
+            "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
+                "weekday,1,1,1,1,1,0,0,20260901,20260930\n",
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }

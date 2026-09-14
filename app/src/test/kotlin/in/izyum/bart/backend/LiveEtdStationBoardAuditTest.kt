@@ -479,6 +479,10 @@ class LiveEtdStationBoardAuditTest {
             // GTFS correctly exposes the temporary Union City/Warm Springs legs.
             "bart_live_20260912_071605",
             "bart_live_20260912_192815",
+            // Weekend bus bridge: ETD destination labels do not describe the
+            // normal rail trips represented by the static GTFS snapshot.
+            "bart_live_20260913_182435",
+            "bart_live_20260913_201652",
         )
         private val REQUIRED_GTFS_FILES = setOf(
             "routes.txt", "trips.txt", "stops.txt", "stop_times.txt",

@@ -360,7 +360,15 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         val scheduledIds = scheduledTrips.mapNotNull { it.tripId }.toSet()
         val realtimeTrips = entities.mapNotNull { entity ->
             if (!entity.hasTripUpdate()) null else parseTrip(entity.tripUpdate, feedTime)
-        }
+        }.toMutableList()
+        // The Antioch DMU and the electric train are reported as separate
+        // updates.  DMU trip IDs are technical 600-series IDs, so they cannot
+        // be used as passenger trip identities.  Join their terminal points
+        // onto the nearest valid electric realtime trip before discarding the
+        // DMU-only snapshot.  Scheduled electric trips are also corrected in
+        // Schedule.applyRealtime; doing this here covers electric updates that
+        // are not present in the static schedule snapshot.
+        joinDmuRealtimeTrips(realtimeTrips, schedule)
         val realtimeOnly = realtimeTrips.filter { it.tripId !in scheduledIds }
         // Once realtime has reported a departure at this station, the static
         // schedule is not allowed to invent service during the first hour.
@@ -413,6 +421,122 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             it.line != Line.YELLOW_DMU
         }
     }
+
+    private fun joinDmuRealtimeTrips(
+        realtimeTrips: MutableList<TripSnapshot>,
+        schedule: Schedule,
+    ) {
+        val electricTrips = realtimeTrips.filter { trip ->
+            trip.line == Line.YELLOW
+                && !trip.canceled
+                && !isDmuTripId(trip.tripId)
+                && !trip.tripId.isNullOrEmpty()
+        }
+        val usedElectricTrips = mutableSetOf<TripSnapshot>()
+        realtimeTrips.filter { it.line == Line.YELLOW_DMU }.forEach { dmu ->
+            val direction = terminalDirection(dmu)
+            val terminal = terminalPoint(dmu, direction) ?: return@forEach
+            val match = electricTrips
+                .filter { candidate ->
+                    candidate !in usedElectricTrips
+                        && (direction == null || candidate.direction == null
+                        || candidate.direction == direction)
+                }
+                .mapNotNull { candidate ->
+                    terminalMatchDelta(candidate, terminal.station, terminal.time, direction, schedule)
+                        ?.let { candidate to it }
+                }
+                .filter { (_, delta) -> delta <= DMU_MATCH_MAX_MILLIS }
+                .minByOrNull { (_, delta) -> delta }
+                ?.first
+            if (match != null) {
+                usedElectricTrips += match
+                mergeRealtimeTrip(match, dmu)
+            }
+        }
+    }
+
+    private fun terminalDirection(trip: TripSnapshot): String? =
+        (trip.platform ?: trip.feedPlatform)?.let {
+            when (it) {
+                "1" -> "n"
+                "2" -> "s"
+                else -> null
+            }
+        }
+
+    private fun terminalPoint(
+        trip: TripSnapshot,
+        direction: String?,
+    ): TerminalPoint? {
+        val station = when (direction) {
+            "n" -> Station.PCTR
+            "s" -> Station.ANTC
+            else -> null
+        }
+        val point = station?.let { trip.pointAt(it) }
+            ?: trip.pointAt(Station.ANTC)
+            ?: trip.pointAt(Station.PCTR)
+            ?: return null
+        val time = point.departureTime.takeIf { it > 0L }
+            ?: point.arrivalTime.takeIf { it > 0L }
+            ?: return null
+        return TerminalPoint(point.station, time)
+    }
+
+    private fun terminalMatchDelta(
+        candidate: TripSnapshot,
+        terminalStation: Station,
+        terminalTime: Long,
+        direction: String?,
+        schedule: Schedule,
+    ): Long? {
+        val direct = candidate.pointAt(terminalStation)?.let { point ->
+            val time = point.departureTime.takeIf { it > 0L }
+                ?: point.arrivalTime.takeIf { it > 0L }
+            time?.let { kotlin.math.abs(it - terminalTime) }
+        }
+        if (direct != null) return direct
+
+        val pitt = candidate.pointAt(Station.PITT) ?: return null
+        val pittTime = pitt.departureTime.takeIf { it > 0L }
+            ?: pitt.arrivalTime.takeIf { it > 0L }
+            ?: return null
+        val travel = travelTimeBetween(Station.PITT, terminalStation, direction, schedule)
+            ?: return null
+        val projected = if (direction == "n") pittTime - travel else pittTime + travel
+        return kotlin.math.abs(projected - terminalTime)
+    }
+
+    private fun travelTimeBetween(
+        from: Station,
+        to: Station,
+        direction: String?,
+        schedule: Schedule,
+    ): Long? {
+        val pattern = bartGtfsNetwork.routePatternsForLine(Line.YELLOW)
+            .firstOrNull { direction == null || it.direction == null || it.direction == direction }
+            ?: return null
+        val fromIndex = pattern.stations.indexOf(from)
+        val toIndex = pattern.stations.indexOf(to)
+        if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return null
+        val step = if (toIndex > fromIndex) 1 else -1
+        var total = 0L
+        var index = fromIndex
+        while (index != toIndex) {
+            val next = index + step
+            total += schedule.nominalTravelTimeMillis(
+                pattern.stations[index], pattern.stations[next]
+            ) ?: return null
+            index = next
+        }
+        return total
+    }
+
+    private fun isDmuTripId(tripId: String?): Boolean =
+        tripId?.toIntOrNull()?.let { it in 600..799 } == true
+
+    private data class TerminalPoint(val station: Station, val time: Long)
 
     private fun coverageKey(line: Line, destination: Station?): CoverageKey = CoverageKey(
         when (line) {
@@ -475,7 +599,17 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         realtime.points.forEach { realtimePoint ->
             val existing = target.pointAt(realtimePoint.station)
             if (existing == null) {
-                target.points += realtimePoint
+                target.points += StopTimePoint(
+                    realtimePoint.station,
+                    stationOrder(target, realtimePoint.station) ?: realtimePoint.order,
+                    realtimePoint.departureTime,
+                    realtimePoint.arrivalTime,
+                    realtimePoint.scheduledDepartureTime,
+                    realtimePoint.scheduledArrivalTime,
+                    realtimePoint.departureSource,
+                    realtimePoint.arrivalSource,
+                    realtimePoint.platform,
+                )
             } else {
                 target.points.remove(existing)
                 target.points += StopTimePoint(
@@ -492,7 +626,23 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             }
         }
         target.points.sortBy { it.order }
+        target.lastOrder = target.points.maxOfOrNull { it.order } ?: target.lastOrder
+        val realtimeDestination = realtime.trainDestination
+        val targetDestination = target.trainDestination
+        if (realtimeDestination != null
+            && (targetDestination == null
+                || (stationOrder(target, realtimeDestination) ?: Int.MIN_VALUE)
+                    > (stationOrder(target, targetDestination) ?: Int.MIN_VALUE))
+        ) {
+            target.trainDestination = realtimeDestination
+        }
     }
+
+    private fun stationOrder(trip: TripSnapshot, station: Station): Int? =
+        bartGtfsNetwork.routePatternsForLine(trip.line)
+            .filter { trip.direction == null || it.direction == null || it.direction == trip.direction }
+            .mapNotNull { pattern -> pattern.stations.indexOf(station).takeIf { it >= 0 } }
+            .minOrNull()
 
     private fun findMatchingTrip(leg: TripLeg, trips: List<TripSnapshot>): TripSnapshot? =
         trips.firstOrNull { trip ->
@@ -1028,6 +1178,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
 
     companion object {
         private const val ESTIMATE_TOLERANCE_MILLIS = 30000L
+        private const val DMU_MATCH_MAX_MILLIS = 20L * 60L * 1000L
         private const val REALTIME_CANCELLATION_WINDOW_MILLIS = 60L * 60L * 1000L
         private const val DEPARTURE_STALE_TOLERANCE_MILLIS = 45 * 1000L
         private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
