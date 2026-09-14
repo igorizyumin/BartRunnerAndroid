@@ -56,29 +56,6 @@ object EtdCorroborator {
             .distinctBy(::key)
     }
 
-    fun applyBoards(
-        departures: RealTimeDepartures,
-        suspicious: List<TripLeg>,
-        boards: Map<Station, EtdLookup>,
-    ): RealTimeDepartures {
-        val realtime = departures.getDepartures()
-            .flatMap { it.tripLegs }
-            .filter { it.departureSource == PredictionSource.REALTIME }
-        val decisions = decideDetailed(suspicious, boards, realtime)
-            .mapValues { it.value.match }
-        return departures.filterDepartures { departure ->
-            departure.tripLegs.none { leg ->
-                decisions[keyOrNull(leg)] in setOf(EtdMatch.ABSENT, EtdMatch.CANCELED)
-            }
-        }
-    }
-
-    fun decide(
-        suspicious: List<TripLeg>,
-        boards: Map<Station, EtdLookup>,
-    ): Map<EtdLegKey, EtdMatch> = decideDetailed(suspicious, boards)
-        .mapValues { it.value.match }
-
     fun decideDetailed(
         suspicious: List<TripLeg>,
         boards: Map<Station, EtdLookup>,
@@ -176,30 +153,6 @@ object EtdCorroborator {
             board.receivedAtMillis + SUSPICIOUS_WINDOW_MILLIS
     }
 
-    fun departureOverrides(
-        suspicious: List<TripLeg>,
-        boards: Map<Station, EtdLookup>,
-    ): Map<Pair<String, Station>, Long> = decideDetailed(suspicious, boards)
-        .mapNotNull { (key, decision) ->
-            if (decision.match == EtdMatch.MATCHED
-                && decision.departureTimeMillis != null
-            ) {
-                (key.tripId to key.origin) to decision.departureTimeMillis
-            } else {
-                null
-            }
-        }
-        .toMap()
-
-    fun suppressedTripIds(
-        suspicious: List<TripLeg>,
-        boards: Map<Station, EtdLookup>,
-    ): Set<String> = decide(suspicious, boards)
-        .filterValues { it == EtdMatch.ABSENT || it == EtdMatch.CANCELED }
-        .keys
-        .map { it.tripId }
-        .toSet()
-
     private data class MatchGroup(
         val station: Station?,
         val line: Line?,
@@ -213,8 +166,6 @@ object EtdCorroborator {
         leg.scheduledDepartureTime,
     )
 
-    private fun keyOrNull(leg: TripLeg): EtdLegKey? =
-        if (leg.tripId != null && leg.origin != null) key(leg) else null
 }
 
 /** Adds the asynchronous ETD step after the ordinary projection identifies candidates. */

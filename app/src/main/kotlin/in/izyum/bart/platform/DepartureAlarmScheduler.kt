@@ -12,7 +12,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import `in`.izyum.bart.activities.RoutesListActivity
-import `in`.izyum.bart.model.Constants
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.SystemTimeSource
@@ -31,6 +30,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     AutoCloseable {
 
     private companion object {
+        const val TAG = "DepartureAlarmScheduler"
         const val ALARM_PREFS = "departure_alarm_state"
         const val LEAD_TIME_SUFFIX = ".leadTimeMinutes"
         const val PENDING_SUFFIX = ".pending"
@@ -92,7 +92,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     fun cancel() {
         alarmManager?.cancel(alarmIntent())
         updateState(leadTimeMinutes, false)
-        Log.d(Constants.TAG, "Alarm cancelled")
+        Log.d(TAG, "Alarm cancelled")
     }
 
     fun stopTracking() {
@@ -130,7 +130,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
 
     private fun alarmIntent(): PendingIntent {
         val intent = Intent(applicationContext, AlarmBroadcastReceiver::class.java)
-            .setAction(Constants.ACTION_ALARM)
+            .setAction(DEPARTURE_ALARM_ACTION)
         return PendingIntent.getBroadcast(
             applicationContext,
             0,
@@ -145,7 +145,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     private fun schedule() {
         val manager = alarmManager
         if (manager == null) {
-            Log.w(Constants.TAG,
+            Log.w(TAG,
                 "No alarm manager available, so alarm will not be scheduled")
             return
         }
@@ -153,7 +153,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         val alarmTime = alarmClockTime()
         val intent = alarmIntent()
         if (!ExactAlarmPermission.isGranted(applicationContext)) {
-            Log.w(Constants.TAG, "Exact alarm permission is unavailable")
+            Log.w(TAG, "Exact alarm permission is unavailable")
             return
         }
         try {
@@ -162,14 +162,14 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
                 intent,
             )
         } catch (exception: SecurityException) {
-            Log.w(Constants.TAG, "Could not schedule departure alarm", exception)
+            Log.w(TAG, "Could not schedule departure alarm", exception)
         }
 
         val alarmText = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)
             .withLocale(Locale.getDefault())
             .withZone(ZoneId.systemDefault())
             .format(Instant.ofEpochMilli(alarmTime))
-        Log.v(Constants.TAG, "Scheduling alarm for $alarmText")
+        Log.v(TAG, "Scheduling alarm for $alarmText")
     }
 
     private fun updateState(leadTimeMinutes: Int, pending: Boolean) {
@@ -202,3 +202,5 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         builder.append('|').append(station?.abbreviation ?: "")
     }
 }
+
+internal const val DEPARTURE_ALARM_ACTION = "in.izyum.bart.action.DEPARTURE_ALARM"

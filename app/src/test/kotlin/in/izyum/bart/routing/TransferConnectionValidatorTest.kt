@@ -8,40 +8,43 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class TransferConnectionValidatorTest {
+class TransferPolicyTest {
     @Test
     fun exposesMinimumTimeWithoutRejectingTheTransfer() {
         val network = network()
+        val policy = TransferPolicy(network)
         val arrival = 1_000_000L
-        assertTrue(TransferConnectionValidator.canConnect(arrival, arrival + 90_000L, Station.MONT, Line.YELLOW, Line.BLUE, network))
-        assertTrue(TransferConnectionValidator.canConnect(arrival, arrival + 89_999L, Station.MONT, Line.YELLOW, Line.BLUE, network))
-        assertTrue(TransferConnectionValidator.meetsMinimumTransferTime(arrival, arrival + 90_000L, 90))
-        assertFalse(TransferConnectionValidator.meetsMinimumTransferTime(arrival, arrival + 89_999L, 90))
+        assertTrue(policy.canTransfer(arrival, arrival + 90_000L, Station.MONT, Line.YELLOW, Line.BLUE))
+        assertTrue(policy.canTransfer(arrival, arrival + 89_999L, Station.MONT, Line.YELLOW, Line.BLUE))
+        assertTrue(policy.meetsMinimumTransferTime(arrival, arrival + 90_000L, 90))
+        assertFalse(policy.meetsMinimumTransferTime(arrival, arrival + 89_999L, 90))
     }
 
     @Test
     fun rejectsMissingTimesForbiddenAndNonSharedConnections() {
         val network = network()
-        assertFalse(TransferConnectionValidator.canConnect(0L, 1000L, 0))
-        assertFalse(TransferConnectionValidator.canConnect(1000L, 0L, 0))
-        assertFalse(TransferConnectionValidator.canConnect(1000L, 999L, Station.MONT, Line.YELLOW, Line.BLUE, network))
-        assertFalse(TransferConnectionValidator.canConnect(1000L, 2000L, -1))
-        assertFalse(TransferConnectionValidator.canConnect(1_000_000L, 1_090_000L, Station.RICH, Line.BLUE, Line.YELLOW, network))
-        assertTrue(TransferConnectionValidator.canConnect(1_000_000L, 1_029_999L, Station.DALY, Line.BLUE, Line.RED, network))
-        assertFalse(TransferConnectionValidator.meetsMinimumTransferTime(1_000_000L, 1_029_999L, 30))
+        val policy = TransferPolicy(network)
+        assertFalse(policy.canTransfer(0L, 1000L, null, null, null))
+        assertFalse(policy.canTransfer(1000L, 0L, null, null, null))
+        assertFalse(policy.canTransfer(1000L, 999L, Station.MONT, Line.YELLOW, Line.BLUE))
+        assertFalse(policy.meetsMinimumTransferTime(1000L, 2000L, -1))
+        assertFalse(policy.canTransfer(1_000_000L, 1_090_000L, Station.RICH, Line.BLUE, Line.YELLOW))
+        assertTrue(policy.canTransfer(1_000_000L, 1_029_999L, Station.DALY, Line.BLUE, Line.RED))
+        assertFalse(policy.meetsMinimumTransferTime(1_000_000L, 1_029_999L, 30))
     }
 
     @Test
     fun validatesEachConnectionInAMultiLegItinerary() {
         val network = network()
+        val policy = TransferPolicy(network)
         val firstArrival = 1_000_000L
         val secondDeparture = firstArrival + 90_000L
         val secondArrival = secondDeparture + 300_000L
         val thirdDeparture = secondArrival + 30_000L
-        assertTrue(TransferConnectionValidator.canConnect(firstArrival, secondDeparture, Station.MONT, Line.YELLOW, Line.BLUE, network))
-        assertTrue(TransferConnectionValidator.canConnect(secondArrival, thirdDeparture, Station.DALY, Line.BLUE, Line.RED, network))
-        assertTrue(TransferConnectionValidator.canConnect(secondArrival, thirdDeparture - 1L, Station.DALY, Line.BLUE, Line.RED, network))
-        assertFalse(TransferConnectionValidator.meetsMinimumTransferTime(secondArrival, thirdDeparture - 1L, 30))
+        assertTrue(policy.canTransfer(firstArrival, secondDeparture, Station.MONT, Line.YELLOW, Line.BLUE))
+        assertTrue(policy.canTransfer(secondArrival, thirdDeparture, Station.DALY, Line.BLUE, Line.RED))
+        assertTrue(policy.canTransfer(secondArrival, thirdDeparture - 1L, Station.DALY, Line.BLUE, Line.RED))
+        assertFalse(policy.meetsMinimumTransferTime(secondArrival, thirdDeparture - 1L, 30))
     }
 
     private fun network(): BartGtfsNetwork {

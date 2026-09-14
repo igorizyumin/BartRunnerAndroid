@@ -20,7 +20,7 @@ class EtdCorroborationTest {
 
         assertEquals(
             EtdMatch.MATCHED,
-            EtdCorroborator.decide(
+            decisions(
                 listOf(leg),
                 mapOf(Station.MLPT to EtdLookup(board)),
             )[EtdLegKey("trip-1", Station.MLPT, Station.BERY, leg.scheduledDepartureTime)],
@@ -32,7 +32,7 @@ class EtdCorroborationTest {
         val covered = leg(now + 10 * 60_000L)
         val notCovered = leg(now + 40 * 60_000L)
         val board = board(now + 20 * 60_000L)
-        val decisions = EtdCorroborator.decide(
+        val decisions = decisions(
             listOf(covered, notCovered),
             mapOf(Station.MLPT to EtdLookup(board)),
         )
@@ -54,7 +54,7 @@ class EtdCorroborationTest {
 
         assertEquals(
             EtdMatch.ABSENT,
-            EtdCorroborator.decide(
+            decisions(
                 listOf(leg),
                 mapOf(Station.MLPT to EtdLookup(emptyBoard)),
             )[EtdLegKey("trip-1", Station.MLPT, Station.BERY, leg.scheduledDepartureTime)],
@@ -67,7 +67,7 @@ class EtdCorroborationTest {
 
         assertEquals(
             EtdMatch.UNKNOWN,
-            EtdCorroborator.decide(
+            decisions(
                 listOf(leg),
                 mapOf(Station.MLPT to EtdLookup(null, IllegalStateException("offline"))),
             )[EtdLegKey("trip-1", Station.MLPT, Station.BERY, leg.scheduledDepartureTime)],
@@ -94,7 +94,7 @@ class EtdCorroborationTest {
 
         assertEquals(
             EtdMatch.CANCELED,
-            EtdCorroborator.decide(
+            decisions(
                 listOf(leg),
                 mapOf(Station.MLPT to EtdLookup(canceled)),
             )[EtdLegKey("trip-1", Station.MLPT, Station.BERY, leg.scheduledDepartureTime)],
@@ -163,4 +163,11 @@ class EtdCorroborationTest {
         now,
         listOf(EtdDeparture(Station.BERY, Line.ORANGE, departureTime, "1", "South", false)),
     )
+
+    private fun decisions(
+        suspicious: List<TripLeg>,
+        boards: Map<Station, EtdLookup>,
+    ): Map<EtdLegKey, EtdMatch> = EtdCorroborator
+        .decideDetailed(suspicious, boards)
+        .mapValues { it.value.match }
 }

@@ -60,6 +60,12 @@ dependencies {
 android {
     compileSdk = 37
 
+    sourceSets {
+        main {
+            assets.srcDirs += ['../map']
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true

@@ -7,11 +7,11 @@ import android.content.Intent
 import android.util.Log
 import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.activities.RoutesListActivity
-import `in`.izyum.bart.model.Constants
 import `in`.izyum.bart.receivers.DeparturePollingReceiver
 
 /** Schedules one-shot alarm-clock wakeups for background followed-trip refreshes. */
 object DeparturePollingAlarm {
+    private const val TAG = "DeparturePollingAlarm"
     private const val REQUEST_CODE = 1241
     private const val ACTION_POLL = "in.izyum.bart.action.POLL_DEPARTURE"
 
@@ -35,7 +35,7 @@ object DeparturePollingAlarm {
             )
         } catch (exception: SecurityException) {
             cancel(applicationContext)
-            Log.w(Constants.TAG, "Could not schedule exact departure refresh", exception)
+            Log.w(TAG, "Could not schedule exact departure refresh", exception)
         }
     }
 

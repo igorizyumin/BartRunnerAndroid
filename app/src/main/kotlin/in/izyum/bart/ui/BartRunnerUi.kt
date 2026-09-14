@@ -122,6 +122,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.widget.ImageView
+import android.view.View
+import android.webkit.WebView
+import android.net.Uri
+import java.util.Calendar
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.DeparturesViewModel
 import `in`.izyum.bart.activities.RoutesUiState
@@ -375,6 +379,8 @@ fun HomeScreen(
             }
             if (followedTrip != null) {
                 item {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val status = tripStatus(context, followedTrip, timeSource, tick)
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable { onViewTrip(followedTrip) },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -382,10 +388,19 @@ fun HomeScreen(
                     ) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.Train, stringResource(R.string.trip_in_progress), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(25.dp))
+                                Icon(Icons.Filled.Train, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(25.dp))
                             }
                             Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text(stringResource(R.string.trip_in_progress), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(status.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                status.subtitle?.let {
+                                    Text(
+                                        it,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                                 Text(
                                     stringResource(R.string.route_arrow, followedTrip.origin?.getName().orEmpty(), (followedTrip.passengerDestination ?: followedTrip.trainDestination)?.getName().orEmpty()),
                                     style = MaterialTheme.typography.bodySmall,
@@ -900,8 +915,8 @@ private fun FavoriteRouteCard(
     val context = androidx.compose.ui.platform.LocalContext.current
     val scheduleDetails = departure?.let { DepartureTextFormatter.departureSchedulePresentation(context, it) }
     val routeTitle = route.destination?.let { destination ->
-        stringResource(R.string.route_arrow, route.origin?.getName().orEmpty(), destination.getName())
-    } ?: route.origin?.getName().orEmpty()
+        stringResource(R.string.route_arrow, route.origin.getName(), destination.getName())
+    } ?: route.origin.getName()
     Card(modifier = modifier, shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -973,22 +988,21 @@ fun RoutePickerDialog(
     }
     val lastOriginPosition = preferences.getInt(LAST_SELECTED_ORIGIN, 0)
     var origin by remember(initialRoute) {
-        mutableStateOf(initialRoute?.origin ?: stations.getOrNull(lastOriginPosition) ?: stations.firstOrNull())
+        mutableStateOf(initialRoute?.origin ?: stations.getOrNull(lastOriginPosition) ?: stations.first())
     }
     var destination by remember(initialRoute) {
         mutableStateOf(initialRoute?.destination)
     }
     var addReturn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val chooseOriginError = stringResource(R.string.choose_origin_station)
     val sameStationError = stringResource(R.string.origin_destination_must_differ)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StationMenu(stringResource(R.string.from), origin, stations, { origin = it }, allowAny = false)
-                IconButton(enabled = destination != null, onClick = { val old = origin; origin = destination; destination = old }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Icon(Icons.Filled.SwapVert, stringResource(R.string.swap_stations)) }
+                StationMenu(stringResource(R.string.from), origin, stations, { it?.let { selected -> origin = selected } }, allowAny = false)
+                IconButton(enabled = destination != null, onClick = { destination?.let { oldDestination -> destination = origin; origin = oldDestination } }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Icon(Icons.Filled.SwapVert, stringResource(R.string.swap_stations)) }
                 StationMenu(stringResource(R.string.to), destination, stations, { destination = it }, allowAny = true)
                 if (showReturn) {
                     CheckboxRow(stringResource(R.string.also_save_return_trip), addReturn) { addReturn = it }
@@ -998,8 +1012,7 @@ fun RoutePickerDialog(
         },
         confirmButton = {
             TextButton(onClick = {
-                if (origin == null) error = chooseOriginError
-                else if (destination == origin) error = sameStationError
+                if (destination == origin) error = sameStationError
                 else {
                     preferences.edit {
                         putInt(LAST_SELECTED_ORIGIN, stations.indexOf(origin))
@@ -1054,7 +1067,7 @@ fun DeparturesScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val tick = rememberSecondTick(timeSource)
-    val originName = route.origin?.getName().orEmpty()
+    val originName = route.origin.getName()
     val destinationName = route.destination?.getName()
     Scaffold(
         topBar = {
@@ -1750,37 +1763,67 @@ private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SystemMapScreen(onBack: () -> Unit) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-        scale = (scale * zoomChange).coerceIn(1f, 4f)
-        val panMultiplier = scale.coerceAtLeast(1f)
-        offset = if (scale > 1f) {
-            offset + Offset(panChange.x * panMultiplier, panChange.y * panMultiplier)
-        } else {
-            Offset.Zero
-        }
-    }
-    fun changeScale(multiplier: Float) {
-        scale = (scale * multiplier).coerceIn(1f, 4f)
-        if (scale == 1f) offset = Offset.Zero
-    }
-    Scaffold(topBar = { TopAppBar(navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } }, title = { Text(stringResource(R.string.system_map_title), fontWeight = FontWeight.Bold) }) }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(R.drawable.map),
-                stringResource(R.string.system_map_title),
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offset.x
-                        translationY = offset.y
+fun SystemMapScreen(onBack: () -> Unit, initialMapStyle: SystemMapStyle? = null) {
+    var mapStyle by remember { mutableStateOf(initialMapStyle ?: defaultSystemMapStyle()) }
+    var showMapMenu by remember { mutableStateOf(false) }
+    var mapWebView by remember { mutableStateOf<WebView?>(null) }
+    val mapAsset = mapStyle.assetName
+    Scaffold(topBar = {
+        TopAppBar(
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
+            title = { Text(stringResource(R.string.system_map_title), fontWeight = FontWeight.Bold) },
+            actions = {
+                Box {
+                    TextButton(onClick = { showMapMenu = true }) {
+                        Text(stringResource(mapStyle.label))
                     }
-                    .transformable(transformState),
-                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    DropdownMenu(
+                        expanded = showMapMenu,
+                        onDismissRequest = { showMapMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.map_day)) },
+                            onClick = {
+                                mapStyle = SystemMapStyle.DAY
+                                showMapMenu = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.map_evening)) },
+                            onClick = {
+                                mapStyle = SystemMapStyle.NIGHT
+                                showMapMenu = false
+                            },
+                        )
+                    }
+                }
+            },
+        )
+    }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxSize(),
+                factory = { context ->
+                    WebView(context).apply {
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        settings.apply {
+                            builtInZoomControls = true
+                            displayZoomControls = false
+                            javaScriptEnabled = false
+                            loadWithOverviewMode = true
+                            useWideViewPort = true
+                        }
+                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                        mapWebView = this
+                    }
+                },
+                update = { view ->
+                    if (view.tag != mapAsset) {
+                        view.tag = mapAsset
+                        view.loadUrl("file:///android_asset/${Uri.encode(mapAsset)}")
+                    }
+                },
             )
             Column(
                 modifier = Modifier
@@ -1791,18 +1834,37 @@ fun SystemMapScreen(onBack: () -> Unit) {
                         RoundedCornerShape(16.dp),
                     ),
             ) {
-                IconButton(onClick = { changeScale(1.5f) }) {
+                IconButton(onClick = { mapWebView?.zoomIn() }) {
                     Icon(Icons.Filled.ZoomIn, stringResource(R.string.zoom_in))
                 }
-                IconButton(onClick = { changeScale(1f / 1.5f) }) {
+                IconButton(onClick = { mapWebView?.zoomOut() }) {
                     Icon(Icons.Filled.ZoomOut, stringResource(R.string.zoom_out))
                 }
-                IconButton(onClick = { scale = 1f; offset = Offset.Zero }) {
+                IconButton(onClick = {
+                    mapWebView?.apply {
+                        setInitialScale(0)
+                        clearHistory()
+                        scrollTo(0, 0)
+                    }
+                }) {
                     Icon(Icons.Filled.Refresh, stringResource(R.string.reset_map_zoom))
                 }
             }
         }
     }
+}
+
+enum class SystemMapStyle(
+    val assetName: String,
+    val label: Int,
+) {
+    DAY("BART Open Source Map Daytime Service.svg", R.string.map_day),
+    NIGHT("BART Open Source Map Evening Service.svg", R.string.map_evening),
+}
+
+internal fun defaultSystemMapStyle(calendar: Calendar = Calendar.getInstance()): SystemMapStyle {
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    return if (hour in 3 until 21) SystemMapStyle.DAY else SystemMapStyle.NIGHT
 }
 
 @Composable

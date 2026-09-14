@@ -252,6 +252,54 @@ class BartRunnerUiTest {
     }
 
     @Test
+    fun homeScreenShowsFollowedTripArrivalCountdown() {
+        val now = 1_000_000L
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false),
+                    followedTrip = departureBeforeBoarding(now),
+                    timeSource = TimeSource { now },
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Train arrives in 10:30").assertIsDisplayed()
+        composeRule.onNodeWithText("Trip in progress").assertDoesNotExist()
+    }
+
+    @Test
+    fun homeScreenShowsFollowedTripTransferStatus() {
+        val now = 1_000_000L
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false),
+                    followedTrip = transferDeparture(now, connectingArrival = now + 120_000L),
+                    timeSource = TimeSource { now },
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Transfer to ORANGE train on platform 2.").assertIsDisplayed()
+        composeRule.onNodeWithText("Connecting train arriving in 2:00").assertIsDisplayed()
+    }
+
+    @Test
     fun tripScreenShowsRouteAndFollowControl() {
         setTestContent {
             BartRunnerTheme {
@@ -414,12 +462,15 @@ class BartRunnerUiTest {
     @Test
     fun systemMapExposesZoomControls() {
         setTestContent {
-            BartRunnerTheme { SystemMapScreen(onBack = {}) }
+            BartRunnerTheme { SystemMapScreen(onBack = {}, initialMapStyle = SystemMapStyle.DAY) }
         }
 
         composeRule.onNodeWithContentDescription("Zoom in").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Zoom out").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Reset map zoom").assertIsDisplayed()
+        composeRule.onNodeWithText("Day").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("Evening").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("Evening").assertIsDisplayed()
     }
 
     private fun testDeparture(): Departure {
@@ -438,6 +489,31 @@ class BartRunnerUiTest {
                 Line.ORANGE, Station.CAST, Station.MLPT, Station.MLPT,
                 "instrumented-test-trip", departureTime, arrivalTime, emptyList(),
             )))
+            .build()
+    }
+
+    private fun departureBeforeBoarding(now: Long): Departure {
+        val departureTime = now + 600_000L
+        return Departure.builder()
+            .setOrigin(Station.CAST)
+            .setTrainDestination(Station.MLPT)
+            .setPassengerDestination(Station.MLPT)
+            .setLine(Line.ORANGE)
+            .setDirection("arrival-test")
+            .setMinEstimate(departureTime - 30_000L)
+            .setMaxEstimate(departureTime + 30_000L)
+            .setTripLegs(listOf(
+                TripLeg(
+                    Line.ORANGE,
+                    Station.CAST,
+                    Station.MLPT,
+                    Station.MLPT,
+                    "arrival-test-trip",
+                    departureTime,
+                    departureTime + 1_800_000L,
+                    emptyList(),
+                ),
+            ))
             .build()
     }
 

@@ -16,10 +16,4 @@ class TripStop(
         arrivalTime
     )
 
-    fun arrivalDelaySeconds(): Int? = delaySeconds(arrivalTime, scheduledArrivalTime)
-
-    fun departureDelaySeconds(): Int? = delaySeconds(departureTime, scheduledDepartureTime)
-
-    private fun delaySeconds(actual: Long, scheduled: Long): Int? =
-        if (actual > 0L && scheduled > 0L) ((actual - scheduled) / 1000L).toInt() else null
 }

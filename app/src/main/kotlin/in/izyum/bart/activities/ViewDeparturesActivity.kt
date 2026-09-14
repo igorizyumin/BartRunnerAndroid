@@ -39,7 +39,7 @@ class ViewDeparturesActivity : ComponentActivity() {
                 routeFare = withContext(Dispatchers.IO) {
                     runCatching {
                         app.gtfsStaticData.getFare(
-                            stationPair.origin!!,
+                            stationPair.origin,
                             stationPair.destination!!,
                             FareDiscountPreferences.getRiderCategoryId(this@ViewDeparturesActivity),
                         )

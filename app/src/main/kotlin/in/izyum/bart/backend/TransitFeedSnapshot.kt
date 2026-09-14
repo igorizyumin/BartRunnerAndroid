@@ -28,9 +28,6 @@ class TransitFeedSnapshot(
     fun getTripUpdatesTimestampMillis(): Long =
         feedTimestampMillis(tripUpdates, receivedAtMillis)
 
-    fun getAlertsTimestampMillis(): Long =
-        feedTimestampMillis(alerts, receivedAtMillis)
-
     /** Builds the trip-update index once and shares it across all projections. */
     fun getTripUpdateIndex(): GtfsRealtimeFeedIndex {
         tripUpdateIndex?.let { return it }

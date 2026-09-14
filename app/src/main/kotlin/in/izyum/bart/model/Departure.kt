@@ -17,7 +17,6 @@ data class Departure(
     val trainLength: String?,
     val requiresTransfer: Boolean,
     val transferScheduled: Boolean,
-    val limited: Boolean,
     val canceled: Boolean,
     val minutes: Int,
     val minEstimate: Long,
@@ -49,30 +48,16 @@ data class Departure(
 
     fun getTrainDestinationName(): String? = trainDestination?.getName()
 
-    fun getTrainDestinationColorHex(): String? = destinationColorHex
-
-    fun getTrainDestinationColorText(): String? = destinationColorText
-
-    fun isBikeAllowed(): Boolean = bikeAllowed
-
-    fun isLimited(): Boolean = limited
-
     fun isCanceled(): Boolean = canceled
 
-    fun getTrainDestinationAbbreviation(): String? = trainDestination?.abbreviation
-
     fun getStationPair(): StationPair? =
-        passengerDestination?.let { StationPair(origin, it) }
+        origin?.let { departureOrigin ->
+            passengerDestination?.let { StationPair(departureOrigin, it) }
+        }
 
     fun hasTransfers(): Boolean = tripLegs.size > 1
 
-    fun isTransferScheduled(): Boolean = transferScheduled
-
     fun isListedInETDs(): Boolean = listedInETDs
-
-    fun beganAsDeparted(): Boolean = beganAsDeparted
-
-    fun hasEstimatedTripTime(): Boolean = estimatedTripTime > 0
 
     fun hasAnyArrivalEstimate(): Boolean =
         (tripLegs.isNotEmpty() && hasCompleteTripLegs() && tripLegs.last().hasArrivalTime())
@@ -199,11 +184,6 @@ data class Departure(
 
     fun replaceTripLegs(legs: List<TripLeg>): Departure = withTripLegs(legs)
 
-    fun calculateEstimates(originalEstimateTime: Long): Departure = copy(
-        minEstimate = originalEstimateTime + minutes * 60_000L - 30_000L,
-        maxEstimate = originalEstimateTime + minutes * 60_000L + 30_000L,
-    )
-
     fun mergeEstimate(departure: Departure, timeSource: TimeSource): Departure =
         merge(this, departure, updateTripLegs = true, timeSource)
 
@@ -324,7 +304,6 @@ data class Departure(
         private var trainLength: String? = null
         private var requiresTransfer = false
         private var transferScheduled = false
-        private var limited = false
         private var canceled = false
         private var minutes = 0
         private var minEstimate = 0L
@@ -347,7 +326,6 @@ data class Departure(
         fun setTrainLength(value: String?) = apply { trainLength = value }
         fun setRequiresTransfer(value: Boolean) = apply { requiresTransfer = value }
         fun setTransferScheduled(value: Boolean) = apply { transferScheduled = value }
-        fun setLimited(value: Boolean) = apply { limited = value }
         fun setCanceled(value: Boolean) = apply { canceled = value }
         fun setMinutes(value: Int) = apply {
             minutes = value
@@ -375,7 +353,6 @@ data class Departure(
                 trainLength,
                 requiresTransfer,
                 transferScheduled,
-                limited,
                 canceled,
                 minutes,
                 minEstimate,

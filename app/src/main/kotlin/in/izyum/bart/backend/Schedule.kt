@@ -5,7 +5,7 @@ import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
-import `in`.izyum.bart.routing.TransferStationPreferences
+import `in`.izyum.bart.routing.TransferPolicy
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.gtfs.GtfsScheduledTrip
 import `in`.izyum.bart.transit.gtfs.GtfsStopTime
@@ -15,7 +15,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Collections
 import java.util.LinkedHashMap
-import java.util.LinkedHashSet
 
 /**
  * A time-scoped, immutable view of the transit schedule.
@@ -24,14 +23,13 @@ import java.util.LinkedHashSet
  * view and never replace the original scheduled values.
  */
 class Schedule private constructor(
-    val network: BartGtfsNetwork,
-    val feedTime: Long,
-    val nodes: Set<Station>,
+    private val network: BartGtfsNetwork,
+    private val feedTime: Long,
     val trips: List<Trip>,
-    private val edgesByOrigin: Map<Station, List<TripEdge>>,
     private val nominalTravelTimes: Map<Pair<Station, Station>, Long>,
     private val stationResolver: (String?) -> Station?,
 ) {
+    private val transferPolicy = TransferPolicy(network)
     data class TripKey(val serviceDate: LocalDate?, val tripId: String)
 
     data class Stop(
@@ -45,16 +43,6 @@ class Schedule private constructor(
         val skipped: Boolean = false,
         val platform: String? = null,
     ) {
-        fun arrivalDelaySeconds(): Int? = delaySeconds(arrivalTime, scheduledArrivalTime)
-
-        fun departureDelaySeconds(): Int? = delaySeconds(departureTime, scheduledDepartureTime)
-
-        private fun delaySeconds(actual: Long, scheduled: Long): Int? =
-            if (actual > 0L && scheduled > 0L) {
-                ((actual - scheduled) / 1000L).toInt()
-            } else {
-                null
-            }
     }
 
     data class Trip(
@@ -76,25 +64,6 @@ class Schedule private constructor(
             return start >= 0 && end > start
         }
     }
-
-    data class TripEdge(
-        val trip: Trip,
-        val from: Station,
-        val to: Station,
-        val scheduledDepartureTime: Long,
-        val scheduledArrivalTime: Long,
-        val departureTime: Long,
-        val arrivalTime: Long,
-        val departureSource: PredictionSource,
-        val arrivalSource: PredictionSource,
-    )
-
-    /** All trips capable of leaving the station, including estimates. */
-    fun edgesFrom(station: Station?): List<TripEdge> =
-        if (station == null) emptyList() else edgesByOrigin[station].orEmpty()
-
-    fun edgesBetween(from: Station?, to: Station?): List<TripEdge> =
-        edgesFrom(from).filter { it.to == to }
 
     /** Nominal directed travel time used only when realtime omits a value. */
     fun nominalTravelTimeMillis(from: Station?, to: Station?): Long? =
@@ -759,11 +728,9 @@ class Schedule private constructor(
         }
         route.transferStations.indices.forEach { index ->
             val station = route.transferStations[index]
-            if (station in TransferStationPreferences.avoidedStations
-                && !TransferStationPreferences.isPreferredMacArthurYellowOrange(route, index)
-            ) {
+            if (transferPolicy.isAvoidedForRouteRanking(route, index)) {
                 score += 80
-            } else if (station in TransferStationPreferences.busyStations) {
+            } else if (transferPolicy.isBusyStation(station)) {
                 score += 3
             }
             val preferred = preferredTransferStation(route, lines[index], lines[index + 1], index)
@@ -780,7 +747,7 @@ class Schedule private constructor(
         if (route.lines != listOf(Line.YELLOW, Line.ORANGE, Line.BLUE)
             || route.transferStations.firstOrNull() != Station.MCAR
         ) return false
-        return TransferStationPreferences.yellowTravelIsSouthbound(route) == true
+        return transferPolicy.yellowTravelIsSouthbound(route) == true
     }
 
     private fun preferredTransferStation(
@@ -808,7 +775,7 @@ class Schedule private constructor(
             return Station.BAYF
         }
         if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {
-            return if (TransferStationPreferences.yellowTravelIsSouthbound(route) == true) {
+            return if (transferPolicy.yellowTravelIsSouthbound(route) == true) {
                 Station.MCAR
             } else {
                 Station._19TH
@@ -970,29 +937,10 @@ class Schedule private constructor(
             feedTime: Long,
         ): Schedule {
             val immutableTrips = immutableList(trips)
-            val nodes = immutableSet(immutableTrips.flatMap { it.stops.map(Stop::station) }.toSet())
-            val edges = LinkedHashMap<Station, MutableList<TripEdge>>()
-            immutableTrips.forEach { trip ->
-                trip.stops.zipWithNext().forEach { (from, to) ->
-                    edges.getOrPut(from.station) { mutableListOf() } += TripEdge(
-                        trip,
-                        from.station,
-                        to.station,
-                        from.scheduledDepartureTime,
-                        to.scheduledArrivalTime,
-                        from.departureTime,
-                        to.arrivalTime,
-                        from.departureSource,
-                        to.arrivalSource,
-                    )
-                }
-            }
             return Schedule(
                 network,
                 feedTime,
-                nodes,
                 immutableTrips,
-                immutableMap(edges.mapValues { (_, value) -> immutableList(value) }),
                 immutableMap(nominalTravelTimes),
                 stationResolver,
             )
@@ -1023,9 +971,6 @@ class Schedule private constructor(
 
         private fun <T> immutableList(values: Collection<T>): List<T> =
             Collections.unmodifiableList(ArrayList(values))
-
-        private fun <T> immutableSet(values: Collection<T>): Set<T> =
-            Collections.unmodifiableSet(LinkedHashSet(values))
 
         private fun <K, V> immutableMap(values: Map<K, V>): Map<K, V> =
             Collections.unmodifiableMap(LinkedHashMap(values))

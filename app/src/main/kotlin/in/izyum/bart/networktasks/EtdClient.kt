@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.io.IOException
 
 /** One legacy ETD estimate returned by BART's station operations API. */
@@ -71,19 +72,15 @@ class HttpEtdClient @JvmOverloads constructor(
         }
     }
 
-    private fun etdUrl(station: Station): HttpUrl = HttpUrl.Builder()
-        .scheme("https")
-        .host("api.bart.gov")
-        .addPathSegment("api")
-        .addPathSegment("etd.aspx")
+    private fun etdUrl(station: Station): HttpUrl = BartApiConfig.LEGACY_ETD_URL.toHttpUrl()
+        .newBuilder()
         .addQueryParameter("cmd", "etd")
         .addQueryParameter("orig", station.abbreviation.lowercase())
-        .addQueryParameter("key", API_KEY)
+        .addQueryParameter("key", BartApiConfig.LEGACY_API_KEY)
         .addQueryParameter("json", "y")
         .build()
 
     companion object {
-        private const val API_KEY = "MW9S-E7SL-26DU-VV8V"
         private val objectMapper = ObjectMapper()
 
         internal fun parseBoard(

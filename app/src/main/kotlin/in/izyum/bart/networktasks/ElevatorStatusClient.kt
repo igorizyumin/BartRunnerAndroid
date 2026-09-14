@@ -2,6 +2,7 @@ package `in`.izyum.bart.networktasks
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -27,18 +28,14 @@ class ElevatorStatusClient @JvmOverloads constructor(
         }
     }
 
-    private fun elevatorUrl(): HttpUrl = HttpUrl.Builder()
-        .scheme("https")
-        .host("api.bart.gov")
-        .addPathSegment("api")
-        .addPathSegment("bsa.aspx")
+    private fun elevatorUrl(): HttpUrl = BartApiConfig.LEGACY_ELEVATOR_URL.toHttpUrl()
+        .newBuilder()
         .addQueryParameter("cmd", "elev")
-        .addQueryParameter("key", API_KEY)
+        .addQueryParameter("key", BartApiConfig.LEGACY_API_KEY)
         .addQueryParameter("json", "y")
         .build()
 
     companion object {
-        private const val API_KEY = "MW9S-E7SL-26DU-VV8V"
         private val objectMapper = ObjectMapper()
 
         internal fun parseDescription(json: String): String {

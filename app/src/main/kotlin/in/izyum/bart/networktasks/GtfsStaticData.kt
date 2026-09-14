@@ -369,7 +369,6 @@ class GtfsStaticData @JvmOverloads constructor(
     }
 
     companion object {
-        private const val FEED_URL = "https://www.bart.gov/dev/schedules/google_transit.zip"
         // BART recommends checking the static schedule feed weekly.
         private const val CACHE_MILLIS = 7L * 24L * 60L * 60L * 1000L
         // A failed refresh should not suppress retries for the entire cache lifetime.
@@ -385,7 +384,7 @@ class GtfsStaticData @JvmOverloads constructor(
         @Throws(IOException::class)
         private fun download(destination: File) =
             PerformanceTrace.section("BART static feed download") {
-                val request = Request.Builder().url(FEED_URL)
+                val request = Request.Builder().url(BartApiConfig.STATIC_GTFS_URL)
                     .header("Accept", "application/zip")
                     .build()
                 CLIENT.newCall(request).execute().use { response ->

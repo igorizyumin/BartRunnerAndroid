@@ -20,7 +20,7 @@ import `in`.izyum.bart.activities.RouteArguments
 import `in`.izyum.bart.activities.TripInProgressActivity
 import `in`.izyum.bart.data.AlarmPreferences
 import `in`.izyum.bart.model.Departure
-import `in`.izyum.bart.model.Constants
+import `in`.izyum.bart.platform.DEPARTURE_ALARM_ACTION
 
 class AlarmBroadcastReceiver : BroadcastReceiver() {
     companion object {
@@ -37,7 +37,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Constants.ACTION_ALARM) {
+        if (intent.action != DEPARTURE_ALARM_ACTION) {
             return
         }
         val application = context.applicationContext as BartRunnerApplication

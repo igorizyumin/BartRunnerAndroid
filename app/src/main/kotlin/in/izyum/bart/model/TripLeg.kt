@@ -23,13 +23,6 @@ class TripLeg @JvmOverloads constructor(
     val stops: List<TripStop> = immutableTripLegList(stops)
 
     fun hasArrivalTime(): Boolean = arrivalTime > 0
-
-    fun departureDelaySeconds(): Int? = delaySeconds(departureTime, scheduledDepartureTime)
-
-    fun arrivalDelaySeconds(): Int? = delaySeconds(arrivalTime, scheduledArrivalTime)
-
-    private fun delaySeconds(actual: Long, scheduled: Long): Int? =
-        if (actual > 0L && scheduled > 0L) ((actual - scheduled) / 1000L).toInt() else null
 }
 
 private fun <T> immutableTripLegList(values: Collection<T>): List<T> =

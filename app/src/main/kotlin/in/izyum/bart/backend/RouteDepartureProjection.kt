@@ -29,10 +29,6 @@ class RouteDepartureProjection private constructor(
         bartGtfsNetwork: BartGtfsNetwork
     ) : this(query, ignoreDirection, Supplier { bartGtfsNetwork })
 
-    init {
-        require(query.origin != null) { "A route query needs an origin" }
-    }
-
     fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures =
         project(snapshot, emptySet(), emptyMap(), true, emptySet())
 
@@ -82,7 +78,7 @@ class RouteDepartureProjection private constructor(
         suppressScheduleCoveredByRealtime: Boolean,
         forcedScheduleTripIds: Set<String>,
     ): RealTimeDepartures {
-        val name = "BART route ${query.origin?.abbreviation.orEmpty()}-${query.destination?.abbreviation.orEmpty()}"
+        val name = "BART route ${query.origin.abbreviation}-${query.destination?.abbreviation.orEmpty()}"
         return PerformanceTrace.section(name) {
             val network = networkSupplier.get()
             val feedIndex = snapshot.getTripUpdateIndex()
@@ -194,7 +190,7 @@ class RouteDepartureProjection private constructor(
         suppressScheduleCoveredByRealtime: Boolean,
         forcedScheduleTripIds: Set<String>,
     ): RealTimeDepartures = GtfsRealtimeContentHandler(
-        query.origin!!,
+        query.origin,
         query.destination,
         routes,
         ignoreDirection,

@@ -82,7 +82,7 @@ class TripProgressViewModel(application: Application) :
             return
         }
         val stationPair = departure.getStationPair() ?: return
-        val origin = stationPair.origin ?: return
+        val origin = stationPair.origin
         val destination = stationPair.destination ?: return
         val application = getApplication<BartRunnerApplication>()
         tripProgressCollectionJob = viewModelScope.launch {

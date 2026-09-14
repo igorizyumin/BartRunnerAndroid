@@ -241,7 +241,7 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val staticData = app.gtfsStaticData
                 val fares = favorites.mapNotNull { route ->
-                    val origin = route.origin ?: return@mapNotNull null
+                    val origin = route.origin
                     val destination = route.destination ?: return@mapNotNull null
                     staticData.getFare(origin, destination, riderCategoryId)
                         ?.let { fare -> route to fare }

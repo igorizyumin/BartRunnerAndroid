@@ -18,14 +18,14 @@ object RouteArguments {
     @JvmStatic
     fun putRoute(intent: Intent?, route: StationPair?) {
         if (intent == null || route == null) return
-        intent.putExtra(ORIGIN, route.origin?.abbreviation)
+        intent.putExtra(ORIGIN, route.origin.abbreviation)
         intent.putExtra(DESTINATION, route.destination?.abbreviation)
     }
 
     @JvmStatic
     fun putRoute(bundle: Bundle?, route: StationPair?) {
         if (bundle == null || route == null) return
-        bundle.putString(ORIGIN, route.origin?.abbreviation)
+        bundle.putString(ORIGIN, route.origin.abbreviation)
         bundle.putString(DESTINATION, route.destination?.abbreviation)
     }
 

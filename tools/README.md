@@ -7,8 +7,10 @@ boards for every app station):
 powershell -ExecutionPolicy Bypass -File tools/capture_bart_live_fixture.ps1
 ```
 
-The capture script updates `app/src/test/resources/bart_live_fixture.txt`, which
-is the fixture selected by `LiveEtdStationBoardAuditTest`.
+The capture script updates `app/src/test/resources/bart_live_fixture.txt` as a
+convenience pointer. `LiveEtdStationBoardAuditTest` discovers all complete
+`bart_live_*` captures and excludes only the explicitly listed disruption
+snapshots in the test.
 
 Install the small Python dependency once:
 

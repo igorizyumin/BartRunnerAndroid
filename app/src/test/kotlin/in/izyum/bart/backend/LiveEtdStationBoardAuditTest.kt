@@ -18,6 +18,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -36,98 +38,105 @@ import javax.xml.parsers.DocumentBuilderFactory
  */
 class LiveEtdStationBoardAuditTest {
     @Test
-    fun antiochFixtureHasNoEtdOnlyDepartures() {
-        val tripUpdates = resourceFeed(fixture("trip_updates.pb"))
-        val alerts = resourceFeed(fixture("alerts.pb"))
-        val feedTime = tripUpdates.header.timestamp * 1000L
+    fun capturedFixturesHaveNoEtdOnlyDepartures() {
         val network = BartGtfsNetwork.fromCatalog(
             GtfsNetworkCatalog.fromFiles(loadGtfsFiles())
         )
-        val snapshot = TransitFeedSnapshot(tripUpdates, alerts, feedTime)
-        val base = RouteDepartureProjection(
-            StationPair(Station.ANTC, null), network
-        ).project(snapshot).getDepartures()
-        val uncut = RouteDepartureProjection(
-            StationPair(Station.ANTC, null), network
-        ).projectForEtd(snapshot).getDepartures()
-        val expected = parseEtd(
-            Station.ANTC,
-            resourceText(fixture("etd/antc.xml")),
-        )
-        fun matches(departures: List<Departure>, etd: EtdPrediction): Boolean =
-            departures.any { departure ->
-                departure.line == etd.line &&
-                    normalizeDestination(departure.trainDestination, departure.line) ==
-                    normalizeDestination(etd.destination, etd.line) &&
-                    kotlin.math.abs(
-                        departure.getMeanEstimate() - etd.departureTimeMillis
-                    ) <= MATCH_TOLERANCE_MILLIS
-            }
-        assertEquals(3, expected.size)
-        assertTrue(expected.all { matches(base, it) })
-        assertTrue(expected.all { matches(uncut, it) })
+        auditFixtures().forEach { fixtureName ->
+            val tripUpdates = resourceFeed(fixture(fixtureName, "trip_updates.pb"))
+            val alerts = resourceFeed(fixture(fixtureName, "alerts.pb"))
+            val feedTime = tripUpdates.header.timestamp * 1000L
+            val snapshot = TransitFeedSnapshot(tripUpdates, alerts, feedTime)
+            val base = RouteDepartureProjection(
+                StationPair(Station.ANTC, null), network
+            ).project(snapshot).getDepartures()
+            val uncut = RouteDepartureProjection(
+                StationPair(Station.ANTC, null), network
+            ).projectForEtd(snapshot).getDepartures()
+            val expected = parseEtd(
+                Station.ANTC,
+                resourceText(fixture(fixtureName, "etd/antc.xml")),
+            )
+            fun matches(departures: List<Departure>, etd: EtdPrediction): Boolean =
+                departures.any { departure ->
+                    departure.line == etd.line &&
+                        normalizeDestination(departure.trainDestination, departure.line) ==
+                        normalizeDestination(etd.destination, etd.line) &&
+                        kotlin.math.abs(
+                            departure.getMeanEstimate() - etd.departureTimeMillis
+                        ) <= MATCH_TOLERANCE_MILLIS
+                }
+            assertTrue("$fixtureName base projection has ETD-only departures", expected.all { matches(base, it) })
+            assertTrue("$fixtureName uncut projection has ETD-only departures", expected.all { matches(uncut, it) })
+        }
     }
 
     @Test
     fun appStationBoardsMatchCapturedXmlEtdAcrossEveryStation() {
-        val tripUpdates = resourceFeed(fixture("trip_updates.pb"))
-        val alerts = resourceFeed(fixture("alerts.pb"))
-        val feedTime = tripUpdates.header.timestamp * 1000L
-        assertTrue("GTFS-RT fixture has no feed timestamp", feedTime > 0L)
-
         val network = BartGtfsNetwork.fromCatalog(
             GtfsNetworkCatalog.fromFiles(loadGtfsFiles())
         )
-        val snapshot = TransitFeedSnapshot(tripUpdates, alerts, feedTime)
-        val etdCache = fixtureEtdCache(feedTime)
-        val stationResults = Station.getStationList().map { station ->
-            val expected = parseEtd(
-                station,
-                resourceText(fixture("etd/${station.abbreviation}.xml"))
-            )
-            val actual = runBlocking {
-                EtdAwareRouteDepartureProjection(
-                    RouteDepartureProjection(StationPair(station, null), network),
-                    etdCache,
-                ).project(snapshot).getDepartures()
+        auditFixtures().forEach { fixtureName ->
+            val tripUpdates = resourceFeed(fixture(fixtureName, "trip_updates.pb"))
+            val alerts = resourceFeed(fixture(fixtureName, "alerts.pb"))
+            val feedTime = tripUpdates.header.timestamp * 1000L
+            assertTrue("$fixtureName has no feed timestamp", feedTime > 0L)
+            val snapshot = TransitFeedSnapshot(tripUpdates, alerts, feedTime)
+            val etdCache = fixtureEtdCache(fixtureName, feedTime)
+            val stationResults = Station.getStationList().map { station ->
+                val expected = parseEtd(
+                    station,
+                    resourceText(fixture(fixtureName, "etd/${station.abbreviation}.xml"))
+                )
+                val actual = runBlocking {
+                    EtdAwareRouteDepartureProjection(
+                        RouteDepartureProjection(StationPair(station, null), network),
+                        etdCache,
+                    ).project(snapshot).getDepartures()
+                }
+                compare(station, expected, actual, network)
             }
-            compare(station, expected, actual, network)
-        }
-
-        assertEquals(Station.getStationList().size, stationResults.size)
-        assertEquals(
-            "ETD predictions with no matching app prediction",
-            0,
-            stationResults.sumOf { it.missingCount },
-        )
-        assertEquals(
-            "ETD destination labels are the ground truth",
-            0,
-            stationResults.sumOf { it.destinationMismatchCount },
-        )
-        assertTrue(
-            "the capture produced no comparable ETD predictions",
-            stationResults.sumOf { it.expectedCount } > 0,
-        )
 
             println(
-            "Live ETD audit: feedTime=${Instant.ofEpochMilli(feedTime)}, " +
-                "stations=${stationResults.size}, " +
-                "expected=${stationResults.sumOf { it.expectedCount }}, " +
-                "app=${stationResults.sumOf { it.actualCount }}, " +
-                "matched=${stationResults.sumOf { it.matchedCount }}, " +
-                "missing=${stationResults.sumOf { it.missingCount }}, " +
-                "timeMismatches=${stationResults.sumOf { it.timeMismatchCount }}, " +
-                "destinationMismatches=${stationResults.sumOf { it.destinationMismatchCount }}, " +
-                "cancellationMismatches=${stationResults.sumOf { it.cancellationMismatchCount }}",
-        )
-        stationResults.filter { it.hasDifferences }.forEach { result ->
-            println(result.describe())
-        }
-        stationResults.forEach { result ->
-            result.timeMismatchTargets.forEach { target ->
-                println(feedCoverage(tripUpdates, network, result.station, target))
+                "Live ETD audit: fixture=$fixtureName " +
+                    "feedTime=${Instant.ofEpochMilli(feedTime)}, " +
+                    "stations=${stationResults.size}, " +
+                    "expected=${stationResults.sumOf { it.expectedCount }}, " +
+                    "app=${stationResults.sumOf { it.actualCount }}, " +
+                    "matched=${stationResults.sumOf { it.matchedCount }}, " +
+                    "missing=${stationResults.sumOf { it.missingCount }}, " +
+                    "timeMismatches=${stationResults.sumOf { it.timeMismatchCount }}, " +
+                    "destinationMismatches=${stationResults.sumOf { it.destinationMismatchCount }}, " +
+                    "cancellationMismatches=${stationResults.sumOf { it.cancellationMismatchCount }}",
+            )
+            stationResults.filter { it.hasDifferences }.forEach { result ->
+                println(result.describe())
             }
+            stationResults.forEach { result ->
+                result.timeMismatchTargets.forEach { target ->
+                    println(feedCoverage(tripUpdates, network, result.station, target))
+                }
+            }
+
+            assertEquals(
+                "$fixtureName station count",
+                Station.getStationList().size,
+                stationResults.size,
+            )
+            assertEquals(
+                "$fixtureName ETD predictions with no matching app prediction",
+                0,
+                stationResults.sumOf { it.missingCount },
+            )
+            assertEquals(
+                "$fixtureName ETD destination labels are the ground truth",
+                0,
+                stationResults.sumOf { it.destinationMismatchCount },
+            )
+            assertTrue(
+                "$fixtureName produced no comparable ETD predictions",
+                stationResults.sumOf { it.expectedCount } > 0,
+            )
         }
     }
 
@@ -262,11 +271,11 @@ class LiveEtdStationBoardAuditTest {
         return result.filter { it.line != null && it.destination != null }
     }
 
-    private fun fixtureEtdCache(feedTime: Long): EtdStationCache {
+    private fun fixtureEtdCache(fixtureName: String, feedTime: Long): EtdStationCache {
         val boards = Station.getStationList().associateWith { station ->
             parseEtd(
                 station,
-                resourceText(fixture("etd/${station.abbreviation}.xml")),
+                resourceText(fixture(fixtureName, "etd/${station.abbreviation}.xml")),
             ).map { prediction ->
                 EtdDeparture(
                     prediction.destination,
@@ -365,8 +374,40 @@ class LiveEtdStationBoardAuditTest {
         checkNotNull(javaClass.getResourceAsStream(path)) { path }
             .bufferedReader().use { it.readText() }
 
-    private fun fixture(name: String): String =
-        "/${resourceText("/bart_live_fixture.txt").trim()}/$name"
+    private fun fixture(fixtureName: String, name: String): String =
+        "/$fixtureName/$name"
+
+    private fun auditFixtures(): List<String> {
+        val resourceRoot = Paths.get(
+            checkNotNull(javaClass.getResource("/bart_live_fixture.txt")) {
+                "BART live fixture pointer"
+            }
+                .toURI()
+        ).parent
+        val fixtures = Files.list(resourceRoot).use { entries ->
+            entries
+                .filter { Files.isDirectory(it) }
+                .map { it.fileName.toString() }
+                .filter { it.startsWith("bart_live_") }
+                .filter { fixtureName -> isCompleteFixture(resourceRoot, fixtureName) }
+                .sorted()
+                .toList()
+        }
+        assertTrue("no complete BART live fixtures found", fixtures.isNotEmpty())
+        val selected = fixtures.filterNot { it in EXCLUDED_FIXTURES }
+        assertTrue("no non-disruption BART live fixtures found", selected.isNotEmpty())
+        return selected
+    }
+
+    private fun isCompleteFixture(resourceRoot: java.nio.file.Path, fixtureName: String): Boolean {
+        val fixtureRoot = resourceRoot.resolve(fixtureName)
+        val etdRoot = fixtureRoot.resolve("etd")
+        return Files.isRegularFile(fixtureRoot.resolve("trip_updates.pb")) &&
+            Files.isRegularFile(fixtureRoot.resolve("alerts.pb")) &&
+            Station.getStationList().all { station ->
+                Files.isRegularFile(etdRoot.resolve("${station.abbreviation}.xml"))
+            }
+    }
 
     private fun loadGtfsFiles(): Map<String, String> {
         val files = linkedMapOf<String, String>()
@@ -433,6 +474,12 @@ class LiveEtdStationBoardAuditTest {
         private val DATE_FORMAT = DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.US)
         private val TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm:ss a", Locale.US)
         private const val MATCH_TOLERANCE_MILLIS = 2 * 60_000L
+        private val EXCLUDED_FIXTURES = setOf(
+            // Split Orange service: ETD shows through terminals while static
+            // GTFS correctly exposes the temporary Union City/Warm Springs legs.
+            "bart_live_20260912_071605",
+            "bart_live_20260912_192815",
+        )
         private val REQUIRED_GTFS_FILES = setOf(
             "routes.txt", "trips.txt", "stops.txt", "stop_times.txt",
             "calendar.txt", "calendar_dates.txt", "transfers.txt",

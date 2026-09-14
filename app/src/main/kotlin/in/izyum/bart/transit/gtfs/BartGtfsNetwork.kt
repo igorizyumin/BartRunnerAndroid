@@ -218,8 +218,6 @@ class BartGtfsNetwork private constructor(
             }
     }
 
-    fun getTransferRules(): List<TransferRule> = transferRules
-
     /**
      * Returns whether changing between two lines at a station is possible.
      * BART's feed lists only some route pairs, and omits transfer rows at

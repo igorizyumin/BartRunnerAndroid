@@ -28,7 +28,6 @@
     <string name="also_save_return_trip">Also save the return trip</string>
     <string name="continue_label">Continue</string>
     <string name="cancel">Cancel</string>
-    <string name="choose_origin_station">Choose an origin station.</string>
     <string name="origin_destination_must_differ">Origin and destination must be different.</string>
     <string name="no_departures_found">No departures found</string>
     <string name="no_departures_message">This route may require a temporary or non-standard transfer.</string>
@@ -76,6 +75,8 @@
     <string name="eta_in">in %1$d:%2$02d</string>
     <string name="train_label">Train</string>
     <string name="system_map_title">BART system map</string>
+    <string name="map_day">Day</string>
+    <string name="map_evening">Evening</string>
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
     <string name="reset_map_zoom">Reset map zoom</string>
@@ -154,16 +155,12 @@
     <string name="trip_leaving_station">Leaving %1$s</string>
     <string name="trip_transfer_to">Transfer to %1$s train</string>
     <string name="trip_next_stop">Next stop: %1$s (%2$s)</string>
-    <string name="trip_transfer_now">Transfer to %1$s train now</string>
-    <string name="trip_transfer_status">%1$s · departs %2$s</string>
-    <string name="trip_transfer_now_details">Transfer now / %1$s train%2$s</string>
     <string name="trip_transfer_now_title">Transfer to %1$s train on platform %2$s.</string>
     <string name="trip_connecting_train_arriving_in">Connecting train arriving in %1$s</string>
     <string name="trip_connecting_train_arrived">Connecting train arrived, board now</string>
     <string name="board_train_at_platform">Board %1$s train at platform %2$s</string>
     <string name="trip_arrived">Arrived at destination</string>
     <string name="trip_canceled">Trip canceled</string>
-    <string name="trip_leaves_in">Leaves in %1$s</string>
     <string name="trip_no_departure_scheduled">No departure is currently scheduled</string>
     <string name="scheduled_only">◷ %1$s</string>
     <string name="scheduled_realtime_adjusted">◷ %1$s · ⏱ %2$s</string>

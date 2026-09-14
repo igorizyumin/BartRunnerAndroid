@@ -39,7 +39,7 @@ class BartGtfsNetworkTest {
         val network = BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(updated))
         assertTrue(network.canTransfer(Station.LAKE, Line.YELLOW, Line.BLUE))
         assertFalse(network.canTransfer(Station.LAKE, Line.BLUE, Line.YELLOW))
-        assertEquals(90, network.getTransferRules()[0].minimumTransferSeconds)
+        assertEquals(90, network.minimumTransferSeconds(Station.LAKE, Line.YELLOW, Line.BLUE))
     }
 
     @Test

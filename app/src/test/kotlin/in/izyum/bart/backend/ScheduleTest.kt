@@ -24,7 +24,6 @@ class ScheduleTest {
         assertEquals(listOf(Station.MONT, Station.PITT), main.stops.map { it.station })
         assertEquals(Station.PITT, main.trainDestination)
         assertEquals(12 * 60 * 1000L, schedule.nominalTravelTimeMillis(Station.PITT, Station.PCTR))
-        assertTrue(schedule.edgesFrom(Station.PITT).none { it.trip.key.tripId == "main" })
         assertEquals(
             listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
             schedule.trips.first { it.key.tripId == "terminal-pattern" }.stops.map { it.station },

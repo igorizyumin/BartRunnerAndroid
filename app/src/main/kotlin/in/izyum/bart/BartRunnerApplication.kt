@@ -14,7 +14,6 @@ import `in`.izyum.bart.networktasks.GtfsStaticData
 import `in`.izyum.bart.networktasks.EtdStationCache
 import `in`.izyum.bart.networktasks.HttpEtdClient
 import `in`.izyum.bart.platform.OfflineStatusController
-import `in`.izyum.bart.receivers.DownloadRetryReceiver
 import `in`.izyum.bart.platform.DeparturePollingAlarm
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.io.IOException
@@ -50,10 +49,8 @@ class BartRunnerApplication : Application() {
             offlineSnapshotProvider = { TransitFeedSnapshot.empty(timeSource.nowMillis()) },
         )
         offlineStatusController = OfflineStatusController(this, transitRepository, followedTripRepository) {
-            runCatching { gtfsStaticData.warmUp() }
             transitRepository.refreshNow()
         }
-        DownloadRetryReceiver.schedule(this)
         DeparturePollingAlarm.refresh(this, followedTripRepository)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var startedActivityCount = 0
@@ -77,4 +74,5 @@ class BartRunnerApplication : Application() {
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
     }
+
 }

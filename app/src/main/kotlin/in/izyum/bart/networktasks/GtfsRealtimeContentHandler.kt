@@ -10,8 +10,7 @@ import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.TripStop
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
-import `in`.izyum.bart.routing.TransferConnectionValidator
-import `in`.izyum.bart.routing.TransferStationPreferences
+import `in`.izyum.bart.routing.TransferPolicy
 import `in`.izyum.bart.backend.Schedule
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
@@ -30,6 +29,8 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private val bartGtfsNetwork: BartGtfsNetwork,
     private val timeSource: TimeSource = SystemTimeSource,
 ) {
+    private val transferPolicy = TransferPolicy(bartGtfsNetwork)
+
     init {
         requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
     }
@@ -617,7 +618,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         candidatesToChoose.firstOrNull { (_, legs) ->
             val arrival = legs.lastOrNull()?.arrivalTime ?: 0L
             earliestArrival == null || arrival <= earliestArrival +
-                TransferStationPreferences.MAX_PREFERRED_ARRIVAL_DELTA_MILLIS
+                TransferPolicy.MAX_PREFERRED_ARRIVAL_DELTA_MILLIS
         }
             ?.let { (route, legs) ->
                 addSelectedCandidate(
@@ -641,7 +642,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                     .setLine(line)
                     .setDirection(trip.direction)
                     .setPlatform(trip.platform)
-                    .setLimited(false)
                     .setCanceled(trip.canceled)
                     .setTrainDestinationColorText(line.name)
                     .setTrainDestinationColorHex(colorForLine(line))
@@ -664,9 +664,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     }
 
     private fun isAvoidedForRouteRanking(route: Route, index: Int): Boolean {
-        val station = route.transferStations[index]
-        if (station !in TransferStationPreferences.avoidedStations) return false
-        return !TransferStationPreferences.isPreferredMacArthurYellowOrange(route, index)
+        return transferPolicy.isAvoidedForRouteRanking(route, index)
     }
 
     private fun hasRequiredTransferMargins(
@@ -674,13 +672,13 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         legs: List<TripLeg>,
     ): Boolean = route.transferStations.indices.all { index ->
         val station = route.transferStations[index]
-        if (station !in TransferStationPreferences.avoidedStations) {
+        if (!transferPolicy.isAvoidedStation(station)) {
             true
         } else {
             val arriving = legs.getOrNull(index)?.arrivalTime ?: 0L
             val departing = legs.getOrNull(index + 1)?.departureTime ?: 0L
             val minimum = legs.getOrNull(index)?.minimumTransferSecondsAfter ?: 0
-            TransferStationPreferences.hasExtraMargin(arriving, departing, minimum)
+            transferPolicy.hasExtraMargin(arriving, departing, minimum)
         }
     }
 
@@ -895,13 +893,12 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 continue
             }
             val departure = trip.pointAt(origin)
-            if (departure == null || !TransferConnectionValidator.canTransfer(
+            if (departure == null || !transferPolicy.canTransfer(
                     arrivingLeg.arrivalTime,
                     departure.departureTime,
                     origin,
                     arrivingLeg.line,
                     line,
-                    bartGtfsNetwork
                 )
             ) {
                 continue

@@ -52,13 +52,10 @@ class LiveGtfsRoutingTest {
                 CATALOG.validationErrors().isEmpty())
         assertTrue(NETWORK.validationErrors().toString(),
                 NETWORK.validationErrors().isEmpty())
-        assertFalse("live feed has no transfer rules",
-                NETWORK.getTransferRules().isEmpty())
-        for (rule in NETWORK.getTransferRules()) {
-            assertTrue(rule.fromStation != null)
-            assertTrue(rule.toStation != null)
-            assertTrue("invalid transfer type " + rule.transferType,
-                    rule.transferType >= 0 && rule.transferType <= 3)
+        assertFalse("live feed has no transfer rules", CATALOG.transfers.isEmpty())
+        for (transfer in CATALOG.transfers) {
+            assertTrue("invalid transfer type " + transfer.transferType,
+                    transfer.transferType >= 0 && transfer.transferType <= 3)
         }
 
         for (line in COLOR_LINES) {

@@ -35,7 +35,7 @@ class FollowedTripRecordTest {
             .setTrainDestinationColorHex("#ff0000").setTrainDestinationColorText("Red")
             .setPlatform("2").setDirection("north").setBikeAllowed(true)
             .setTrainLength("10").setRequiresTransfer(true).setTransferScheduled(true)
-            .setLimited(true).setCanceled(false).setListedInETDs(false).setMinutes(8)
+            .setCanceled(false).setListedInETDs(false).setMinutes(8)
             .setMinEstimate(1_000_000L).setMaxEstimate(1_060_000L)
             .setArrivalTimeOverride(1_800_000L).setEstimatedTripTime(600)
             .setTripLegs(listOf(leg)).build()

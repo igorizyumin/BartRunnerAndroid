@@ -22,7 +22,6 @@ class FollowedTripRecord constructor() {
     @JvmField var trainLength: String? = null
     @JvmField var requiresTransfer = false
     @JvmField var transferScheduled = false
-    @JvmField var limited = false
     @JvmField var canceled = false
     @JvmField var listedInETDs = true
     @JvmField var minutes = 0
@@ -50,7 +49,6 @@ class FollowedTripRecord constructor() {
             .setTrainLength(trainLength)
             .setRequiresTransfer(requiresTransfer)
             .setTransferScheduled(transferScheduled)
-            .setLimited(limited)
             .setCanceled(canceled)
             .setListedInETDs(listedInETDs)
             .setMinutes(minutes)
@@ -80,7 +78,6 @@ class FollowedTripRecord constructor() {
                 trainLength = departure.trainLength
                 requiresTransfer = departure.requiresTransfer
                 transferScheduled = departure.transferScheduled
-                limited = departure.limited
                 canceled = departure.canceled
                 listedInETDs = departure.listedInETDs
                 minutes = departure.minutes

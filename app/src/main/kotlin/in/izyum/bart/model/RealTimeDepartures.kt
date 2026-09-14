@@ -23,30 +23,9 @@ class RealTimeDepartures internal constructor(
         requireNotNull(schedule) { "A schedule is required" }
     }
 
-    fun getOrigin(): Station? = origin
-
-    fun getDestination(): Station? = destination
-
-    fun getTime(): Long = time
-
     fun getDepartures(): List<Departure> = departures
 
     fun areTransfersIncluded(): Boolean = transfersIncluded
-
-    fun getEarliestDirectDeparture(): Departure? =
-        departures.asSequence()
-            .filter { !it.requiresTransfer }
-            .minByOrNull { it.minutes }
-
-    fun getEarliestTransferDeparture(): Departure? {
-        val transferRoutes = schedule.preferredTransferRoutes(
-            origin,
-            destination,
-        )
-        return unfilteredDepartures.asSequence()
-            .filter { findRouteForDeparture(it, transferRoutes)?.hasTransfer() == true }
-            .minByOrNull { it.minutes }
-    }
 
     fun includeTransferRoutes(): RealTimeDepartures = withAdditionalRoutes(
         schedule.preferredTransferRoutes(origin, destination)
@@ -66,19 +45,6 @@ class RealTimeDepartures internal constructor(
         }
         return sortDepartures()
     }
-
-    /** Returns the same projection with selected candidate departures removed. */
-    fun filterDepartures(predicate: (Departure) -> Boolean): RealTimeDepartures =
-        RealTimeDepartures(
-            origin,
-            destination,
-            time,
-            routes,
-            unfilteredDepartures.filter(predicate),
-            departures.filter(predicate),
-            schedule,
-            transfersIncluded,
-        )
 
     private fun withAdditionalRoutes(additionalRoutes: List<Route>): RealTimeDepartures {
         val nextRoutes = routes + additionalRoutes
@@ -121,9 +87,6 @@ class RealTimeDepartures internal constructor(
         val line = departure.line ?: return null
         return routes.firstOrNull { route ->
             route.trainDestinationIsApplicable(trainDestination, line)
-                && (route.destination == null
-                || route.destination!!.includedInLimitedService
-                || !departure.limited)
         }
     }
 

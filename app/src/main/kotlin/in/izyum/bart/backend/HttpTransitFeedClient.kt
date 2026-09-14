@@ -1,6 +1,7 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.networktasks.NetworkUtils
+import `in`.izyum.bart.networktasks.BartApiConfig
 import com.google.transit.realtime.GtfsRealtime
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -58,9 +59,9 @@ class HttpTransitFeedClient : TransitFeedClient {
 
     companion object {
         @JvmField
-        val TRIP_UPDATES_URL = "https://api.bart.gov/gtfsrt/tripupdate.aspx"
+        val TRIP_UPDATES_URL = BartApiConfig.GTFS_RT_TRIP_UPDATES_URL
 
         @JvmField
-        val ALERTS_URL = "https://api.bart.gov/gtfsrt/alerts.aspx"
+        val ALERTS_URL = BartApiConfig.GTFS_RT_ALERTS_URL
     }
 }

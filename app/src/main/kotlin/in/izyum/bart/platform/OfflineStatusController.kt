@@ -32,7 +32,7 @@ class OfflineStatusController(
     context: Context,
     private val transitRepository: TransitRepository,
     private val followedTripRepository: FollowedTripRepository,
-    private val retryDownloads: suspend () -> Unit = {},
+    private val retryRealtime: suspend () -> Unit = {},
 ) : AutoCloseable {
     private val applicationContext = context.applicationContext
     private val connectivityManager =
@@ -100,7 +100,7 @@ class OfflineStatusController(
             changed
         }
         if (triggerRetry && becameAvailable) {
-            scope.launch(Dispatchers.IO) { retryDownloads() }
+            scope.launch(Dispatchers.IO) { retryRealtime() }
         }
         updateNotification()
     }
@@ -111,7 +111,7 @@ class OfflineStatusController(
             while (isActive) {
                 val shouldRetry = synchronized(lock) { networkAvailable != false }
                 if (shouldRetry) {
-                    retryDownloads()
+                    retryRealtime()
                 }
                 delay(RETRY_INTERVAL_MILLIS)
             }
