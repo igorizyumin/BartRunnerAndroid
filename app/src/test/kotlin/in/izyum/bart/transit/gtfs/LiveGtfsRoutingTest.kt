@@ -63,8 +63,7 @@ class LiveGtfsRoutingTest {
             assertFalse("missing GTFS pattern for " + line, patterns.isEmpty())
             for (pattern in patterns) {
                 assertTrue(pattern.stations.size >= 2)
-                assertTrue(pattern.routeId != null
-                        && !pattern.routeId.isEmpty())
+                assertTrue(!pattern.routeId.isEmpty())
                 assertTrue("pattern has no trips: " + pattern.routeId,
                         !pattern.tripIds.isEmpty())
                 assertTrue("unexpected direction " + pattern.direction,
@@ -178,12 +177,13 @@ class LiveGtfsRoutingTest {
                 break
             }
         }
-        assertTrue("departures=" + departures.getDepartures(),
-                greenDeparture != null)
+        val selectedGreenDeparture = checkNotNull(greenDeparture) {
+            "departures=" + departures.getDepartures()
+        }
         assertEquals(listOf(Line.GREEN, Line.BLUE),
-                linesOf(greenDeparture!!.tripLegs))
+                linesOf(selectedGreenDeparture.tripLegs))
         assertEquals(listOf(Station.BAYF),
-                transferStationsOf(greenDeparture!!.tripLegs))
+                transferStationsOf(selectedGreenDeparture.tripLegs))
     }
 
     @Test
@@ -515,14 +515,15 @@ class LiveGtfsRoutingTest {
                 break
             }
         }
-        assertTrue("departures=" + departures.getDepartures(),
-                redDeparture != null)
+        val selectedRedDeparture = checkNotNull(redDeparture) {
+            "departures=" + departures.getDepartures()
+        }
         assertEquals("routes=" + routeLines(
                         routesFor(Station.SFIA, Station.CAST, NETWORK)),
                 listOf(Line.RED, Line.BLUE),
-                linesOf(redDeparture!!.tripLegs))
+                linesOf(selectedRedDeparture.tripLegs))
         assertEquals(listOf(Station.BALB),
-                transferStationsOf(redDeparture!!.tripLegs))
+                transferStationsOf(selectedRedDeparture.tripLegs))
     }
 
     @Test

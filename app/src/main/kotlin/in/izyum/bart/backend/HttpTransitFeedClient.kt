@@ -52,7 +52,6 @@ class HttpTransitFeedClient : TransitFeedClient {
                 throw IOException("Realtime feed returned ${response.code} for $url")
             }
             val body = response.body
-                ?: throw IOException("Realtime feed returned an empty body for $url")
             GtfsRealtime.FeedMessage.parseFrom(body.byteStream())
         }
     }

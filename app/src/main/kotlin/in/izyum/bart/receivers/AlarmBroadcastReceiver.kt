@@ -142,7 +142,8 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                     .build(),
             )
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(
+            vibrateWithAudioAttributes(
+                vibrator,
                 VibrationEffect.createWaveform(pattern, -1),
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
@@ -152,6 +153,15 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             @Suppress("DEPRECATION")
             vibrator.vibrate(pattern, -1)
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun vibrateWithAudioAttributes(
+        vibrator: Vibrator,
+        effect: VibrationEffect,
+        audioAttributes: AudioAttributes,
+    ) {
+        vibrator.vibrate(effect, audioAttributes)
     }
 
 }

@@ -16,17 +16,6 @@ class AlertProjection {
                     continue
                 }
                 val source = entity.alert
-                var postedAtMillis: Long? = null
-                var expiresAtMillis: Long? = null
-                if (source.activePeriodList.isNotEmpty()) {
-                    val period = source.getActivePeriod(0)
-                    if (period.hasStart()) {
-                        postedAtMillis = period.start * 1000L
-                    }
-                    if (period.hasEnd()) {
-                        expiresAtMillis = period.end * 1000L
-                    }
-                }
                 alerts += Alert(
                     id = entity.id,
                     type = if (source.hasEffect()) source.effect.name else "",
@@ -34,9 +23,7 @@ class AlertProjection {
                         translation(source.descriptionText)
                     } else {
                         ""
-                    },
-                    postedAtMillis = postedAtMillis,
-                    expiresAtMillis = expiresAtMillis
+                    }
                 )
             }
             Alert.AlertList(alerts, alerts.isEmpty())
@@ -62,8 +49,6 @@ class AlertProjection {
             if (left.id != right.id
                 || left.type != right.type
                 || left.description != right.description
-                || left.postedAtMillis != right.postedAtMillis
-                || left.expiresAtMillis != right.expiresAtMillis
             ) {
                 return false
             }

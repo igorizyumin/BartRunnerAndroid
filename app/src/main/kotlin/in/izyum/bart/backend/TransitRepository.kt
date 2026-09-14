@@ -129,7 +129,8 @@ class TransitRepository(
                 }
             }
             .mapLatest { feedState ->
-                if (feedState.snapshot == null) {
+                val snapshot = feedState.snapshot
+                if (snapshot == null) {
                     feedState.error?.let {
                         return@mapLatest Result.failure<T>(it)
                     }
@@ -137,7 +138,7 @@ class TransitRepository(
                         IllegalStateException("Transit feed is unavailable"),
                     )
                 }
-                runCatching { project(feedState.snapshot!!) }
+                runCatching { project(snapshot) }
             }
             .distinctUntilChanged { previous, current ->
                 if (previous.isFailure || current.isFailure) {
@@ -333,7 +334,7 @@ class TransitRepository(
         if (tripUpdates == null || alerts == null) {
             return null
         }
-        return TransitFeedSnapshot(tripUpdates!!, alerts!!, System.currentTimeMillis())
+        return TransitFeedSnapshot(tripUpdates, alerts, System.currentTimeMillis())
     }
 
     private fun addRefreshError(errors: MutableList<Exception>, error: Exception) {

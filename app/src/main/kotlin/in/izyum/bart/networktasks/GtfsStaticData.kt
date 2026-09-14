@@ -388,11 +388,11 @@ class GtfsStaticData @JvmOverloads constructor(
                     .header("Accept", "application/zip")
                     .build()
                 CLIENT.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful || response.body == null) {
+                    if (!response.isSuccessful) {
                         throw IOException("Static GTFS returned ${response.code}")
                     }
                     FileOutputStream(destination, false).use { output ->
-                        response.body!!.byteStream().use { input ->
+                        response.body.byteStream().use { input ->
                             input.copyTo(output, 8192)
                         }
                     }

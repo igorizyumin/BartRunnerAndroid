@@ -7,7 +7,7 @@ import org.junit.Test
 class ImmutableTransitModelsTest {
     @Test
     fun alertValuesAndAlertListsAreImmutable() {
-        val alert = Alert("alert-1", "DETOUR", "Description", 1000L, 2000L)
+        val alert = Alert("alert-1", "DETOUR", "Description")
         val alerts = Alert.AlertList(listOf(alert), false)
 
         assertEquals("alert-1", alert.id)

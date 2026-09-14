@@ -4,9 +4,7 @@ package `in`.izyum.bart.model
 data class Alert(
     val id: String,
     val type: String? = null,
-    val description: String? = null,
-    val postedAtMillis: Long? = null,
-    val expiresAtMillis: Long? = null
+    val description: String? = null
 ) {
     /** Immutable alert projection result. */
     class AlertList(

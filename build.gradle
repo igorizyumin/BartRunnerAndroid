@@ -12,6 +12,8 @@ allprojects {
     }
 }
 
+def appProject = project(":app")
+
 tasks.register("verifyCompatibility") {
     group = "verification"
     description = "Checks the supported Gradle, Java, Kotlin, AGP, and AndroidX baseline."
@@ -35,7 +37,7 @@ tasks.register("verifyCompatibility") {
         if (providers.gradleProperty("android.useAndroidX").orNull != "true") {
             throw new GradleException("android.useAndroidX=true is required")
         }
-        def android = project(":app").extensions.getByName("android")
+        def android = appProject.extensions.getByName("android")
         if (android.compileOptions.sourceCompatibility != JavaVersion.VERSION_17
                 || android.compileOptions.targetCompatibility != JavaVersion.VERSION_17) {
             throw new GradleException("The app must compile Java and Kotlin for JVM 17")

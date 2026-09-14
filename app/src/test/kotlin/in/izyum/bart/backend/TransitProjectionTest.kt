@@ -35,7 +35,6 @@ class TransitProjectionTest {
         val alert = GtfsRealtime.Alert.newBuilder()
             .setHeaderText(header)
             .setDescriptionText(description)
-            .addActivePeriod(GtfsRealtime.TimeRange.newBuilder().setStart(1234L).setEnd(5678L).build())
             .build()
         val alerts = GtfsRealtime.FeedMessage.newBuilder()
             .setHeader(header(1000L))
@@ -45,8 +44,6 @@ class TransitProjectionTest {
             .project(TransitFeedSnapshot(emptyFeed(), alerts, 1_000_000L))
         assertEquals(1, result.getAlerts().size)
         assertEquals("Delay at Montgomery", result.getAlerts()[0].description)
-        assertEquals(1_234_000L, result.getAlerts()[0].postedAtMillis)
-        assertEquals(5_678_000L, result.getAlerts()[0].expiresAtMillis)
     }
 
     @Test

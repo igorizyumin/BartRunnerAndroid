@@ -32,7 +32,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,7 +41,6 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsSubway
@@ -105,7 +103,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.LinkInteractionListener
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -115,6 +116,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
@@ -662,7 +664,7 @@ private fun SettingsDialog(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(selectedDescription, modifier = Modifier.weight(1f))
-                        Icon(Icons.Filled.ArrowForward, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                     }
                     DropdownMenu(
                         expanded = showFareDiscountMenu,
@@ -781,32 +783,32 @@ fun AboutScreen(
             val apacheLicenseText = buildAnnotatedString {
                 append(stringResource(R.string.about_license_prefix))
                 append(" ")
-                pushStringAnnotation(
-                    tag = "URL",
-                    annotation = stringResource(R.string.apache_license_url),
-                )
-                withStyle(
-                    SpanStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        textDecoration = TextDecoration.Underline,
+                withLink(
+                    LinkAnnotation.Clickable(
+                        tag = "apache-license",
+                        styles = TextLinkStyles(
+                            style = SpanStyle(
+                                color = MaterialTheme.colorScheme.primary,
+                                textDecoration = TextDecoration.Underline,
+                            )
+                        ),
+                        linkInteractionListener = object : LinkInteractionListener {
+                            override fun onClick(link: LinkAnnotation) {
+                                onOpenApacheLicense()
+                            }
+                        },
                     )
                 ) {
                     append(stringResource(R.string.apache_license_name))
                 }
-                pop()
                 append(" ")
                 append(stringResource(R.string.about_license_suffix))
             }
-            ClickableText(
+            Text(
                 text = apacheLicenseText,
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface,
-                ),
-                onClick = { offset ->
-                    if (apacheLicenseText.getStringAnnotations("URL", offset, offset).isNotEmpty()) {
-                        onOpenApacheLicense()
-                    }
-                },
+                )
             )
             TextButton(onClick = onOpenGithub) {
                 Text(stringResource(R.string.github_url))
