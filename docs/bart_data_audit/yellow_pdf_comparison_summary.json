@@ -1,0 +1,34 @@
+{
+  "pdf_schedule_cells": 16993,
+  "pdf_schedule_rows": 670,
+  "gtfsrt_yellow_comparisons": 2036,
+  "millbrae_comparisons": 1,
+  "late_night_millbrae_comparisons": 1,
+  "late_night_gtfsrt_vs_pdf_median_seconds": -150,
+  "late_night_gtfsrt_vs_pdf_abs_max_seconds": 150,
+  "static_pdf_mismatch_count": 1,
+  "static_pdf_mismatches_by_pdf": {
+    "weekend": 1
+  },
+  "tolerated_static_pdf_mismatch_count": 1,
+  "static_pdf_mismatch_policy": "allow up to two mismatches per PDF when each mismatch is strictly under five minutes; ignore tolerated mismatches for normalization",
+  "static_pdf_mismatch_policy_exceeded": false,
+  "all_gtfsrt_millbrae_stop_rows": 16,
+  "yellow_gtfsrt_millbrae_stop_rows": 1,
+  "operational_question_status": "unresolved_from_checked_in_fixtures",
+  "operational_question_limit": "Only one captured Yellow GTFS-RT Millbrae stop row is available; this cannot establish realtime coverage for every late-night Yellow movement.",
+  "source_pdfs": [
+    {
+      "service_kind": "weekday",
+      "path": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\docs\\bart_data_audit\\schedule_pdfs\\yellow_weekday.pdf",
+      "sha256": "0d109cfefdd96b42042b58d381e4619cb851957a542cc37b218e285902904060",
+      "pages": 2
+    },
+    {
+      "service_kind": "weekend",
+      "path": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\docs\\bart_data_audit\\schedule_pdfs\\yellow_weekend.pdf",
+      "sha256": "54821a7189d6adfe56133e43b4e4d0701725598c80f1ffb1196ab0b83c86ad34",
+      "pages": 2
+    }
+  ]
+}

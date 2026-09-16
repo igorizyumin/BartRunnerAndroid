@@ -51,13 +51,30 @@ class TripProgressViewModel(application: Application) :
             )
             repository.projectedState(projection::project, projection::areEquivalent)
                 .collectLatest { result ->
-                result.getOrNull()?.let { departures ->
-                    departures.getDepartures()
-                        .firstOrNull { it.identity == departureIdentity }
-                        ?.let(::updateFromRealtime)
+                    result.getOrNull()?.let { departures ->
+                        departures.getDepartures()
+                            .firstOrNull {
+                                it.identity == departureIdentity
+                                    || sameTripIdentity(it, departureIdentity)
+                            }
+                            ?.let(::updateFromRealtime)
+                    }
                 }
-            }
         }
+    }
+
+    /**
+     * Platform and terminal metadata can change when a DMU update is merged
+     * into the live electric snapshot. Keep the selected train attached by
+     * its stable trip-leg IDs when that metadata changes between refreshes.
+     */
+    private fun sameTripIdentity(departure: Departure, identity: String): Boolean {
+        val selectedTripIds = identity.substringAfterLast('|', "")
+            .split(';')
+            .filter { it.isNotEmpty() && !it.startsWith("etd@") }
+        if (selectedTripIds.isEmpty()) return false
+        val currentTripIds = departure.tripLegs.mapNotNull { it.tripId }
+        return currentTripIds == selectedTripIds
     }
 
     fun getDeparture(): Departure? = departureState.value

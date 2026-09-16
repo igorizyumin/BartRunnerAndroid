@@ -37,3 +37,18 @@ Inspect the paired alert feed or emit standard GTFS-RT JSON:
 python tools/gtfsrt_inspect.py docs/bart_alerts_live_20260910_171711.pb --alerts
 python tools/gtfsrt_inspect.py docs/bart_trip_updates_live_20260910_171711.pb --json > trip_updates.json
 ```
+
+Run the empirical static/GTFS-Realtime/ETD audit and write its reproducible
+evidence set and Markdown report under `docs/bart_data_audit/`:
+
+```text
+python -m tools.bart_data_audit audit
+```
+
+The official Yellow-line PDF schedules are stored under
+`docs/bart_data_audit/schedule_pdfs/`. Extract their table cells and compare
+Yellow GTFS-Realtime observations with:
+
+```text
+python -m tools.bart_data_audit pdf-compare
+```

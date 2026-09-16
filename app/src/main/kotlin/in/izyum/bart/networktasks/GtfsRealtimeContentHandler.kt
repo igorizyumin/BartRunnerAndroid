@@ -11,6 +11,7 @@ import `in`.izyum.bart.model.TripStop
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.routing.TransferPolicy
+import `in`.izyum.bart.routing.RaptorRouter
 import `in`.izyum.bart.backend.Schedule
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
@@ -73,7 +74,19 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             forcedScheduleTripIds,
         )
             .filter { it.tripId !in excludedTripIds }
-        trips.forEach { trip -> addTripUpdate(departures, trip, trips, feedTime) }
+        val raptorTrips = trips.map(::raptorTrip)
+        val raptorTripsBySnapshot = trips.zip(raptorTrips).toMap()
+        val raptorRouter = RaptorRouter(raptorTrips, bartGtfsNetwork, transferPolicy)
+        trips.forEach { trip ->
+            addTripUpdate(
+                departures,
+                trip,
+                trips,
+                feedTime,
+                raptorRouter,
+                raptorTripsBySnapshot,
+            )
+        }
         return RealTimeDepartures(
             origin,
             destination,
@@ -192,15 +205,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 continue
             }
 
-            if (isUnscheduledTerminalLeg(route.lines[index], legOrigin, legDestination)) {
-                val replacement = unscheduledTerminalLeg(
-                    route.lines[index], legOrigin, legDestination
-                )
-                if (existing == null) legs += replacement else legs[index] = replacement
-                index++
-                continue
-            }
-
             while (legs.size > index) legs.removeAt(legs.lastIndex)
             return
         }
@@ -259,43 +263,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         return stationIndex >= 0 && destinationIndex >= 0 && stationIndex < destinationIndex
     }
 
-    private fun appendConnectingLegs(
-        route: Route,
-        legs: MutableList<TripLeg>,
-        trips: List<TripSnapshot>
-    ) {
-        val tripDestination = destination ?: return
-        while (legs.size < route.lines.size) {
-            val index = legs.size
-            val legOrigin = legs[index - 1].destination ?: return
-            val legDestination = if (index < route.transferStations.size) {
-                route.transferStations[index]
-            } else {
-                tripDestination
-            }
-            val currentTrip = findConnectingTrip(
-                route.lines[index],
-                legOrigin,
-                legDestination,
-                legs[index - 1],
-                trips
-            )
-            if (currentTrip == null) {
-                if (isUnscheduledTerminalLeg(route.lines[index], legOrigin, legDestination)) {
-                    legs += unscheduledTerminalLeg(
-                        route.lines[index], legOrigin, legDestination
-                    )
-                    continue
-                }
-                return
-            }
-            if (currentTrip.pointAt(legOrigin) == null) return
-            legs += tripLegFor(
-                route, index, legOrigin, legDestination, currentTrip
-            )
-        }
-    }
-
     private fun tripLegFor(
         route: Route,
         index: Int,
@@ -317,7 +284,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             departure?.departureTime ?: 0L,
             arrival?.arrivalTime ?: 0L,
             stops,
-            minimumTransferSecondsAfter(route, index, legOrigin, trip.line),
+            minimumTransferSecondsAfter(route, index, legDestination, trip.line),
             departure?.scheduledDepartureTime ?: 0L,
             arrival?.scheduledArrivalTime ?: 0L,
             departure?.departureSource ?: PredictionSource.UNKNOWN,
@@ -325,29 +292,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             departure?.platform,
         )
     }
-
-    private fun isUnscheduledTerminalLeg(
-        line: Line,
-        origin: Station,
-        destination: Station
-    ): Boolean = line == Line.YELLOW_LATE_NIGHT
-        && origin == Station.SFIA
-        && destination == Station.MLBR
-
-    private fun unscheduledTerminalLeg(
-        line: Line,
-        origin: Station,
-        destination: Station
-    ): TripLeg = TripLeg(
-        line,
-        origin,
-        destination,
-        destination,
-        null,
-        0L,
-        0L,
-        emptyList()
-    )
 
     private fun parseTrips(
         entities: List<GtfsRealtime.FeedEntity>,
@@ -361,6 +305,14 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         val realtimeTrips = entities.mapNotNull { entity ->
             if (!entity.hasTripUpdate()) null else parseTrip(entity.tripUpdate, feedTime)
         }.toMutableList()
+        val scheduledById = scheduledTrips.mapNotNull { trip ->
+            trip.tripId?.let { it to trip }
+        }.toMap()
+        realtimeTrips.forEach { realtime ->
+            scheduledById[realtime.tripId]?.let { static ->
+                applyStaticScheduleTimes(realtime, static)
+            }
+        }
         // The Antioch DMU and the electric train are reported as separate
         // updates.  DMU trip IDs are technical 600-series IDs, so they cannot
         // be used as passenger trip identities.  Join their terminal points
@@ -368,8 +320,10 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         // DMU-only snapshot.  Scheduled electric trips are also corrected in
         // Schedule.applyRealtime; doing this here covers electric updates that
         // are not present in the static schedule snapshot.
-        joinDmuRealtimeTrips(realtimeTrips, schedule)
-        val realtimeOnly = realtimeTrips.filter { it.tripId !in scheduledIds }
+        val dmuMergedTripIds = joinDmuRealtimeTrips(realtimeTrips, schedule)
+        val realtimeOnly = realtimeTrips.filter { trip ->
+            trip.tripId !in scheduledIds || trip.tripId in dmuMergedTripIds
+        }
         // Once realtime has reported a departure at this station, the static
         // schedule is not allowed to invent service during the first hour.
         // Beyond that cancellation window, the cutoff follows only the
@@ -393,6 +347,11 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             scheduledTrips.filter { trip ->
                 if (trip.tripId in forcedScheduleTripIds) {
                     true
+                } else if (trip.tripId in dmuMergedTripIds) {
+                    // The DMU-enriched realtime snapshot is the passenger
+                    // copy for this trip. Do not emit its un-enriched static
+                    // counterpart as a duplicate.
+                    false
                 } else {
                     val originPoint = trip.pointAt(origin)
                     if (originPoint == null
@@ -425,7 +384,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private fun joinDmuRealtimeTrips(
         realtimeTrips: MutableList<TripSnapshot>,
         schedule: Schedule,
-    ) {
+    ): Set<String> {
         val electricTrips = realtimeTrips.filter { trip ->
             trip.line == Line.YELLOW
                 && !trip.canceled
@@ -433,6 +392,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 && !trip.tripId.isNullOrEmpty()
         }
         val usedElectricTrips = mutableSetOf<TripSnapshot>()
+        val mergedTripIds = mutableSetOf<String>()
         realtimeTrips.filter { it.line == Line.YELLOW_DMU }.forEach { dmu ->
             val direction = terminalDirection(dmu)
             val terminal = terminalPoint(dmu, direction) ?: return@forEach
@@ -440,7 +400,9 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 .filter { candidate ->
                     candidate !in usedElectricTrips
                         && (direction == null || candidate.direction == null
-                        || candidate.direction == direction)
+                        || candidate.direction == direction
+                        || staticTripAllowsTerminal(candidate, direction, schedule))
+                        && staticTripAllowsTerminal(candidate, direction, schedule)
                 }
                 .mapNotNull { candidate ->
                     terminalMatchDelta(candidate, terminal.station, terminal.time, direction, schedule)
@@ -452,7 +414,56 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             if (match != null) {
                 usedElectricTrips += match
                 mergeRealtimeTrip(match, dmu)
+                match.tripId?.let(mergedTripIds::add)
             }
+        }
+        return mergedTripIds
+    }
+
+    /** Preserve timetable values on a live snapshot while replacing only its
+     * effective (predicted) values with realtime data. */
+    private fun applyStaticScheduleTimes(
+        realtime: TripSnapshot,
+        static: TripSnapshot,
+    ) {
+        realtime.points.replaceAll { point ->
+            val scheduled = static.pointAt(point.station)
+            if (scheduled == null) {
+                point
+            } else {
+                StopTimePoint(
+                    point.station,
+                    point.order,
+                    point.departureTime,
+                    point.arrivalTime,
+                    scheduled.scheduledDepartureTime,
+                    scheduled.scheduledArrivalTime,
+                    point.departureSource,
+                    point.arrivalSource,
+                    point.platform ?: scheduled.platform,
+                )
+            }
+        }
+    }
+
+    /**
+     * DMU telemetry has no passenger trip identity. When its electric partner
+     * does have a static trip ID, use the static itinerary to distinguish the
+     * alternating PITT-only and Antioch trains. An unknown realtime ID remains
+     * eligible because it may represent a genuinely unscheduled train.
+     */
+    private fun staticTripAllowsTerminal(
+        candidate: TripSnapshot,
+        direction: String?,
+        schedule: Schedule,
+    ): Boolean {
+        val tripId = candidate.tripId ?: return true
+        val staticTrip = schedule.trips.firstOrNull { it.key.tripId == tripId }
+            ?: return true
+        return when (direction ?: candidate.direction) {
+            "n" -> staticTrip.canServe(Station.PITT, Station.ANTC)
+            "s" -> staticTrip.canServe(Station.ANTC, Station.PITT)
+            else -> true
         }
     }
 
@@ -502,10 +513,51 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         val pittTime = pitt.departureTime.takeIf { it > 0L }
             ?: pitt.arrivalTime.takeIf { it > 0L }
             ?: return null
-        val travel = travelTimeBetween(Station.PITT, terminalStation, direction, schedule)
+        val travelDirection = direction ?: candidate.direction ?: return null
+        val travel = travelTimeBetween(
+            Station.PITT, terminalStation, travelDirection, schedule
+        ) ?: scheduledTripTravelBetween(
+            candidate.tripId, Station.PITT, terminalStation, schedule
+        )
             ?: return null
-        val projected = if (direction == "n") pittTime - travel else pittTime + travel
+        // Project along the train's direction: northbound PITT -> PCTR adds
+        // running time, while southbound PITT -> ANTC subtracts it.
+        val projected = when (travelDirection) {
+            "n" -> pittTime + travel
+            "s" -> pittTime - travel
+            else -> return null
+        }
         return kotlin.math.abs(projected - terminalTime)
+    }
+
+    private fun scheduledTripTravelBetween(
+        tripId: String?,
+        from: Station,
+        to: Station,
+        schedule: Schedule,
+    ): Long? {
+        val trip = tripId?.let { id -> schedule.trips.firstOrNull { it.key.tripId == id } }
+            ?: return null
+        val fromIndex = trip.stops.indexOfFirst { it.station == from }
+        val toIndex = trip.stops.indexOfFirst { it.station == to }
+        if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return null
+        val step = if (toIndex > fromIndex) 1 else -1
+        var total = 0L
+        var index = fromIndex
+        while (index != toIndex) {
+            val next = index + step
+            val currentStop = trip.stops[index]
+            val nextStop = trip.stops[next]
+            val running = if (step > 0) {
+                nextStop.scheduledArrivalTime - currentStop.scheduledDepartureTime
+            } else {
+                currentStop.scheduledArrivalTime - nextStop.scheduledDepartureTime
+            }
+            if (running <= 0L) return null
+            total += running
+            index = next
+        }
+        return total
     }
 
     private fun travelTimeBetween(
@@ -527,6 +579,8 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             val next = index + step
             total += schedule.nominalTravelTimeMillis(
                 pattern.stations[index], pattern.stations[next]
+            ) ?: schedule.nominalTravelTimeMillis(
+                pattern.stations[next], pattern.stations[index]
             ) ?: return null
             index = next
         }
@@ -591,6 +645,60 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         }
         result.lastOrder = trip.stops.lastIndex
         return result
+    }
+
+    private fun raptorTrip(trip: TripSnapshot): RaptorRouter.Trip {
+        val points = trip.points.sortedBy { it.order }.distinctBy { it.station }
+        val stations = points.map { it.station }
+        return RaptorRouter.Trip(
+            id = trip.tripId ?: "snapshot-${System.identityHashCode(trip)}",
+            routeKey = "${trip.line}:${stations.joinToString(",")}",
+            line = trip.line,
+            direction = trip.direction,
+            trainDestination = trip.trainDestination,
+            stops = points.map { point ->
+                RaptorRouter.StopTime(
+                    point.station,
+                    point.arrivalTime,
+                    point.departureTime,
+                    point.scheduledArrivalTime,
+                    point.scheduledDepartureTime,
+                    point.arrivalSource,
+                    point.departureSource,
+                    point.platform,
+                )
+            },
+            payload = trip,
+            canceled = trip.canceled,
+        )
+    }
+
+    private fun routeForJourney(journey: RaptorRouter.Journey): Route? {
+        val legs = journey.legs
+        val origin = legs.firstOrNull()?.origin ?: return null
+        val destination = legs.lastOrNull()?.destination ?: return null
+        if (legs.size == 1) {
+            val leg = legs.single()
+            return Route.direct(
+                origin,
+                destination,
+                leg.trip.line,
+                leg.trip.direction,
+                leg.trip.stops.map { it.station },
+            )
+        }
+        val sequences = LinkedHashMap<Line, List<Station>>()
+        legs.forEach { leg ->
+            sequences[leg.trip.line] = leg.trip.stops.map { it.station }
+        }
+        return Route.transfer(
+            origin,
+            destination,
+            legs.map { it.trip.line },
+            legs.dropLast(1).map { it.destination },
+            legs.first().trip.direction,
+            sequences,
+        )
     }
 
     private fun mergeRealtimeTrip(target: TripSnapshot, realtime: TripSnapshot) {
@@ -703,14 +811,9 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         trip: TripSnapshot,
         allTrips: List<TripSnapshot>,
         feedTime: Long,
+        raptorRouter: RaptorRouter,
+        raptorTripsBySnapshot: Map<TripSnapshot, RaptorRouter.Trip>,
     ) {
-        if (destination != null && !ignoreDirection && !origin.ignoreRoutingDirection
-            && !routes.any {
-                it.trainDestinationIsApplicable(trip.trainDestination, trip.line)
-            }
-        ) {
-            return
-        }
         val originPoint = trip.pointAt(origin)
         if (originPoint == null || originPoint.departureTime <= 0) {
             return
@@ -719,6 +822,77 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             return
         }
         val minutes = maxOf(0L, (originPoint.departureTime - feedTime) / 60000L).toInt()
+        if (destination != null) {
+            val raptorTrip = raptorTripsBySnapshot[trip] ?: return
+            val candidates = mutableListOf<Pair<Route, List<TripLeg>>>()
+            val journeys = raptorRouter.journeys(
+                origin,
+                destination,
+                originPoint.departureTime,
+            )
+            val journey = journeys.minWithOrNull(
+                compareBy<RaptorRouter.Journey> { it.arrivalTime }
+                    .thenBy { it.transferCount }
+                    .thenBy { routeForJourney(it)?.let(transferPolicy::routeScore)
+                        ?: Int.MAX_VALUE }
+            )
+            if (journey != null && journey.legs.firstOrNull()?.trip?.id != raptorTrip.id) {
+                // Another departure available at this time reaches the
+                // destination first, so this train is not a useful itinerary
+                // for the requested destination.
+                return
+            }
+            if (journey != null) {
+                val route = routeForJourney(journey)
+                if (route != null) {
+                    val legs = journey.legs.mapIndexed { index, leg ->
+                        val snapshot = leg.trip.payload as? TripSnapshot ?: return
+                        tripLegFor(route, index, leg.origin, leg.destination, snapshot)
+                    }
+                    if (legs.lastOrNull()?.destination == destination) {
+                        candidates += route to legs
+                    }
+                }
+            }
+
+            if (candidates.isEmpty()) {
+                if (journeys.isNotEmpty()) return
+                // Preserve a topology-valid departure when this feed omits the
+                // terminal event entirely. It has no arrival score, so this
+                // fallback is used only when RAPTOR cannot form a timed trip.
+                val fallback = routes.asSequence()
+                    .filter { it.trainDestinationIsApplicable(trip.trainDestination, trip.line) }
+                    .map { route -> route to buildTripLegs(route, trip, allTrips) }
+                    .filter { (_, legs) ->
+                        legs.lastOrNull()?.destination == destination
+                            && isSimpleItinerary(legs)
+                    }
+                    .toList()
+                if (fallback.isNotEmpty()) {
+                    addSelectedCandidate(
+                        departures, fallback, trip, originPoint, minutes
+                    )
+                }
+                return
+            }
+            val selected = candidates.minWithOrNull(
+                compareBy<Pair<Route, List<TripLeg>>> {
+                    it.second.lastOrNull()?.arrivalTime ?: Long.MAX_VALUE
+                }.thenBy { transferPolicy.routeScore(it.first) }
+            )
+            if (selected != null) {
+                addSelectedCandidate(
+                    departures, listOf(selected), trip, originPoint, minutes
+                )
+            }
+            return
+        }
+
+        if (!ignoreDirection && !origin.ignoreRoutingDirection
+            && routes.none {
+                it.trainDestinationIsApplicable(trip.trainDestination, trip.line)
+            }
+        ) return
         // A train can match several route alternatives because they share the
         // same first leg. Rank complete timed itineraries after validating
         // transfers, so a preferred station does not hide a much earlier
@@ -726,10 +900,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         val candidates = routes.asSequence()
             .filter { it.trainDestinationIsApplicable(trip.trainDestination, trip.line) }
             .map { route -> route to buildTripLegs(route, trip, allTrips) }
-            .filter { (route, legs) ->
-                destination == null || (legs.size == route.lines.size
-                    && legs.lastOrNull()?.destination == destination)
-            }
+            .filter { (route, legs) -> legs.size == route.lines.size }
             .toList()
         val lateNightCandidates = candidates.filter { (route, _) ->
             Line.YELLOW_LATE_NIGHT in route.lines
@@ -744,12 +915,12 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             .filter { it.trainDestinationIsApplicable(trip.trainDestination, trip.line) }
             .any { route ->
                 route.transferStations.indices.none { index ->
-                    isAvoidedForRouteRanking(route, index)
+                    transferPolicy.isAvoidedForRouteRanking(route, index)
                 }
             }
         val nonAvoidedCandidates = candidates.filter { (route, _) ->
             route.transferStations.indices.none { index ->
-                isAvoidedForRouteRanking(route, index)
+                transferPolicy.isAvoidedForRouteRanking(route, index)
             }
         }
         val marginSafeNonAvoided = nonAvoidedCandidates.filter { (route, legs) ->
@@ -762,14 +933,16 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         } else {
             candidates.filter { (route, legs) -> hasRequiredTransferMargins(route, legs) }
         }
-        val earliestArrival = candidatesToChoose.mapNotNull { (_, legs) ->
-            legs.lastOrNull()?.arrivalTime?.takeIf { it > 0L }
-        }.minOrNull()
-        candidatesToChoose.firstOrNull { (_, legs) ->
-            val arrival = legs.lastOrNull()?.arrivalTime ?: 0L
-            earliestArrival == null || arrival <= earliestArrival +
-                TransferPolicy.MAX_PREFERRED_ARRIVAL_DELTA_MILLIS
+        // Arrival is the primary live-routing signal.  Static policy is only
+        // a tie-breaker after corrected realtime times have been evaluated.
+        val timedCandidates = candidatesToChoose.filter { (_, legs) ->
+            legs.lastOrNull()?.arrivalTime?.let { it > 0L } == true
         }
+        (timedCandidates.ifEmpty { candidatesToChoose }).minWithOrNull(
+            compareBy<Pair<Route, List<TripLeg>>> {
+                it.second.lastOrNull()?.arrivalTime ?: Long.MAX_VALUE
+            }.thenBy { transferPolicy.routeScore(it.first) }
+        )
             ?.let { (route, legs) ->
                 addSelectedCandidate(
                     departures, listOf(route to legs), trip, originPoint, minutes
@@ -813,23 +986,36 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             }
     }
 
-    private fun isAvoidedForRouteRanking(route: Route, index: Int): Boolean {
-        return transferPolicy.isAvoidedForRouteRanking(route, index)
-    }
-
     private fun hasRequiredTransferMargins(
         route: Route,
         legs: List<TripLeg>,
     ): Boolean = route.transferStations.indices.all { index ->
-        val station = route.transferStations[index]
-        if (!transferPolicy.isAvoidedStation(station)) {
-            true
-        } else {
-            val arriving = legs.getOrNull(index)?.arrivalTime ?: 0L
-            val departing = legs.getOrNull(index + 1)?.departureTime ?: 0L
-            val minimum = legs.getOrNull(index)?.minimumTransferSecondsAfter ?: 0
-            transferPolicy.hasExtraMargin(arriving, departing, minimum)
+        val arriving = legs.getOrNull(index)?.arrivalTime ?: 0L
+        val departing = legs.getOrNull(index + 1)?.departureTime ?: 0L
+        val minimum = legs.getOrNull(index)?.minimumTransferSecondsAfter ?: 0
+        transferPolicy.hasRequiredTransferMargin(
+            route,
+            index,
+            arriving,
+            departing,
+            minimum,
+        )
+    }
+
+    private fun isSimpleItinerary(legs: List<TripLeg>): Boolean {
+        val visited = HashSet<Station>()
+        legs.forEachIndexed { legIndex, leg ->
+            val stations = leg.stops.mapNotNull { it.station }.ifEmpty {
+                listOfNotNull(leg.origin, leg.destination)
+            }
+            stations.forEachIndexed { stopIndex, station ->
+                val isSharedTransfer = legIndex > 0 && stopIndex == 0
+                    && station == leg.origin
+                if (station in visited && !isSharedTransfer) return false
+                visited += station
+            }
         }
+        return true
     }
 
     private fun addDeparture(
@@ -961,7 +1147,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private fun buildTripLegs(
         route: Route,
         firstTrip: TripSnapshot,
-        allTrips: List<TripSnapshot>
+        allTrips: List<TripSnapshot>,
     ): List<TripLeg> {
         // A station-only lookup has no requested passenger destination, but
         // the selected train still gives us the endpoint to display. Treat it
@@ -988,13 +1174,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                     allTrips
                 )
                 if (connectingTrip == null) {
-                    if (isUnscheduledTerminalLeg(lines[i], legOrigin, legDestination)) {
-                        result += unscheduledTerminalLeg(
-                            lines[i], legOrigin, legDestination
-                        )
-                        legOrigin = legDestination
-                        continue
-                    }
                     break
                 }
                 currentTrip = connectingTrip
@@ -1043,12 +1222,17 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 continue
             }
             val departure = trip.pointAt(origin)
-            if (departure == null || !transferPolicy.canTransfer(
+            if (departure == null || !transferPolicy.canMakeTransfer(
                     arrivingLeg.arrivalTime,
                     departure.departureTime,
                     origin,
                     arrivingLeg.line,
                     line,
+                    when {
+                        arrivingLeg.line == Line.YELLOW -> arrivingLeg.stops.mapNotNull { it.station }
+                        line == Line.YELLOW -> trip.points.sortedBy { it.order }.map { it.station }
+                        else -> null
+                    },
                 )
             ) {
                 continue
@@ -1070,9 +1254,9 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         if (legIndex + 1 >= route.lines.size) {
             return 0
         }
-        return bartGtfsNetwork.minimumTransferSeconds(
+        return transferPolicy.minimumTransferSeconds(
             transferStation, fromLine, route.lines[legIndex + 1]
-        ).coerceAtLeast(0)
+        )
     }
 
     private class StopTimePoint(

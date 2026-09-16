@@ -16,8 +16,40 @@ class TransferPolicyTest {
         val arrival = 1_000_000L
         assertTrue(policy.canTransfer(arrival, arrival + 90_000L, Station.MONT, Line.YELLOW, Line.BLUE))
         assertTrue(policy.canTransfer(arrival, arrival + 89_999L, Station.MONT, Line.YELLOW, Line.BLUE))
+        assertTrue(policy.canMakeTransfer(arrival, arrival + 90_000L, Station.MONT, Line.YELLOW, Line.BLUE))
+        assertFalse(policy.canMakeTransfer(arrival, arrival + 89_999L, Station.MONT, Line.YELLOW, Line.BLUE))
         assertTrue(policy.meetsMinimumTransferTime(arrival, arrival + 90_000L, 90))
         assertFalse(policy.meetsMinimumTransferTime(arrival, arrival + 89_999L, 90))
+    }
+
+    @Test
+    fun usesTheUnofficialBufferOnlyWhenTheFeedHasNoTransferTime() {
+        val network = network(includeMontMinimum = false)
+        val policy = TransferPolicy(network)
+        val arrival = 1_000_000L
+
+        assertFalse(policy.canMakeTransfer(
+            arrival, arrival + TransferPolicy.EXTRA_MARGIN_SECONDS * 1000L - 1L,
+            Station.MONT, Line.YELLOW, Line.BLUE,
+        ))
+        assertTrue(policy.canMakeTransfer(
+            arrival, arrival + TransferPolicy.EXTRA_MARGIN_SECONDS * 1000L,
+            Station.MONT, Line.YELLOW, Line.BLUE,
+        ))
+    }
+
+    @Test
+    fun timedTransfersDoNotNeedTheUnofficialSafetyBuffer() {
+        val network = network(montTransferType = 1, includeMontMinimum = false)
+        val policy = TransferPolicy(network)
+        val arrival = 1_000_000L
+
+        assertTrue(policy.canMakeTransfer(
+            arrival, arrival, Station.MONT, Line.YELLOW, Line.BLUE,
+        ))
+        assertFalse(policy.canMakeTransfer(
+            arrival, arrival - 1L, Station.MONT, Line.YELLOW, Line.BLUE,
+        ))
     }
 
     @Test
@@ -47,13 +79,21 @@ class TransferPolicyTest {
         assertFalse(policy.meetsMinimumTransferTime(secondArrival, thirdDeparture - 1L, 30))
     }
 
-    private fun network(): BartGtfsNetwork {
+    private fun network(
+        montTransferType: Int = 2,
+        includeMontMinimum: Boolean = true,
+    ): BartGtfsNetwork {
+        val montRule = when {
+            includeMontMinimum -> "MONT,MONT,$montTransferType,90,1,12\n"
+            montTransferType == 1 -> "MONT,MONT,1,,1,12\n"
+            else -> ""
+        }
         val files = mutableMapOf(
             "stops.txt" to "stop_id,stop_name,zone_id\nLAKE,Lake Merritt,LAKE\nMONT,Montgomery St.,MONT\nDALY,Daly City,DALY\nRICH,Richmond,RICH\n",
             "routes.txt" to "route_id,route_short_name\n1,Yellow-N\n12,Blue-N\n7,Red-N\n",
             "trips.txt" to "route_id,service_id,trip_id\n1,weekday,yellow\n12,weekday,blue\n7,weekday,red\n",
             "stop_times.txt" to "trip_id,stop_id,stop_sequence\nyellow,LAKE,1\nyellow,MONT,2\nblue,MONT,1\nblue,DALY,2\nred,DALY,1\nred,RICH,2\n",
-            "transfers.txt" to "from_stop_id,to_stop_id,transfer_type,min_transfer_time,from_route_id,to_route_id\nMONT,MONT,2,90,1,12\nDALY,DALY,2,30,12,7\n",
+            "transfers.txt" to "from_stop_id,to_stop_id,transfer_type,min_transfer_time,from_route_id,to_route_id\n${montRule}DALY,DALY,2,30,12,7\n",
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }

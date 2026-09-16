@@ -80,10 +80,14 @@ nodes are passenger stations and whose edges are individual scheduled train
 movements. It retains the original scheduled arrival/departure for every stop
 and derives nominal directed travel times from the static feed.
 
-The live trip-update index is applied as corrections to that graph. A missing
-realtime entity leaves the static trip intact; it is not treated as a
-cancellation. Static trips therefore fill omitted future trips without being
-converted into synthetic GTFS-Realtime entities.
+The live trip-update index is applied as corrections to that graph only for
+exact non-synthetic static trip IDs. A missing realtime entity leaves the
+static trip intact; it is not treated as a cancellation. Numeric 600–799 DMU
+entities are retained for the handler's separate parsing path but are excluded
+from the schedule index, so `Schedule` itself does not merge terminal DMU
+telemetry or create a terminal continuation. Static trips therefore fill
+omitted future trips without being converted into synthetic GTFS-Realtime
+entities.
 
 ### 4. Parse each trip into an itinerary
 
@@ -108,9 +112,12 @@ uses the train's static terminal as its displayed destination.
 ### Realtime trip updates are partial
 
 BART can omit a future scheduled train from the trip-update feed. The absence
-of an entity must therefore not be interpreted as cancellation or as proof that
-no departure exists. Static stop times are the fallback source for missing
-future trips.
+of an entity is ambiguous: it can be an unpublished future trip, but BART also
+often omits the update for a trip that operations canceled without sending an
+explicit `CANCELED` entity. Static stop times remain the fallback source for
+missing future trips; the handler's one-hour realtime-coverage rule treats
+near-term omissions as *likely* cancellations only when other forward realtime
+evidence exists at the queried station.
 
 ### Stop updates can be incomplete
 
@@ -152,19 +159,27 @@ The main schedule update can describe the train to or from Pittsburg, while a
 separate terminal-vehicle update describes the movement between Pittsburg,
 Pittsburg Center, and Antioch. Their trip IDs are not necessarily joinable.
 
-Passenger routing treats the Yellow service as one ride through Antioch. When
-the static trip ends at Pittsburg, `Schedule` extends that same Yellow trip
-with estimated Pittsburg Center and Antioch stop times using nominal segment
-durations. A matching terminal-vehicle GTFS-RT update then replaces those
-estimates at the terminal stops (and estimates only any terminal stop that the
-update omits). The technical feed is therefore authoritative for predictions,
-without exposing a Pittsburg transfer in the itinerary.
+In the current implementation, `Schedule` preserves the static terminal
+pattern and applies only exact-trip realtime corrections. It does not extend a
+Pittsburg short-turn or consume a 600–799 terminal-vehicle update. The
+`GtfsRealtimeContentHandler` has a separate best-effort join: it can copy
+terminal points from a DMU snapshot onto one matching electric **realtime**
+snapshot when direction/platform and terminal-time checks pass (within 20
+minutes). It drops a DMU-only snapshot from passenger output. A schedule-only
+electric trip cannot receive this handler join because there is no electric
+realtime snapshot to claim.
+
+This split is an intentional audit finding, not a claim that either source is
+the correct operational model. All consumers must be reviewed together before
+changing terminal semantics.
 
 ### The late-night SFO/Millbrae change is a transfer
 
 At night, the East Bay train can terminate at SFO while BART represents the
-SFO-to-Millbrae movement as a separate shuttle. The shuttle may have no
-realtime trip entity at all.
+SFO-to-Millbrae movement as a separate shuttle. The shuttle may have no valid
+GTFS-RT trip identity or trip-update entity, similar to the DMU/electric
+identity limitation. It is not yet independently verified whether the
+downloaded static GTFS contains a dedicated shuttle trip.
 
 For an origin-to-Millbrae query, the planner can therefore create:
 
@@ -173,9 +188,11 @@ YELLOW: origin -> SFO Airport
 YELLOW_LATE_NIGHT: SFO Airport -> Millbrae
 ```
 
-When the second entity is absent, the handler creates an unscheduled terminal
-leg with unknown timing rather than returning “No departures found.” The first
-leg still requires a real or static scheduled SFO train.
+When the second realtime entity is absent, the current schedule layer creates a
+synthetic `YELLOW_LATE_NIGHT` SFO–Millbrae trip from the Yellow trip's SFO
+arrival and nominal SFO–Millbrae running time. This is an estimate, not a
+GTFS-RT shuttle prediction. The first leg still requires a real or static
+scheduled SFO train.
 
 A train whose terminal is Millbrae can still be a valid `YELLOW` leg for an
 earlier destination such as 16th Street. `YELLOW_LATE_NIGHT` is applied to the
@@ -200,19 +217,19 @@ The feed can retain a trip entity after the train has passed the queried
 origin. Staleness is determined from the trip's origin departure event, not
 from the age of the feed entity itself.
 
-The handler allows a two-minute grace period for feed latency, clock
+The handler currently allows a 45-second grace period for feed latency, clock
 differences, and a prediction that is just late. It compares the origin event
 with the feed timestamp:
 
 ```text
-origin departure >= feed timestamp - 2 minutes  -> keep
-origin departure <  feed timestamp - 2 minutes  -> drop
+origin departure >= feed timestamp - 45 seconds  -> keep
+origin departure <  feed timestamp - 45 seconds  -> drop
 ```
 
 For example, with a feed timestamp of 12:00:
 
 - a departure at 12:03 is kept;
-- a departure at 11:58:30 is still kept as possibly just leaving;
+- a departure at 11:59:30 is still kept as possibly just leaving;
 - a departure at 11:45 is discarded.
 
 The same rule applies to static fallback entities. A correct future departure

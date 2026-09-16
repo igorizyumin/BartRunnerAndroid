@@ -1,0 +1,7 @@
+earlier_capture,later_capture,shared_numeric_ids,earlier_count,later_count
+bart_live_20260911_161720,bart_live_20260911_185819,[],10,10
+bart_live_20260911_185819,bart_live_20260912_071605,[],10,9
+bart_live_20260912_071605,bart_live_20260912_192815,[],9,9
+bart_live_20260912_192815,bart_live_20260913_182435,"[""690"",""693"",""695""]",9,10
+bart_live_20260913_182435,bart_live_20260913_201652,[],10,10
+bart_live_20260913_201652,bart_live_terminals_20260911_183436,"[""694"",""696"",""699"",""701"",""703"",""705""]",10,10

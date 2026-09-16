@@ -72,6 +72,9 @@ class Schedule private constructor(
     /** Returns a corrected immutable graph using the supplied realtime feed. */
     fun applyRealtime(feedIndex: GtfsRealtimeFeedIndex): Schedule {
         val updates = feedIndex.tripUpdatesById
+        // Realtime may contain separate 600-series Antioch/DMU updates. They
+        // are operational telemetry, not passenger trips, so only exact
+        // static trip IDs are eligible to change this schedule graph.
         val correctedBaseTrips = trips.filterNot { it.synthetic }.map { trip ->
             val entity = updates[trip.key.tripId]
             if (entity?.hasTripUpdate() == true) {
@@ -80,9 +83,8 @@ class Schedule private constructor(
                 trip
             }
         }
-        val correctedTrips = applyTerminalRealtime(correctedBaseTrips, feedIndex)
         return create(
-            correctedTrips,
+            correctedBaseTrips,
             nominalTravelTimes,
             stationResolver,
             network,
@@ -146,6 +148,8 @@ class Schedule private constructor(
         }
         val direct = catalogDirectRoutes(origin, destination)
             .filter(::hasUsableService)
+        // Keep every policy-valid transfer topology.  The realtime projector
+        // needs to be able to compare their complete, timed itineraries.
         val transferAlternatives = preferredTransferRoutes(origin, destination)
         val lateNightSfoMillbrae = if (isLateNightSfoMillbraeService()
             && destination == Station.MLBR
@@ -154,15 +158,8 @@ class Schedule private constructor(
         } else {
             emptyList()
         }
-        val normalRoutes = uniqueRoutes(direct + transferAlternatives)
-            .sortedWith(routePreference)
         return immutableList(
-            lateNightSfoMillbrae + normalRoutes.filterNot { normal ->
-                lateNightSfoMillbrae.any { special ->
-                    special.lines == normal.lines
-                        && special.transferStations == normal.transferStations
-                }
-            }
+            sortRoutes(uniqueRoutes(direct + transferAlternatives + lateNightSfoMillbrae))
         )
     }
 
@@ -170,15 +167,14 @@ class Schedule private constructor(
         if (origin == null || destination == null || origin == destination) {
             return emptyList()
         }
-        val directTransfers = catalogTransferRoutes(origin, destination, false)
-            .sortedWith(routePreference)
-        val doubleTransfers = catalogTransferRoutes(origin, destination, true)
-            .sortedWith(routePreference)
-        val selected = if (doubleTransfers.isNotEmpty()
-            && (directTransfers.isEmpty()
-                || routeScore(doubleTransfers.first()) < routeScore(directTransfers.first()))
-        ) doubleTransfers else directTransfers
-        return immutableList(selected.filter(::hasUsableService))
+        return immutableList(
+            uniqueRoutes(
+                catalogTransferRoutes(origin, destination, false)
+                    + catalogTransferRoutes(origin, destination, true)
+            )
+                .filter(::hasUsableService)
+                .let(::sortRoutes)
+        )
     }
 
     fun doubleTransferRoutes(origin: Station?, destination: Station?): List<Route> {
@@ -187,7 +183,7 @@ class Schedule private constructor(
         }
         return immutableList(
             catalogTransferRoutes(origin, destination, true)
-                .sortedWith(routePreference)
+                .let(::sortRoutes)
                 .filter(::hasUsableService)
         )
     }
@@ -198,7 +194,7 @@ class Schedule private constructor(
         }
         return immutableList(
             catalogTransferRoutes(origin, destination, false)
-                .sortedWith(routePreference)
+                .let(::sortRoutes)
                 .filter(::hasUsableService)
         )
     }
@@ -237,7 +233,13 @@ class Schedule private constructor(
         return hour >= LATE_NIGHT_START_HOUR || hour < LATE_NIGHT_END_HOUR
     }
 
-    private val routePreference = compareBy<Route> { routeScore(it) }
+    private fun sortRoutes(routes: List<Route>): List<Route> = routes
+        .map { route -> route to scheduledArrivalTime(route) }
+        .sortedWith(
+            compareBy<Pair<Route, Long?>> { it.second ?: Long.MAX_VALUE }
+                .thenBy { transferPolicy.routeScore(it.first) }
+        )
+        .map { it.first }
 
     private fun hasUsableService(route: Route): Boolean {
         if (route.destination == null) {
@@ -261,6 +263,62 @@ class Schedule private constructor(
             }
         }
         return true
+    }
+
+    /**
+     * Returns the earliest scheduled end-to-end arrival for a topology.
+     * This is deliberately only a coarse fallback: realtime projection uses
+     * the corrected predicted stop times for the final decision.
+     */
+    private fun scheduledArrivalTime(route: Route): Long? {
+        if (route.origin == null || route.destination == null || trips.isEmpty()) {
+            return null
+        }
+        val firstDestination = route.transferStations.firstOrNull() ?: route.destination
+        return trips.asSequence()
+            .filter { it.line == route.lines.first() && !it.canceled }
+            .filter { it.canServe(route.origin, firstDestination) }
+            .filter { trip ->
+                val departure = trip.stopAt(route.origin)?.scheduledDepartureTime ?: 0L
+                feedTime <= 0L || departure >= feedTime
+            }
+            .mapNotNull { firstTrip -> scheduledArrivalTime(route, firstTrip) }
+            .minOrNull()
+    }
+
+    private fun scheduledArrivalTime(route: Route, firstTrip: Trip): Long? {
+        var arrival = firstTrip.stopAt(
+            route.transferStations.firstOrNull() ?: route.destination
+        )?.scheduledArrivalTime ?: return null
+
+        for (index in 1 until route.lines.size) {
+            val transfer = route.transferStations[index - 1]
+            val destination = if (index == route.lines.lastIndex) {
+                route.destination
+            } else {
+                route.transferStations[index]
+            }
+            val line = route.lines[index]
+            val minimumTransferSeconds = transferPolicy.minimumTransferSeconds(
+                transfer,
+                route.lines[index - 1],
+                line,
+            )
+            val nextTrip = trips.asSequence()
+                .filter { it.line == line && !it.canceled }
+                .filter { it.canServe(transfer, destination) }
+                .mapNotNull { trip ->
+                    val departure = trip.stopAt(transfer)?.scheduledDepartureTime ?: 0L
+                    val nextArrival = trip.stopAt(destination)?.scheduledArrivalTime ?: 0L
+                    if (departure >= arrival + minimumTransferSeconds * 1000L
+                        && nextArrival > departure
+                    ) trip to nextArrival else null
+                }
+                .minByOrNull { it.second }
+                ?: return null
+            arrival = nextTrip.second
+        }
+        return arrival
     }
 
     private fun correctTrip(trip: Trip, update: GtfsRealtime.TripUpdate): Trip {
@@ -319,226 +377,6 @@ class Schedule private constructor(
         return trip.copy(stops = immutableList(correctedStops), canceled = canceled || trip.canceled)
     }
 
-    /**
-     * BART's Antioch/DMU feed has independent trip IDs. Use it to fill
-     * terminal stop times on the corresponding static Yellow passenger trip;
-     * it must never create a separate technical passenger departure by itself.
-     */
-    private fun applyTerminalRealtime(
-        trips: List<Trip>,
-        feedIndex: GtfsRealtimeFeedIndex,
-    ): List<Trip> {
-        val result = trips.toMutableList()
-        val usedTrips = mutableSetOf<Int>()
-        val terminalEntities = feedIndex.tripUpdateEntities
-            .filter(::isTerminalRealtime)
-            // A direct Antioch departure is the strongest evidence for the
-            // Antioch board. Let it claim the next normal PITT train before a
-            // PCTR-only DMU update can consume that same static trip.
-            .sortedByDescending { entity ->
-                entity.tripUpdate.stopTimeUpdateList.any { stopUpdate ->
-                    stationResolver(stopUpdate.stopId) == Station.ANTC
-                        && (terminalEventTime(stopUpdate.departure) != null
-                        || terminalEventTime(stopUpdate.arrival) != null)
-                }
-            }
-        terminalEntities.forEach { entity ->
-            val update = entity.tripUpdate
-            val points = update.stopTimeUpdateList.mapNotNull { stopUpdate ->
-                val station = stationResolver(stopUpdate.stopId)
-                    ?.takeIf { it == Station.PCTR || it == Station.ANTC }
-                    ?: return@mapNotNull null
-                station to stopUpdate
-            }.toMap()
-            if (points.isEmpty()) return@forEach
-            val terminalStation = points.keys.firstOrNull { it == Station.PCTR }
-                ?: Station.ANTC
-            val terminalUpdate = points[terminalStation] ?: return@forEach
-            val terminalTime = terminalEventTime(terminalUpdate.departure)
-                ?: terminalEventTime(terminalUpdate.arrival) ?: return@forEach
-            val platform = platformForStopId(update.stopTimeUpdateList.firstOrNull()?.stopId)
-            val direction = when (platform) {
-                "1" -> "n"
-                "2" -> "s"
-                else -> null
-            }
-            // DMU telemetry has its own 600-series trip IDs and only covers
-            // the terminal segment. Prefer joining it to an electric trip
-            // whose passenger update supplies a realtime PITT time; the
-            // static terminal time can belong to a different train.
-            val realtimeElectricMatch = result.indices
-                .filter { index ->
-                    val trip = result[index]
-                    if (index in usedTrips || !isTerminalCandidate(trip, direction, platform)) {
-                        return@filter false
-                    }
-                    val pitt = trip.stopAt(Station.PITT) ?: return@filter false
-                    pitt.arrivalSource == PredictionSource.REALTIME ||
-                        pitt.departureSource == PredictionSource.REALTIME
-                }
-                .mapNotNull { index ->
-                    val projected = projectRealtimeTerminalTime(
-                        result[index], terminalStation, direction
-                    ) ?: return@mapNotNull null
-                    index to kotlin.math.abs(projected - terminalTime)
-                }
-                .filter { (_, delta) -> delta <= TERMINAL_MATCH_MAX_MILLIS }
-                .minByOrNull { (_, delta) -> delta }
-                ?.first
-            val match = realtimeElectricMatch ?: result.indices
-                .filter { index ->
-                    val trip = result[index]
-                    if (index in usedTrips || !isTerminalCandidate(trip, direction, platform)) {
-                        return@filter false
-                    }
-                    kotlin.math.abs(
-                        (trip.stopAt(terminalStation)?.arrivalTime ?: 0L) - terminalTime
-                    ) <= TERMINAL_MATCH_MAX_MILLIS
-                }
-                .minByOrNull { index ->
-                    kotlin.math.abs(
-                        (result[index].stopAt(terminalStation)?.arrivalTime ?: 0L)
-                            - terminalTime
-                    )
-                }
-                ?: return@forEach
-            usedTrips += match
-            result[match] = mergeTerminalRealtime(result[match], update, points)
-        }
-        return immutableList(result)
-    }
-
-    private fun isTerminalCandidate(
-        trip: Trip,
-        direction: String?,
-        platform: String?,
-    ): Boolean {
-        if (trip.line != Line.YELLOW || trip.canceled
-            || direction != null && trip.direction != direction
-            || trip.stopAt(Station.PCTR) == null
-            || trip.stopAt(Station.ANTC) == null
-        ) return false
-        val tripPlatform = trip.stopAt(Station.PITT)?.platform
-        return platform == null || tripPlatform == null || platform == tripPlatform
-    }
-
-    private fun isTerminalRealtime(entity: GtfsRealtime.FeedEntity): Boolean {
-        if (!entity.hasTripUpdate()) return false
-        val trip = entity.tripUpdate.trip
-        val routeId = trip.routeId.takeIf { trip.hasRouteId() && it.isNotEmpty() }
-            ?: network.routeIdForTrip(trip.tripId)
-        if (network.lineForRouteId(routeId) != null) return false
-        return entity.tripUpdate.stopTimeUpdateList.any { stopUpdate ->
-            stationResolver(stopUpdate.stopId) in setOf(Station.PCTR, Station.ANTC)
-        }
-    }
-
-    private fun mergeTerminalRealtime(
-        trip: Trip,
-        update: GtfsRealtime.TripUpdate,
-        points: Map<Station, GtfsRealtime.TripUpdate.StopTimeUpdate>,
-    ): Trip {
-        val directStations = points.keys
-        var stops = trip.stops.map { stop ->
-            val terminalUpdate = points[stop.station] ?: return@map stop
-            // DMU trip IDs are not tied to static GTFS. Delay-only events
-            // therefore cannot be interpreted against the matched electric
-            // trip's schedule; use only absolute event times here.
-            val arrival = terminalEventTime(terminalUpdate.arrival)
-            val departure = terminalEventTime(terminalUpdate.departure)
-            when {
-                arrival != null || departure != null -> stop.copy(
-                    arrivalTime = arrival ?: departure!!,
-                    departureTime = departure ?: arrival!!,
-                    arrivalSource = if (arrival != null) PredictionSource.REALTIME
-                    else PredictionSource.ESTIMATE,
-                    departureSource = if (departure != null) PredictionSource.REALTIME
-                    else PredictionSource.ESTIMATE,
-                    skipped = isSkipped(terminalUpdate),
-                )
-                isSkipped(terminalUpdate) -> stop.copy(
-                    arrivalTime = 0L,
-                    departureTime = 0L,
-                    arrivalSource = PredictionSource.UNKNOWN,
-                    departureSource = PredictionSource.UNKNOWN,
-                    skipped = true,
-                )
-                else -> stop
-            }
-        }
-        val pctr = stops.first { it.station == Station.PCTR }
-        val antc = stops.first { it.station == Station.ANTC }
-        if (Station.PCTR in directStations && Station.ANTC !in directStations) {
-            val estimatedAntc = if (trip.direction == "n") {
-                estimateAfter(pctr, antc)
-            } else {
-                estimateBefore(pctr, antc)
-            }
-            if (estimatedAntc != null) {
-                stops = stops.map { if (it.station == Station.ANTC) estimatedAntc else it }
-            }
-        } else if (Station.ANTC in directStations && Station.PCTR !in directStations) {
-            val estimatedPctr = if (trip.direction == "n") {
-                estimateBefore(antc, pctr)
-            } else {
-                estimateAfter(antc, pctr)
-            }
-            if (estimatedPctr != null) {
-                stops = stops.map { if (it.station == Station.PCTR) estimatedPctr else it }
-            }
-        }
-        return trip.copy(stops = immutableList(stops))
-    }
-
-    private fun projectRealtimeTerminalTime(
-        trip: Trip,
-        terminalStation: Station,
-        direction: String?,
-    ): Long? {
-        val pittIndex = trip.stops.indexOfFirst { it.station == Station.PITT }
-        val terminalIndex = trip.stops.indexOfFirst { it.station == terminalStation }
-        if (pittIndex < 0 || terminalIndex < 0 || pittIndex == terminalIndex) return null
-        val pitt = trip.stops[pittIndex]
-        var time = pitt.arrivalTime.takeIf { it > 0L }
-            ?: pitt.departureTime.takeIf { it > 0L }
-            ?: return null
-        if (direction == "n" && terminalIndex > pittIndex) {
-            for (index in pittIndex until terminalIndex) {
-                time += nominalTravelTimeMillis(
-                    trip.stops[index].station,
-                    trip.stops[index + 1].station,
-                ) ?: return null
-            }
-            return time
-        }
-        if (direction == "s" && terminalIndex < pittIndex) {
-            for (index in pittIndex downTo terminalIndex + 1) {
-                time -= nominalTravelTimeMillis(
-                    trip.stops[index - 1].station,
-                    trip.stops[index].station,
-                ) ?: return null
-            }
-            return time
-        }
-        return null
-    }
-
-    private fun estimateBefore(next: Stop, previous: Stop): Stop? {
-        val travel = nominalTravelTimeMillis(previous.station, next.station)
-            ?: return null
-        val nextTime = next.arrivalTime.takeIf { it > 0L } ?: return null
-        val arrival = nextTime - travel
-        if (arrival <= 0L) return null
-        val dwell = (previous.scheduledDepartureTime - previous.scheduledArrivalTime)
-            .coerceAtLeast(0L)
-        return previous.copy(
-            arrivalTime = arrival,
-            departureTime = arrival + dwell,
-            arrivalSource = PredictionSource.ESTIMATE,
-            departureSource = PredictionSource.ESTIMATE,
-        )
-    }
-
     private fun estimateAfter(previous: Stop, current: Stop): Stop? {
         val travel = nominalTravelTimeMillis(previous.station, current.station) ?: return null
         if (previous.departureTime <= 0L || travel <= 0L) return null
@@ -580,11 +418,6 @@ class Schedule private constructor(
         if (event.hasDelay() && scheduled > 0L) return scheduled + event.delay * 1000L
         return null
     }
-
-    /** Absolute DMU times only; delay-only and malformed epoch values are not usable. */
-    private fun terminalEventTime(
-        event: GtfsRealtime.TripUpdate.StopTimeEvent?,
-    ): Long? = eventTime(event, 0L)?.takeIf { it >= MIN_REALTIME_EVENT_TIME_MILLIS }
 
     private fun isSkipped(update: GtfsRealtime.TripUpdate.StopTimeUpdate?): Boolean =
         update?.hasScheduleRelationship() == true &&
@@ -738,104 +571,6 @@ class Schedule private constructor(
         return true
     }
 
-    private fun routeScore(route: Route): Int {
-        var score = route.transferStations.size * 100
-        val lines = route.lines
-        if ((route.origin == Station.DUBL || route.origin == Station.CAST)
-            && (route.destination == Station.PITT
-                || route.destination == Station.PCTR
-                || route.destination == Station.ANTC)
-            && lines.size == 3
-            && lines[0] == Line.BLUE
-            && lines[1] == Line.ORANGE
-            && lines[2] == Line.YELLOW
-            && route.transferStations.size == 2
-        ) score -= 200
-        if (isYellowSouthToBlueViaOrange(route)) {
-            // This is the preferred Antioch/East Bay pattern even though it
-            // adds a transfer: it avoids the split-platform West Oakland
-            // connection and uses the Orange line as the BART timetable does.
-            score -= 250
-        }
-        route.transferStations.indices.forEach { index ->
-            val station = route.transferStations[index]
-            if (transferPolicy.isAvoidedForRouteRanking(route, index)) {
-                score += 80
-            } else if (transferPolicy.isBusyStation(station)) {
-                score += 3
-            }
-            val preferred = preferredTransferStation(route, lines[index], lines[index + 1], index)
-            if (station != preferred) {
-                score += if (preferred == Station.LAKE
-                    && station == Station.BAYF
-                ) 4 else 10
-            }
-        }
-        return score
-    }
-
-    private fun isYellowSouthToBlueViaOrange(route: Route): Boolean {
-        if (route.lines != listOf(Line.YELLOW, Line.ORANGE, Line.BLUE)
-            || route.transferStations.firstOrNull() != Station.MCAR
-        ) return false
-        return transferPolicy.yellowTravelIsSouthbound(route) == true
-    }
-
-    private fun preferredTransferStation(
-        route: Route,
-        first: Line,
-        second: Line,
-        transferIndex: Int,
-    ): Station? {
-        if (isEastBayToSanFranciscoTrunk(first, second)) return Station.BALB
-        if (samePair(first, second, Line.BLUE, Line.ORANGE)
-            || samePair(first, second, Line.GREEN, Line.BLUE)
-        ) {
-            val segmentOrigin = if (transferIndex == 0) route.origin
-            else route.transferStations[transferIndex - 1]
-            val segmentDestination = if (transferIndex + 1 < route.transferStations.size) {
-                route.transferStations[transferIndex + 1]
-            } else {
-                route.destination
-            }
-            if (segmentOrigin != null && segmentDestination != null
-                && segment(first, segmentOrigin, Station.LAKE) != null
-                && segment(second, Station.LAKE, segmentDestination) != null
-                && network.canTransfer(Station.LAKE, first, second)
-            ) return Station.LAKE
-            return Station.BAYF
-        }
-        if (samePair(first, second, Line.ORANGE, Line.YELLOW)) {
-            return if (transferPolicy.yellowTravelIsSouthbound(route) == true) {
-                Station.MCAR
-            } else {
-                Station._19TH
-            }
-        }
-        return null
-    }
-
-    private fun isEastBayToSanFranciscoTrunk(first: Line, second: Line): Boolean {
-        val eastBayLine = first == Line.BLUE || first == Line.GREEN
-        val sanFranciscoTrunk = second == Line.RED
-            || second == Line.YELLOW
-            || second == Line.YELLOW_LATE_NIGHT
-        val reversedEastBayLine = second == Line.BLUE || second == Line.GREEN
-        val reversedSanFranciscoTrunk = first == Line.RED
-            || first == Line.YELLOW
-            || first == Line.YELLOW_LATE_NIGHT
-        return (eastBayLine && sanFranciscoTrunk)
-            || (reversedEastBayLine && reversedSanFranciscoTrunk)
-    }
-
-    private fun samePair(
-        left: Line,
-        right: Line,
-        expectedLeft: Line,
-        expectedRight: Line,
-    ): Boolean = (left == expectedLeft && right == expectedRight)
-        || (left == expectedRight && right == expectedLeft)
-
     private fun uniqueRoutes(routes: List<Route>): List<Route> {
         val unique = mutableListOf<Route>()
         routes.forEach { route ->
@@ -849,10 +584,10 @@ class Schedule private constructor(
         private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
         private const val LOOK_AHEAD_MILLIS = 2L * 60L * 60L * 1000L
         private const val LOOK_BEHIND_MILLIS = 30L * 60L * 1000L
-        private const val TERMINAL_MATCH_MAX_MILLIS = 20L * 60L * 1000L
-        private const val MIN_REALTIME_EVENT_TIME_MILLIS = 1_000_000_000_000L
         private const val LATE_NIGHT_START_HOUR = 21
         private const val LATE_NIGHT_END_HOUR = 5
+        private const val DEFAULT_SFO_MILLBRAE_RUNNING_TIME_MILLIS = 5L * 60L * 1000L
+        private const val LATE_NIGHT_SFO_MILLBRAE_ROUTE_ID = "LATE_NIGHT_SFO_MILLBRAE"
 
         @JvmStatic
         fun fromStatic(
@@ -967,7 +702,17 @@ class Schedule private constructor(
             network: BartGtfsNetwork,
             feedTime: Long,
         ): Schedule {
-            val immutableTrips = immutableList(trips)
+            val baseTrips = trips.filterNot {
+                it.synthetic && it.line == Line.YELLOW_LATE_NIGHT
+            }
+            val augmentedTrips = if (isLateNightSfoMillbraeService(feedTime)) {
+                baseTrips + lateNightSfoMillbraeTrips(
+                    baseTrips, nominalTravelTimes, network, feedTime
+                )
+            } else {
+                baseTrips
+            }
+            val immutableTrips = immutableList(augmentedTrips)
             return Schedule(
                 network,
                 feedTime,
@@ -975,6 +720,80 @@ class Schedule private constructor(
                 immutableMap(nominalTravelTimes),
                 stationResolver,
             )
+        }
+
+        /** Adds the late-night SFO–Millbrae connection as an ordinary timed trip. */
+        private fun lateNightSfoMillbraeTrips(
+            trips: List<Trip>,
+            nominalTravelTimes: Map<Pair<Station, Station>, Long>,
+            network: BartGtfsNetwork,
+            feedTime: Long,
+        ): List<Trip> {
+            val runningTime = nominalTravelTimes[Station.SFIA to Station.MLBR]
+                ?.takeIf { it > 0L }
+                ?: DEFAULT_SFO_MILLBRAE_RUNNING_TIME_MILLIS
+            val transferMillis = network.minimumTransferSeconds(
+                Station.SFIA, Line.YELLOW, Line.RED
+            ).coerceAtLeast(0) * 1000L
+
+            return trips.asSequence()
+                .filter { it.line == Line.YELLOW && !it.canceled }
+                .filter { it.stopAt(Station.SFIA) != null && it.stopAt(Station.MLBR) == null }
+                .mapNotNull { yellowTrip ->
+                    val sfo = yellowTrip.stopAt(Station.SFIA) ?: return@mapNotNull null
+                    val scheduledArrival = sfo.scheduledArrivalTime
+                    val effectiveArrival = sfo.arrivalTime.takeIf { it > 0L }
+                        ?: scheduledArrival
+                    if (scheduledArrival <= 0L || effectiveArrival <= 0L) {
+                        return@mapNotNull null
+                    }
+
+                    val scheduledDeparture = scheduledArrival + transferMillis
+                    val departure = effectiveArrival + transferMillis
+                    if (departure < feedTime) return@mapNotNull null
+                    val scheduledArrivalAtMillbrae = scheduledDeparture + runningTime
+                    val arrivalAtMillbrae = departure + runningTime
+                    Trip(
+                        key = TripKey(
+                            yellowTrip.key.serviceDate,
+                            "${yellowTrip.key.tripId}-late-night-sfo-millbrae",
+                        ),
+                        routeId = LATE_NIGHT_SFO_MILLBRAE_ROUTE_ID,
+                        line = Line.YELLOW_LATE_NIGHT,
+                        direction = "s",
+                        trainDestination = Station.MLBR,
+                        stops = immutableList(
+                            listOf(
+                                Stop(
+                                    station = Station.SFIA,
+                                    scheduledArrivalTime = scheduledDeparture,
+                                    scheduledDepartureTime = scheduledDeparture,
+                                    arrivalTime = departure,
+                                    departureTime = departure,
+                                    arrivalSource = PredictionSource.ESTIMATE,
+                                    departureSource = PredictionSource.ESTIMATE,
+                                ),
+                                Stop(
+                                    station = Station.MLBR,
+                                    scheduledArrivalTime = scheduledArrivalAtMillbrae,
+                                    scheduledDepartureTime = scheduledArrivalAtMillbrae,
+                                    arrivalTime = arrivalAtMillbrae,
+                                    departureTime = arrivalAtMillbrae,
+                                    arrivalSource = PredictionSource.ESTIMATE,
+                                    departureSource = PredictionSource.ESTIMATE,
+                                ),
+                            )
+                        ),
+                        synthetic = true,
+                    )
+                }
+                .toList()
+        }
+
+        private fun isLateNightSfoMillbraeService(feedTime: Long): Boolean {
+            if (feedTime <= 0L) return false
+            val hour = Instant.ofEpochMilli(feedTime).atZone(PACIFIC_ZONE).hour
+            return hour >= LATE_NIGHT_START_HOUR || hour < LATE_NIGHT_END_HOUR
         }
 
         private fun shifted(time: Long, delay: Long): Long =

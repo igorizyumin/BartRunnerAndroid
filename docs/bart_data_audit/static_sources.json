@@ -1,0 +1,124 @@
+{
+  "selection_rule": "maximum active-trip coverage across observed service dates; highest feed_version then path as deterministic tie-break",
+  "selected": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\app\\src\\test\\resources\\gtfs\\bart_google_transit_night.zip",
+  "selected_sha256": "affdc4d70cac01f71e54f049c754ba36824a885edcdef2ef8b024820c9e93080",
+  "identical_table_content": true,
+  "sources": [
+    {
+      "path": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\app\\src\\test\\resources\\gtfs\\bart_google_transit.zip",
+      "sha256": "affdc4d70cac01f71e54f049c754ba36824a885edcdef2ef8b024820c9e93080",
+      "feed_info": {
+        "feed_publisher_name": "Bay Area Rapid Transit",
+        "feed_publisher_url": "http://www.bart.gov",
+        "feed_lang": "en",
+        "feed_start_date": "20260112",
+        "feed_end_date": "20260830",
+        "feed_version": "72"
+      },
+      "table_counts": {
+        "agency.txt": 1,
+        "calendar.txt": 11,
+        "calendar_attributes.txt": 11,
+        "calendar_dates.txt": 20,
+        "directions.txt": 14,
+        "fare_attributes.txt": 2500,
+        "fare_rider_categories.txt": 7500,
+        "fare_rules.txt": 2500,
+        "feed_info.txt": 1,
+        "realtime_routes.txt": 12,
+        "rider_categories.txt": 3,
+        "route_attributes.txt": 14,
+        "routes.txt": 14,
+        "shapes.txt": 27893,
+        "stop_times.txt": 57188,
+        "stops.txt": 287,
+        "transfers.txt": 40,
+        "trips.txt": 4417
+      },
+      "table_sha256": {
+        "agency.txt": "542ef9a40d39aa6b7a3cc5d48d049661bf91e5587c2c1c955dea54d9047ea239",
+        "calendar.txt": "dc80d124be6e336aa884e176b0c920ec5fd26ac83a0c5e650ba54888e3defc9d",
+        "calendar_attributes.txt": "cdac231d524a3d783b76c4121c0a45bd90a67b7b4bb2de168b3254af001a28b5",
+        "calendar_dates.txt": "0d42121dec1587201bbb822a5ae9293430380f64893cce3cd542891d653d8982",
+        "directions.txt": "fc98f1749e9b2a61fccc6fca93b3642ec334ca4d1ce30c9249cf22289874bfbf",
+        "fare_attributes.txt": "a837042cd3c279ed207a84ad0292af0aabee64125a51aabae257df07875a5714",
+        "fare_rider_categories.txt": "7c73cebd15bcfb2a996455e82d8aaffeb8104dffdfe070b82f4932dc5cf8d889",
+        "fare_rules.txt": "df6b09fc7046804cf62360fe4592449f1893db80cec2ba7dd7be12cf4b9bb60e",
+        "feed_info.txt": "8a33be2d0b07f3f77a256e720b0c9775b9c9b51cbd297d47cd39754739a360ec",
+        "realtime_routes.txt": "40a55d620c543de9fdb193cb13308492ad3ef123500549151e6af7a9ebb60831",
+        "rider_categories.txt": "07b6ccaed53fca8b5b0d0fb3e5c38e51d50cdbe5df0b7e83f4cc96f32117a0b1",
+        "route_attributes.txt": "587f4fac925e12232dd4c165d478ad867015312ef2c11eae00bfb7e591896187",
+        "routes.txt": "b8eab92a95019bb957915a55a9e1c1c5b0efca3aa52ac7382bbd33d7ac1f86b7",
+        "shapes.txt": "e9f506fc6c8fc9ef42ba7bdbd1e90e7875392a8f903a2af114ca3a147fce8b9f",
+        "stop_times.txt": "0ad7c2738fe3d6fd69e884f1766ca41917deef79d792a310a693342b30e067db",
+        "stops.txt": "21522167a2f754dc92f71f0a2c0c1708db2418feea30e32a56e5a8b5789ae961",
+        "transfers.txt": "c5bdbb4fefb5c76d6f2aff8eaec975a90a338f9f0fb74c69fa02f9605a91ebaf",
+        "trips.txt": "bf0f7c8a6015c6042cf8ea4f01a8ff398fbd7ef84d8b623db6d79b452f655417"
+      },
+      "active_trip_counts_by_service_date": {
+        "2026-09-11": 1021,
+        "2026-09-12": 1261,
+        "2026-09-13": 1129
+      },
+      "diff_from_selected": {}
+    },
+    {
+      "path": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\app\\src\\test\\resources\\gtfs\\bart_google_transit_night.zip",
+      "sha256": "affdc4d70cac01f71e54f049c754ba36824a885edcdef2ef8b024820c9e93080",
+      "feed_info": {
+        "feed_publisher_name": "Bay Area Rapid Transit",
+        "feed_publisher_url": "http://www.bart.gov",
+        "feed_lang": "en",
+        "feed_start_date": "20260112",
+        "feed_end_date": "20260830",
+        "feed_version": "72"
+      },
+      "table_counts": {
+        "agency.txt": 1,
+        "calendar.txt": 11,
+        "calendar_attributes.txt": 11,
+        "calendar_dates.txt": 20,
+        "directions.txt": 14,
+        "fare_attributes.txt": 2500,
+        "fare_rider_categories.txt": 7500,
+        "fare_rules.txt": 2500,
+        "feed_info.txt": 1,
+        "realtime_routes.txt": 12,
+        "rider_categories.txt": 3,
+        "route_attributes.txt": 14,
+        "routes.txt": 14,
+        "shapes.txt": 27893,
+        "stop_times.txt": 57188,
+        "stops.txt": 287,
+        "transfers.txt": 40,
+        "trips.txt": 4417
+      },
+      "table_sha256": {
+        "agency.txt": "542ef9a40d39aa6b7a3cc5d48d049661bf91e5587c2c1c955dea54d9047ea239",
+        "calendar.txt": "dc80d124be6e336aa884e176b0c920ec5fd26ac83a0c5e650ba54888e3defc9d",
+        "calendar_attributes.txt": "cdac231d524a3d783b76c4121c0a45bd90a67b7b4bb2de168b3254af001a28b5",
+        "calendar_dates.txt": "0d42121dec1587201bbb822a5ae9293430380f64893cce3cd542891d653d8982",
+        "directions.txt": "fc98f1749e9b2a61fccc6fca93b3642ec334ca4d1ce30c9249cf22289874bfbf",
+        "fare_attributes.txt": "a837042cd3c279ed207a84ad0292af0aabee64125a51aabae257df07875a5714",
+        "fare_rider_categories.txt": "7c73cebd15bcfb2a996455e82d8aaffeb8104dffdfe070b82f4932dc5cf8d889",
+        "fare_rules.txt": "df6b09fc7046804cf62360fe4592449f1893db80cec2ba7dd7be12cf4b9bb60e",
+        "feed_info.txt": "8a33be2d0b07f3f77a256e720b0c9775b9c9b51cbd297d47cd39754739a360ec",
+        "realtime_routes.txt": "40a55d620c543de9fdb193cb13308492ad3ef123500549151e6af7a9ebb60831",
+        "rider_categories.txt": "07b6ccaed53fca8b5b0d0fb3e5c38e51d50cdbe5df0b7e83f4cc96f32117a0b1",
+        "route_attributes.txt": "587f4fac925e12232dd4c165d478ad867015312ef2c11eae00bfb7e591896187",
+        "routes.txt": "b8eab92a95019bb957915a55a9e1c1c5b0efca3aa52ac7382bbd33d7ac1f86b7",
+        "shapes.txt": "e9f506fc6c8fc9ef42ba7bdbd1e90e7875392a8f903a2af114ca3a147fce8b9f",
+        "stop_times.txt": "0ad7c2738fe3d6fd69e884f1766ca41917deef79d792a310a693342b30e067db",
+        "stops.txt": "21522167a2f754dc92f71f0a2c0c1708db2418feea30e32a56e5a8b5789ae961",
+        "transfers.txt": "c5bdbb4fefb5c76d6f2aff8eaec975a90a338f9f0fb74c69fa02f9605a91ebaf",
+        "trips.txt": "bf0f7c8a6015c6042cf8ea4f01a8ff398fbd7ef84d8b623db6d79b452f655417"
+      },
+      "active_trip_counts_by_service_date": {
+        "2026-09-11": 1021,
+        "2026-09-12": 1261,
+        "2026-09-13": 1129
+      },
+      "diff_from_selected": {}
+    }
+  ]
+}

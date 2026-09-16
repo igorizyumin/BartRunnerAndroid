@@ -124,18 +124,10 @@ class RouteDepartureProjection private constructor(
         )
 
         if (result.getDepartures().isEmpty() && query.destination != null) {
-            val lateNightRoutes = if (schedule.isLateNightSfoMillbraeService()) {
-                schedule.lateNightSfoMillbraeRoutes(
-                    query.origin,
-                    query.destination,
-                )
-            } else {
-                emptyList()
-            }
             val transferRoutes = schedule.preferredTransferRoutes(
                 query.origin,
                 query.destination
-            ) + lateNightRoutes
+            )
             val transferResult = projectRoutes(
                 routes + transferRoutes,
                 network,

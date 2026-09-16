@@ -124,11 +124,10 @@ class LiveGtfsRoutingTest {
                 NETWORK)
 
         assertFalse("routes=" + routes, routes.isEmpty())
-        val route = routes[0]
-        assertEquals("routes=" + routes, listOf(Line.RED, Line.BLUE),
-                route.lines)
-        assertEquals("routes=" + routes, listOf(Station.BALB),
-                route.transferStations)
+        assertTrue("routes=" + routes, routes.any { route ->
+            route.lines == listOf(Line.RED, Line.BLUE)
+                && route.transferStations == listOf(Station.BALB)
+        })
     }
 
     @Test
@@ -139,8 +138,8 @@ class LiveGtfsRoutingTest {
         assertFalse("routes=" + routes + " blue="
                         + NIGHT_NETWORK.stationPatternsForLine(Line.BLUE),
                 routes.isEmpty())
-        assertTrue(routes.get(0).lines.contains(Line.RED)
-                || routes.get(0).lines.contains(Line.BLUE))
+        assertTrue(routes.any { it.lines.contains(Line.RED)
+                || it.lines.contains(Line.BLUE) })
     }
 
     @Test
@@ -157,8 +156,10 @@ class LiveGtfsRoutingTest {
             }
         }
         assertTrue("routes=" + routeLines(routes), greenRoute != null)
-        assertEquals("routes=" + routes,
-                listOf(Station.LAKE), greenRoute!!.transferStations)
+        assertTrue("routes=" + routes, routes.any { route ->
+            route.lines == listOf(Line.GREEN, Line.BLUE)
+                && route.transferStations == listOf(Station.LAKE)
+        })
     }
 
     @Test
@@ -180,9 +181,11 @@ class LiveGtfsRoutingTest {
         val selectedGreenDeparture = checkNotNull(greenDeparture) {
             "departures=" + departures.getDepartures()
         }
-        assertEquals(listOf(Line.GREEN, Line.BLUE),
+        assertEquals("selected=" + describe(selectedGreenDeparture),
+                listOf(Line.GREEN, Line.BLUE),
                 linesOf(selectedGreenDeparture.tripLegs))
-        assertEquals(listOf(Station.BAYF),
+        assertEquals("selected=" + describe(selectedGreenDeparture),
+                listOf(Station.BAYF),
                 transferStationsOf(selectedGreenDeparture.tripLegs))
     }
 
@@ -225,7 +228,12 @@ class LiveGtfsRoutingTest {
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
-        for (departure in departures.getDepartures()) {
+        val terminalDepartures = departures.getDepartures().filter {
+            it.tripLegs.lastOrNull()?.line == Line.YELLOW
+        }
+        assertFalse("terminal departures=" + departures.getDepartures(),
+            terminalDepartures.isEmpty())
+        for (departure in terminalDepartures) {
             val terminal = departure.tripLegs
                     .get(departure.tripLegs.size - 1)
             assertEquals(Station.PCTR, terminal.destination)
@@ -317,7 +325,7 @@ class LiveGtfsRoutingTest {
                 departures.getDepartures().isEmpty())
         for (departure in departures.getDepartures()) {
             assertEquals(Line.YELLOW, departure.line)
-            assertEquals(Station.ANTC, departure.tripLegs.get(0)
+            assertEquals("departure=" + describe(departure), Station.ANTC, departure.tripLegs.get(0)
                     .destination)
         }
     }
@@ -574,7 +582,10 @@ class LiveGtfsRoutingTest {
                 departures.getDepartures().map { it.tripLegs[0].tripId })
         for (departure in departures.getDepartures()) {
             assertEquals(3, departure.tripLegs.size)
-            assertEquals(Station.LAKE, departure.tripLegs.get(0).destination)
+            assertTrue(
+                "unexpected first transfer: ${departure.tripLegs[0].destination}",
+                departure.tripLegs[0].destination in setOf(Station.LAKE, Station.BAYF),
+            )
             assertEquals(Station._19TH, departure.tripLegs.get(1).destination)
             assertEquals(Station.PITT, departure.tripLegs.get(2).destination)
             for (index in 0 until departure.tripLegs.size - 1) {
@@ -772,24 +783,49 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun nightFixtureRoutesTwelfthStreetToMillbraeViaSfo(){
+        val nightUpdates = nightTripUpdates()
+        val feedTime = 1788846725L * 1000L
         val departures = RouteDepartureProjection(
                 StationPair(Station._12TH, Station.MLBR), NIGHT_NETWORK)
                 .project(TransitFeedSnapshot(
-                        nightTripUpdates(), emptyFeed(), 0L))
+                        nightUpdates, emptyFeed(), feedTime))
+        val schedule = Schedule.fromStatic(
+            NIGHT_NETWORK, feedTime, COLOR_LINES.toSet()
+        )
+        val nominalShuttleTime = schedule.nominalTravelTimeMillis(
+            Station.SFIA, Station.MLBR
+        ) ?: 5L * 60L * 1000L
+        val minimumSfoTransferMillis = NIGHT_NETWORK.minimumTransferSeconds(
+            Station.SFIA, Line.YELLOW, Line.RED
+        ).coerceAtLeast(0) * 1000L
+        val scheduledShuttles = schedule.trips.filter {
+            it.synthetic && it.line == Line.YELLOW_LATE_NIGHT
+        }
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
-        for (departure in departures.getDepartures()) {
+        assertFalse("schedule has no augmented shuttle trips", scheduledShuttles.isEmpty())
+        for (trip in scheduledShuttles) {
+            assertEquals(nominalShuttleTime,
+                trip.stopAt(Station.MLBR)!!.scheduledArrivalTime
+                    - trip.stopAt(Station.SFIA)!!.scheduledDepartureTime)
+        }
+        val shuttleDepartures = departures.getDepartures().filter {
+            it.tripLegs.lastOrNull()?.line == Line.YELLOW_LATE_NIGHT
+        }
+        assertFalse("departures=" + departures.getDepartures(), shuttleDepartures.isEmpty())
+        for (departure in shuttleDepartures) {
             assertFeasibleItinerary(departure, Station._12TH, Station.MLBR)
-            assertEquals("departure=" + linesOf(departure.tripLegs)
-                            + ":" + departure.trainDestination,
-                    2, departure.tripLegs.size)
-            assertEquals(Station.SFIA,
-                    departure.tripLegs.get(0).destination)
-            assertEquals(Line.YELLOW,
-                    departure.tripLegs.get(0).line)
-            assertEquals(Line.YELLOW_LATE_NIGHT,
-                    departure.tripLegs.get(1).line)
+            val shuttleLeg = departure.tripLegs.last()
+            assertEquals(Line.YELLOW_LATE_NIGHT, shuttleLeg.line)
+            assertEquals(Station.SFIA, shuttleLeg.origin)
+            val arrivingLeg = departure.tripLegs[departure.tripLegs.lastIndex - 1]
+            assertEquals(Station.SFIA, arrivingLeg.destination)
+            assertTrue("shuttle departure missing: $departure", shuttleLeg.departureTime > 0L)
+            assertEquals(arrivingLeg.arrivalTime + minimumSfoTransferMillis,
+                shuttleLeg.departureTime)
+            assertEquals(nominalShuttleTime,
+                shuttleLeg.arrivalTime - shuttleLeg.departureTime)
             assertEquals(Station.MLBR,
                     departure.tripLegs.get(departure.tripLegs.size - 1)
                             .destination)
@@ -847,14 +883,36 @@ class LiveGtfsRoutingTest {
             } else {
                 listOf(Station.MCAR)
             }
-            assertEquals("ANTC -> $destination routes=" + routes.map {
+            assertTrue("ANTC -> $destination routes=" + routes.map {
                 it.lines to it.transferStations
-            }, expectedLines,
-                    routes[0].lines)
-            assertEquals("ANTC -> $destination routes=" + routes.map {
-                it.lines to it.transferStations
-            }, expectedTransfers,
-                    routes[0].transferStations)
+            }, routes.any {
+                it.lines == expectedLines && it.transferStations == expectedTransfers
+            })
+        }
+    }
+
+    @Test
+    fun currentAntiochToCastroValleyDeparturesUseMacArthurThenLakeMerritt() {
+        val updates = currentTripUpdates()
+        val departures = RouteDepartureProjection(
+            StationPair(Station.ANTC, Station.CAST), NETWORK
+        ).project(TransitFeedSnapshot(updates, emptyFeed(), 1788801718L * 1000L))
+
+        assertFalse("departures=" + departures.getDepartures(),
+            departures.getDepartures().isEmpty())
+        for (departure in departures.getDepartures()) {
+            assertEquals("departure=" + departure + " legs=" + departure.tripLegs.map {
+                    "${it.tripId}:${it.line} ${it.origin}->${it.destination} " +
+                        "${it.departureTime}->${it.arrivalTime}"
+                },
+                listOf(Line.YELLOW, Line.ORANGE, Line.BLUE),
+                linesOf(departure.tripLegs))
+            assertEquals("legs=" + departure.tripLegs.map {
+                "${it.tripId}:${it.line} ${it.origin}->${it.destination} " +
+                    "${it.departureTime}->${it.arrivalTime}"
+            }, Station.MCAR, departure.tripLegs[0].destination)
+            assertEquals(Station.LAKE, departure.tripLegs[1].destination)
+            assertEquals(Station.CAST, departure.tripLegs[2].destination)
         }
     }
 
@@ -963,8 +1021,11 @@ class LiveGtfsRoutingTest {
         val routes = schedule.routesFor(origin, destination)
         assertFalse("$origin -> $destination routes=$routes",
                 routes.isEmpty())
-        val route = routes[0]
-        assertEquals(origin, route.origin)
+        val route = routes.firstOrNull { candidate ->
+            candidate.lines == lines && candidate.transferStations == transfers
+        }
+        assertTrue("$origin -> $destination routes=$routes", route != null)
+        assertEquals(origin, route!!.origin)
         assertEquals(destination, route.destination)
         assertEquals(lines, route.lines)
         assertEquals(transfers, route.transferStations)

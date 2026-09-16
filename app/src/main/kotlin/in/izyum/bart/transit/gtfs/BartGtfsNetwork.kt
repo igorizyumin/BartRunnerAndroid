@@ -219,37 +219,40 @@ class BartGtfsNetwork private constructor(
     }
 
     /**
-     * Returns whether changing between two lines at a station is possible.
-     * BART's feed lists only some route pairs, and omits transfer rows at
-     * stations such as Bay Fair, so shared station topology is the fallback.
-     * Explicit forbidden rules always win.
+     * Returns whether both lines serve this station. BART interchange
+     * availability comes from station topology; transfer records supply
+     * timing metadata rather than hard route-pair prohibitions.
      */
     fun canTransfer(station: Station?, fromLine: Line?, toLine: Line?): Boolean {
-        if (station == null || fromLine == null || toLine == null || fromLine == toLine) {
+        if (station == null || fromLine == null || toLine == null) {
             return false
         }
-        var matchedRule = false
-        val stationRules = transferRules.filter {
-            it.fromStation == station && it.toStation == station
-        }
-        for (rule in stationRules) {
-            if (!lineMatches(rule.fromRouteId, rule.fromLine, fromLine)
-                || !lineMatches(rule.toRouteId, rule.toLine, toLine)
-            ) {
-                continue
-            }
-            matchedRule = true
-            if (rule.isForbidden()) {
-                return false
-            }
-        }
-        if (matchedRule) {
-            return true
-        }
-
+        // BART interchange feasibility is station-based. Transfer records
+        // describe timing or preference; they do not make a physically shared
+        // station impossible to transfer at. This also permits changing trains
+        // on the same line when a trip short-turns.
         return routePatternsForLine(fromLine).any { station in it.stations }
             && routePatternsForLine(toLine).any { station in it.stations }
     }
+
+    /** Whether the feed marks this station/line pair as a timed transfer. */
+    fun isTimedTransfer(
+        station: Station?,
+        fromLine: Line?,
+        toLine: Line?,
+    ): Boolean = matchingTransferRules(station, fromLine, toLine)
+        .any { it.transferType == 1 }
+
+    /** Whether the feed provides an explicit minimum for this transfer. */
+    fun hasExplicitMinimumTransferTime(
+        station: Station?,
+        fromLine: Line?,
+        toLine: Line?,
+    ): Boolean = matchingTransferRules(station, fromLine, toLine)
+        .any {
+            !it.isForbidden()
+                && it.minimumTransferSeconds?.let { seconds -> seconds >= 0 } == true
+        }
 
     /** Returns the smallest matching feed minimum in seconds. */
     fun minimumTransferSeconds(
@@ -257,17 +260,12 @@ class BartGtfsNetwork private constructor(
         fromLine: Line?,
         toLine: Line?
     ): Int {
-        if (!canTransfer(station, fromLine, toLine)) {
+        if (station == null || fromLine == null || toLine == null) {
             return -1
         }
         var minimum = Int.MAX_VALUE
-        for (rule in transferRules) {
-            if (rule.fromStation != station
-                || rule.toStation != station
-                || !lineMatches(rule.fromRouteId, rule.fromLine, fromLine)
-                || !lineMatches(rule.toRouteId, rule.toLine, toLine)
-                || rule.isForbidden()
-            ) {
+        for (rule in matchingTransferRules(station, fromLine, toLine)) {
+            if (rule.isForbidden()) {
                 continue
             }
             val seconds = rule.minimumTransferSeconds
@@ -276,6 +274,20 @@ class BartGtfsNetwork private constructor(
             }
         }
         return if (minimum == Int.MAX_VALUE) 0 else minimum
+    }
+
+    private fun matchingTransferRules(
+        station: Station?,
+        fromLine: Line?,
+        toLine: Line?,
+    ): List<TransferRule> {
+        if (station == null || fromLine == null || toLine == null) return emptyList()
+        return transferRules.filter { rule ->
+            rule.fromStation == station
+                && rule.toStation == station
+                && lineMatches(rule.fromRouteId, rule.fromLine, fromLine)
+                && lineMatches(rule.toRouteId, rule.toLine, toLine)
+        }
     }
 
     fun validationErrors(): List<String> {

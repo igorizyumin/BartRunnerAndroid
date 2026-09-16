@@ -33,12 +33,13 @@ class BartGtfsNetworkTest {
     }
 
     @Test
-    fun usesRouteSpecificTransferRulesAndRejectsForbiddenRules() {
+    fun usesTransferRulesForMarginsWithoutMakingStationTransfersImpossible() {
         val updated = files().toMutableMap()
         updated["transfers.txt"] = "from_stop_id,to_stop_id,transfer_type,min_transfer_time,from_route_id,to_route_id\nA10-1,A10-2,2,90,1,12\nA10-2,A10-1,3,0,12,1\n"
         val network = BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(updated))
         assertTrue(network.canTransfer(Station.LAKE, Line.YELLOW, Line.BLUE))
-        assertFalse(network.canTransfer(Station.LAKE, Line.BLUE, Line.YELLOW))
+        assertTrue(network.canTransfer(Station.LAKE, Line.BLUE, Line.YELLOW))
+        assertTrue(network.canTransfer(Station.LAKE, Line.YELLOW, Line.YELLOW))
         assertEquals(90, network.minimumTransferSeconds(Station.LAKE, Line.YELLOW, Line.BLUE))
     }
 

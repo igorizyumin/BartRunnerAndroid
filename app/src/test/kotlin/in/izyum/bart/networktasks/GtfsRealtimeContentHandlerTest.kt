@@ -18,45 +18,150 @@ import org.junit.Test
 
 class GtfsRealtimeContentHandlerTest {
     @Test
-    fun joinsDmuTerminalUpdateOntoRealtimeOnlyElectricTrip() {
+    fun dmuTerminalUpdateDoesNotOverrideAccurateStaticSchedule() {
         val network = antiochNetwork()
         val feedTime = epoch("2026-09-07T10:00:00-07:00")
         val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
-        val route = schedule.routesFor(Station.ANTC, null).single()
-        val electricTime = epoch("2026-09-07T10:05:00-07:00")
-        val dmuPctrTime = epoch("2026-09-07T10:17:00-07:00")
-        val dmuAntcTime = epoch("2026-09-07T10:24:00-07:00")
+        val route = Route.direct(
+            Station.MONT, Station.ANTC, Line.YELLOW, "n",
+            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
+        )
         val feed = GtfsRealtime.FeedMessage.newBuilder()
             .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0")
                 .setTimestamp(feedTime / 1000L))
             .addEntity(entity(
-                "yellow-s",
-                "electric-live",
-                arrayOf("PITT", "MONT"),
-                longArrayOf(electricTime / 1000L, (electricTime - 15 * 60_000L) / 1000L),
-            ))
-            .addEntity(entity(
                 "",
                 "682",
-                arrayOf("PCTR-2", "ANTC-2"),
-                longArrayOf(dmuPctrTime / 1000L, dmuAntcTime / 1000L),
+                arrayOf("PCTR-1", "ANTC-1"),
+                longArrayOf(
+                    epoch("2026-09-07T10:17:00-07:00") / 1000L,
+                    epoch("2026-09-07T10:24:00-07:00") / 1000L,
+                ),
             ))
             .build()
 
         val departures = GtfsRealtimeContentHandler(
-            Station.ANTC, null, listOf(route), false, network,
+            Station.MONT, Station.ANTC, listOf(route), false, network,
         ).getRealTimeDepartures(feed)
 
-        val electric = departures.getDepartures().firstOrNull {
-            it.tripLegs.singleOrNull()?.tripId == "electric-live"
-        } ?: throw AssertionError("joined electric departure missing: ${departures.getDepartures()}")
-        val leg = electric.tripLegs.single()
-        assertEquals(Station.ANTC, leg.origin)
-        assertEquals(PredictionSource.REALTIME, leg.departureSource)
-        assertEquals(dmuAntcTime, leg.departureTime)
+        val scheduled = departures.getDepartures().firstOrNull {
+            it.tripLegs.singleOrNull()?.tripId == "scheduled"
+        } ?: throw AssertionError("static Antioch departure missing: ${departures.getDepartures()}")
+        val leg = scheduled.tripLegs.single()
+        assertEquals(Station.MONT, leg.origin)
+        assertEquals(PredictionSource.SCHEDULE, leg.departureSource)
+        assertEquals(epoch("2026-09-07T10:30:00-07:00"), leg.departureTime)
         assertFalse("technical DMU update leaked into passenger output",
             departures.getDepartures().any { it.tripLegs.any { trip -> trip.tripId == "682" } })
+    }
+
+    @Test
+    fun northboundDmuDoesNotJoinToElectricTrainWithLaterPittTime() {
+        val network = terminalDirectionNetwork()
+        val feedTime = epoch("2026-09-07T09:45:00-07:00")
+        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
+        val route = Route.direct(
+            Station.MONT, Station.ANTC, Line.YELLOW, "n",
+            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
+        )
+        val electricPittTime = epoch("2026-09-07T10:29:00-07:00")
+        val feed = terminalJoinFeed(
+            feedTime,
+            routeId = "yellow-n",
+            electricTripId = "electric-live-n",
+            electricStops = arrayOf("MONT-1", "PITT-1"),
+            electricTimes = longArrayOf(
+                epoch("2026-09-07T10:00:00-07:00") / 1000L,
+                electricPittTime / 1000L,
+            ),
+            dmuStops = arrayOf("PCTR-1", "ANTC-1"),
+            dmuTimes = longArrayOf(
+                epoch("2026-09-07T10:17:00-07:00") / 1000L,
+                epoch("2026-09-07T10:24:00-07:00") / 1000L,
+            ),
+        )
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.MONT, Station.ANTC, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        assertFalse(
+            "PCTR at 10:17 cannot belong to the electric train reaching PITT at " +
+                "10:29; its northbound PCTR projection is 10:41",
+            departures.getDepartures().any {
+                it.tripLegs.any { leg -> leg.tripId == "electric-live-n" }
+            },
+        )
+    }
+
+    @Test
+    fun dmuMergeKeepsAStaticIdAsDynamicPassengerDeparture() {
+        val network = terminalDirectionNetwork()
+        val feedTime = epoch("2026-09-07T09:45:00-07:00")
+        val route = Route.direct(
+            Station.PITT, Station.PCTR, Line.YELLOW, "n",
+            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
+        )
+        val feed = terminalJoinFeed(
+            feedTime,
+            routeId = "yellow-n",
+            electricTripId = "scheduled-n",
+            electricStops = arrayOf("PITT-1"),
+            electricTimes = longArrayOf(epoch("2026-09-07T10:05:00-07:00") / 1000L),
+            dmuStops = arrayOf("PCTR-1", "ANTC-1"),
+            dmuTimes = longArrayOf(
+                epoch("2026-09-07T10:17:00-07:00") / 1000L,
+                epoch("2026-09-07T10:24:00-07:00") / 1000L,
+            ),
+        )
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.PITT, Station.PCTR, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        val departure = departures.getDepartures().firstOrNull {
+            it.tripLegs.singleOrNull()?.tripId == "scheduled-n"
+        } ?: throw AssertionError("DMU-enriched realtime trip missing: ${departures.getDepartures()}")
+        assertEquals(PredictionSource.REALTIME, departure.tripLegs.single().arrivalSource)
+        assertEquals(epoch("2026-09-07T10:17:00-07:00"), departure.tripLegs.single().arrivalTime)
+    }
+
+    @Test
+    fun southboundDmuProjectsAntiochTimeBackFromPitt() {
+        val network = terminalDirectionNetwork()
+        val feedTime = epoch("2026-09-07T09:45:00-07:00")
+        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
+        val route = Route.direct(
+            Station.PITT, Station.MONT, Line.YELLOW, "s",
+            listOf(Station.ANTC, Station.PCTR, Station.PITT, Station.MONT),
+        )
+        val feed = terminalJoinFeed(
+            feedTime,
+            routeId = "yellow-s",
+            electricTripId = "electric-live-s",
+            electricStops = arrayOf("PITT-2", "MONT-2"),
+            electricTimes = longArrayOf(
+                epoch("2026-09-07T10:29:00-07:00") / 1000L,
+                epoch("2026-09-07T10:50:00-07:00") / 1000L,
+            ),
+            dmuStops = arrayOf("ANTC-2", "PCTR-2"),
+            dmuTimes = longArrayOf(
+                epoch("2026-09-07T10:10:00-07:00") / 1000L,
+                epoch("2026-09-07T10:22:00-07:00") / 1000L,
+            ),
+        )
+
+        val departures = GtfsRealtimeContentHandler(
+            Station.PITT, Station.MONT, listOf(route), false, network,
+        ).getRealTimeDepartures(feed)
+
+        assertTrue(
+            "the DMU at Antioch should join the electric train leaving PITT at 10:29",
+            departures.getDepartures().any {
+                it.tripLegs.any { leg -> leg.tripId == "electric-live-s" }
+            },
+        )
     }
 
     @Test
@@ -122,7 +227,9 @@ class GtfsRealtimeContentHandlerTest {
     @Test
     fun staticScheduleSuppliesTerminalWhenRealtimeOmitsItsPrediction() {
         val network = network()
-        val route = Schedule.fromStatic(network, 0L).routesFor(Station.MONT, Station.DALY)[0]
+        val route = Schedule.fromStatic(network, 0L)
+            .routesFor(Station.MONT, Station.DALY)
+            .first { it.directLine == Line.BLUE }
         val update = GtfsRealtime.TripUpdate.newBuilder()
             .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId("12").setTripId("blue-valid"))
@@ -156,7 +263,7 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
-    fun keepsConnectingTripsThatDoNotMeetFeedMinimum() {
+    fun keepsOnlyConnectingTripsThatMeetFeedMinimum() {
         val network = network()
         val route: Route = Schedule.fromStatic(network, 0L).routesFor(Station.LAKE, Station.DALY)[0]
         assertTrue(
@@ -169,9 +276,9 @@ class GtfsRealtimeContentHandlerTest {
         assertEquals(1, departures.getDepartures().size)
         val legs: List<TripLeg> = departures.getDepartures()[0].tripLegs
         assertEquals(2, legs.size)
-        assertEquals("blue-early", legs[1].tripId)
-        assertEquals(1_100_000L, legs[1].departureTime)
-        assertEquals(1_160_000L, legs[1].arrivalTime)
+        assertEquals("blue-valid", legs[1].tripId)
+        assertEquals(1_150_000L, legs[1].departureTime)
+        assertEquals(1_210_000L, legs[1].arrivalTime)
         assertEquals(90, legs[0].minimumTransferSecondsAfter)
     }
 
@@ -326,20 +433,61 @@ class GtfsRealtimeContentHandlerTest {
             "stops.txt" to "stop_id,stop_name,zone_id\n" +
                 "MONT,Montgomery St.,MONT\n" +
                 "PITT,Pittsburg/Bay Point,PITT\n" +
-                "PCTR-2,Pittsburg Center,PCTR\n" +
-                "ANTC-2,Antioch,ANTC\n",
-            "routes.txt" to "route_id,route_short_name\nyellow-s,Yellow-S\n",
-            "trips.txt" to "route_id,service_id,trip_id\nyellow-s,weekday,scheduled\n",
+                "PCTR-1,Pittsburg Center,PCTR\n" +
+                "ANTC-1,Antioch,ANTC\n",
+            "routes.txt" to "route_id,route_short_name\nyellow-n,Yellow-N\n",
+            "trips.txt" to "route_id,service_id,trip_id\nyellow-n,weekday,scheduled\n",
             "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
                 "scheduled,10:30:00,10:30:00,MONT,1\n" +
                 "scheduled,10:45:00,10:45:00,PITT,2\n" +
-                "scheduled,10:57:00,10:57:00,PCTR-2,3\n" +
-                "scheduled,11:04:00,11:04:00,ANTC-2,4\n",
+                "scheduled,10:57:00,10:57:00,PCTR-1,3\n" +
+                "scheduled,11:04:00,11:04:00,ANTC-1,4\n",
             "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
                 "weekday,1,1,1,1,1,0,0,20260901,20260930\n",
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }
+
+    private fun terminalDirectionNetwork(): BartGtfsNetwork {
+        val files = mapOf(
+            "stops.txt" to "stop_id,stop_name,zone_id\n" +
+                "MONT-1,Montgomery St.,MONT\nMONT-2,Montgomery St.,MONT\n" +
+                "PITT-1,Pittsburg/Bay Point,PITT\nPITT-2,Pittsburg/Bay Point,PITT\n" +
+                "PCTR-1,Pittsburg Center,PCTR\nPCTR-2,Pittsburg Center,PCTR\n" +
+                "ANTC-1,Antioch,ANTC\nANTC-2,Antioch,ANTC\n",
+            "routes.txt" to "route_id,route_short_name\nyellow-s,Yellow-S\nyellow-n,Yellow-N\n",
+            "trips.txt" to "route_id,service_id,trip_id\n" +
+                "yellow-n,weekday,scheduled-n\nyellow-s,weekday,scheduled-s\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                "scheduled-n,11:50:00,11:50:00,MONT-1,1\n" +
+                "scheduled-n,12:10:00,12:10:00,PITT-1,2\n" +
+                "scheduled-n,12:22:00,12:22:00,PCTR-1,3\n" +
+                "scheduled-n,12:29:00,12:29:00,ANTC-1,4\n" +
+                "scheduled-s,11:30:00,11:30:00,ANTC-2,1\n" +
+                "scheduled-s,11:37:00,11:37:00,PCTR-2,2\n" +
+                "scheduled-s,11:49:00,11:49:00,PITT-2,3\n" +
+                "scheduled-s,12:09:00,12:09:00,MONT-2,4\n",
+            "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
+                "weekday,1,1,1,1,1,0,0,20260901,20260930\n",
+        )
+        return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
+    }
+
+    private fun terminalJoinFeed(
+        feedTime: Long,
+        routeId: String,
+        electricTripId: String,
+        electricStops: Array<String>,
+        electricTimes: LongArray,
+        dmuStops: Array<String>,
+        dmuTimes: LongArray,
+    ): GtfsRealtime.FeedMessage = GtfsRealtime.FeedMessage.newBuilder()
+        .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+            .setGtfsRealtimeVersion("2.0")
+            .setTimestamp(feedTime / 1000L))
+        .addEntity(entity(routeId, electricTripId, electricStops, electricTimes))
+        .addEntity(entity("", "682", dmuStops, dmuTimes))
+        .build()
 
     private fun platformNetwork(): BartGtfsNetwork {
         val files = mutableMapOf(

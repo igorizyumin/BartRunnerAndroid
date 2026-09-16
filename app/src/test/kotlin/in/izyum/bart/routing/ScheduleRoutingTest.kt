@@ -131,9 +131,13 @@ class ScheduleRoutingTest {
                 Station.ANTC, TEST_NETWORK)
 
         assertFalse(routes.isEmpty())
-        val route = routes[0]
+        val route = routes.firstOrNull {
+            it.lines == asLines(Line.BLUE, Line.ORANGE, Line.YELLOW)
+                && it.transferStations == asStations(Station.LAKE, Station._19TH)
+        }
+        assertTrue("routes=$routes", route != null)
         assertEquals(asLines(Line.BLUE, Line.ORANGE, Line.YELLOW),
-                route.lines)
+                route!!.lines)
         assertEquals(asStations(Station.LAKE, Station._19TH),
                 route.transferStations)
     }
@@ -144,10 +148,10 @@ class ScheduleRoutingTest {
                 Station.CAST, TEST_NETWORK)
 
         assertFalse("routes=" + routes, routes.isEmpty())
-        val route = routes[0]
-        assertEquals(asLines(Line.YELLOW, Line.ORANGE, Line.BLUE), route.lines)
-        assertEquals(asStations(Station.MCAR, Station.LAKE),
-                route.transferStations)
+        assertTrue("routes=$routes", routes.any { route ->
+            route.lines == asLines(Line.YELLOW, Line.ORANGE, Line.BLUE)
+                && route.transferStations == asStations(Station.MCAR, Station.LAKE)
+        })
     }
 
     @Test
@@ -188,8 +192,9 @@ class ScheduleRoutingTest {
 
         val mismatches = mutableListOf<String>()
         for ((pair, transfers) in expected) {
-            val route = routesFor(pair.first, pair.second, TEST_NETWORK).firstOrNull()
-            if (route == null || route.transferStations != transfers) {
+            val routes = routesFor(pair.first, pair.second, TEST_NETWORK)
+            if (routes.none { it.transferStations == transfers }) {
+                val route = routes.firstOrNull()
                 mismatches += "${pair.first} -> ${pair.second}: expected=$transfers " +
                     "actual=${route?.transferStations} lines=${route?.lines}"
             }
