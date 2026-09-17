@@ -89,33 +89,34 @@ debug APK build, connected Android tests, and canonical DMU regression tests.
 - `Departure`/`TripLeg`/`TripStop` construction;
 - existing-itinerary refresh and connection repair.
 
-- [ ] Extract a canonical `DepartureProjector` that converts selected RAPTOR
+- [x] Extract a canonical `DepartureProjector` that converts selected RAPTOR
   journeys into app models.
-- [ ] Move RAPTOR-trip conversion and journey selection into a focused routing
+- [x] Move RAPTOR-trip conversion and journey selection into a focused routing
   adapter, or make `RouteDepartureProjection` own that thin adapter.
-- [ ] Move existing-itinerary refresh into a separate
+- [x] Move existing-itinerary refresh into a separate
   `TripProgressProjector`/`ItineraryRefreshProjector`.
 - [ ] Remove the handler’s raw-feed overloads after all production callers
   migrate to canonical inputs.
 - [ ] Remove `correctedSchedule(...)` from the handler; schedule correction is
   owned by `CanonicalTransitSnapshot`.
-- [ ] Remove `parseRealtimeOnlyTrips(...)` from the route-departure path. The
+- [x] Remove `parseRealtimeOnlyTrips(...)` from the route-departure path. The
   canonical passenger-trip collection is authoritative; this fallback must not
   synthesize an additional departure set.
-- [ ] Replace the handler’s manual `findConnectingTrip` and
-  `refreshConnectingLegs` logic, or isolate it as an explicit itinerary-repair
-  algorithm. It must not become a second general-purpose router.
+- [x] Replace the handler’s manual `findConnectingTrip` and
+  `refreshConnectingLegs` logic with complete RAPTOR replanning after the
+  current itinerary becomes infeasible. Preserve only traveled portions.
 
 ### 3. Finish trip-progress migration
 
-- [ ] Make `TripProgressProjection` consume canonical trip state without
+- [x] Make `TripProgressProjection` consume canonical trip state without
   calling deprecated static route helpers or legacy handler overloads.
-- [ ] Use the same transfer-policy predicate for initial routing and itinerary
+- [x] Use the same transfer-policy predicate for initial routing and itinerary
   refresh.
-- [ ] Make replacement of a canceled or infeasible connecting leg
-  deterministic and preserve the selected trip identity where possible.
-- [ ] Ensure a partially completed leg retains passed stops while future legs
-  are refreshed from the canonical snapshot.
+- [x] Make replacement of a canceled or infeasible connecting leg
+  deterministic through canonical RAPTOR replanning, preserving the selected
+  trip identity while the current route remains feasible.
+- [x] Ensure a partially completed leg retains passed stops while future legs
+  are replanned from the canonical snapshot.
 
 ### 4. Stabilize departure identity and presentation
 
@@ -146,9 +147,11 @@ debug APK build, connected Android tests, and canonical DMU regression tests.
 These are intentionally still present because they have callers. Do not add
 new call sites:
 
-- Raw and normalized-feed `GtfsRealtimeContentHandler` departure overloads
+- Deprecated `GtfsRealtimeContentHandler` compatibility façade and its raw/
+  normalized-feed departure overloads
 - Legacy `GtfsRealtimeContentHandler.updateTripLegs(...)` overloads
-- Private handler compatibility path for realtime-only trip parsing
+- Private legacy compatibility path for realtime-only trip parsing
+- `TransitFeedSnapshot.getCorrectedSchedule(...)` convenience API
 
 The compiler warnings are migration markers, not errors to suppress globally.
 Once production callers are removed, delete the deprecated APIs and their

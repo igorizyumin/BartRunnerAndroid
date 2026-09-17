@@ -68,6 +68,10 @@ class TransitFeedSnapshot(
         }
     }
 
+    @Deprecated(
+        "Use getCanonicalSnapshot(network).correctedSchedule; canonical data owns schedule correction.",
+        level = DeprecationLevel.WARNING,
+    )
     fun getCorrectedSchedule(network: BartGtfsNetwork): Schedule =
         getCanonicalSnapshot(network).correctedSchedule
 

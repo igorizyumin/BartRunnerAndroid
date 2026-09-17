@@ -12,7 +12,6 @@ import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.routing.TransferPolicy
 import `in`.izyum.bart.routing.RaptorRouter
-import `in`.izyum.bart.backend.CanonicalTransitSnapshot
 import `in`.izyum.bart.backend.Schedule
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.normalization.NormalizedRealtimeFeed
@@ -25,8 +24,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.LinkedHashMap
 
-/** Converts BART's GTFS-RT trip updates into the app's departure model. */
-class GtfsRealtimeContentHandler @JvmOverloads constructor(
+/** Legacy raw-feed projection retained for compatibility tests and callers. */
+@Deprecated(
+    "Legacy raw-feed projection; migrate to canonical projectors and remove this adapter.",
+    level = DeprecationLevel.WARNING,
+)
+internal class LegacyRealtimeProjection @JvmOverloads constructor(
     private val origin: Station,
     private val destination: Station?,
     private val routes: List<Route>,
@@ -81,20 +84,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         normalizedFeed,
         feedTime,
         correctedSchedule(normalizedFeed, feedTime),
-    )
-
-    /**
-     * Projects the finalized passenger schedule from one canonical snapshot.
-     * The canonical layer owns feed normalization, trip association, and
-     * realtime correction; this path does not reconstruct or supplement that
-     * data from the raw feed.
-     */
-    fun getRealTimeDepartures(
-        canonical: CanonicalTransitSnapshot,
-    ): RealTimeDepartures = getRealTimeDepartures(
-        canonical.correctedSchedule,
-        canonical.normalizedFeed.provenance.feedTimestampMillis,
-        allowLegacyRouteFallback = false,
     )
 
     private fun getRealTimeDepartures(
@@ -174,51 +163,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     }
 
     /**
-     * Refreshes an existing itinerary from canonical passenger trips. The
-     * itinerary supplies the route metadata needed for connection repair; no
-     * static route enumeration is performed here.
-     */
-    fun updateTripLegs(
-        canonical: CanonicalTransitSnapshot,
-        existingLegs: List<TripLeg>,
-    ): List<TripLeg> {
-        val trips = canonical.correctedSchedule.trips.map(::snapshotFromSchedule)
-        val tripsByIdentity = trips
-            .filter { it.tripId != null && it.serviceDate != null }
-            .associateBy { "${it.serviceDate}:${it.tripId}" }
-        val tripsById = trips.groupBy { it.tripId }
-        val updatedLegs = existingLegs.map { existing ->
-            val current = existing.canonicalIdentity?.let(tripsByIdentity::get)
-                ?: tripsById[existing.tripId].orEmpty().singleOrNull()
-                ?: findMatchingTrip(existing, trips)
-            if (current == null) existing else updateTripLeg(existing, current)
-        }.toMutableList()
-
-        (routeForCanonicalItinerary(trips, existingLegs)
-            ?: routeForExistingLegs(updatedLegs))?.let { route ->
-            refreshConnectingLegs(route, updatedLegs, trips)
-        }
-        return updatedLegs
-    }
-
-    private fun routeForCanonicalItinerary(
-        trips: List<TripSnapshot>,
-        existingLegs: List<TripLeg>,
-    ): Route? {
-        val firstLeg = existingLegs.firstOrNull() ?: return null
-        val departureTime = firstLeg.departureTime.takeIf { it > 0L }
-            ?: firstLeg.scheduledDepartureTime.takeIf { it > 0L }
-            ?: return null
-        val raptorTrips = trips.map(::raptorTrip)
-        val router = RaptorRouter(raptorTrips, bartGtfsNetwork, transferPolicy)
-        val journeys = router.journeys(origin, destination ?: return null, departureTime)
-        val matchingJourney = journeys.firstOrNull { journey ->
-            journey.legs.firstOrNull()?.trip?.id == firstLeg.tripId
-        } ?: journeys.firstOrNull()
-        return matchingJourney?.let(::routeForJourney)
-    }
-
-    /**
      * Replaces the stop estimates for an already-selected itinerary using
      * the latest update for each exact train. A train may no longer include
      * the passenger's origin in the feed after it has departed, so missing
@@ -288,42 +232,6 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             refreshConnectingLegs(route, updatedLegs, trips)
         }
         return updatedLegs
-    }
-
-    private fun routeForExistingLegs(legs: List<TripLeg>): Route? {
-        if (legs.isEmpty()) return null
-        val origin = legs.first().origin ?: return null
-        val finalDestination = destination ?: legs.last().destination ?: return null
-        val lines = legs.map { it.line ?: return null }
-        val transferStations = legs.dropLast(1).map {
-            it.destination ?: return null
-        }
-        val sequences = LinkedHashMap<Line, List<Station>>()
-        legs.forEach { leg ->
-            val line = leg.line ?: return@forEach
-            val sequence = (listOfNotNull(leg.origin)
-                + leg.stops.mapNotNull { it.station }
-                + listOfNotNull(leg.destination)).distinct()
-            sequences.putIfAbsent(line, sequence)
-        }
-        return if (lines.size == 1) {
-            Route.direct(
-                origin,
-                finalDestination,
-                lines.single(),
-                null,
-                sequences[lines.single()].orEmpty(),
-            )
-        } else {
-            Route.transfer(
-                origin,
-                finalDestination,
-                lines,
-                transferStations,
-                null,
-                sequences,
-            )
-        }
     }
 
     /**

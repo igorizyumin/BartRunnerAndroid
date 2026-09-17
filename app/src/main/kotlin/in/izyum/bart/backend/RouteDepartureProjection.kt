@@ -2,7 +2,6 @@ package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.RealTimeDepartures
 import `in`.izyum.bart.model.StationPair
-import `in`.izyum.bart.networktasks.GtfsRealtimeContentHandler
 import `in`.izyum.bart.performance.PerformanceTrace
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.util.function.Supplier
@@ -35,12 +34,11 @@ class RouteDepartureProjection private constructor(
         return PerformanceTrace.section(name) {
             val network = networkSupplier.get()
             val canonical = snapshot.getCanonicalSnapshot(network)
-            GtfsRealtimeContentHandler(
+            DepartureProjector(
                 query.origin,
                 query.destination,
-                ignoreDirection,
                 network,
-            ).getRealTimeDepartures(canonical).finalizeDeparturesList()
+            ).project(canonical).finalizeDeparturesList()
         }
     }
 

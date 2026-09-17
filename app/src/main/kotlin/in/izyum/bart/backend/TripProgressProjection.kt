@@ -2,7 +2,6 @@ package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.Station
-import `in`.izyum.bart.networktasks.GtfsRealtimeContentHandler
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.util.function.Supplier
 
@@ -27,13 +26,11 @@ class TripProgressProjection(
     fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
         val network = networkSupplier.get()
         val canonical = snapshot.getCanonicalSnapshot(network)
-        val handler = GtfsRealtimeContentHandler(
+        return ItineraryRefreshProjector(
             origin,
             destination,
-            true,
             network
-        )
-        return handler.updateTripLegs(canonical, existingLegs)
+        ).project(canonical, existingLegs)
     }
 
 }
