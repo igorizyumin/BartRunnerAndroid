@@ -63,21 +63,20 @@ debug APK build, connected Android tests, and canonical DMU regression tests.
 
 ### 1. Make RAPTOR the only route-selection path
 
-- [ ] Remove `Schedule.routesFor`, `preferredTransferRoutes`,
+- [x] Remove `Schedule.routesFor`, `preferredTransferRoutes`,
   `doubleTransferRoutes`, and `transferRoutes` from production callers.
-  They are deprecated static-topology APIs, currently still referenced by
-  `RouteDepartureProjection`, `TripProgressProjection`, and
-  `RealTimeDepartures`; tests also exercise them directly.
-- [ ] Change `RouteDepartureProjection` to construct RAPTOR input from the
+  They are deprecated static-topology APIs; compatibility tests still
+  exercise them directly.
+- [x] Change `RouteDepartureProjection` to construct RAPTOR input from the
   canonical passenger schedule and ask `RaptorRouter` for journeys directly.
   Remove direct-route, transfer-route, and double-transfer fallback passes.
-- [ ] Keep `Route` only where it is needed as journey/display metadata. It
+- [x] Keep `Route` only where it is needed as journey/display metadata. It
   should be derived from a selected RAPTOR journey rather than used to drive a
   separate static search.
-- [ ] Migrate `RealTimeDepartures` transfer metadata away from calling static
+- [x] Migrate `RealTimeDepartures` transfer metadata away from calling static
   schedule route helpers.
-- [ ] Decide whether the old static route helpers can then be deleted, or
-  retain them only in explicitly labeled historical compatibility tests.
+- [x] Delete the old static route helpers and remove the historical tests that
+  existed only to validate that obsolete routing engine.
 
 ### 2. Split `GtfsRealtimeContentHandler`
 
@@ -147,10 +146,6 @@ debug APK build, connected Android tests, and canonical DMU regression tests.
 These are intentionally still present because they have callers. Do not add
 new call sites:
 
-- `Schedule.routesFor(...)`
-- `Schedule.preferredTransferRoutes(...)`
-- `Schedule.doubleTransferRoutes(...)`
-- `Schedule.transferRoutes(...)`
 - Raw and normalized-feed `GtfsRealtimeContentHandler` departure overloads
 - Legacy `GtfsRealtimeContentHandler.updateTripLegs(...)` overloads
 - Private handler compatibility path for realtime-only trip parsing

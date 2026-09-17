@@ -27,21 +27,13 @@ class TripProgressProjection(
     fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
         val network = networkSupplier.get()
         val canonical = snapshot.getCanonicalSnapshot(network)
-        val schedule = canonical.correctedSchedule
-        val routes = schedule.routesFor(origin, destination)
         val handler = GtfsRealtimeContentHandler(
             origin,
             destination,
-            routes,
             true,
             network
         )
-        return handler.updateTripLegs(
-            snapshot.getNormalizedTripUpdates(),
-            existingLegs,
-            snapshot.getTripUpdatesTimestampMillis(),
-            schedule,
-        )
+        return handler.updateTripLegs(canonical, existingLegs)
     }
 
 }

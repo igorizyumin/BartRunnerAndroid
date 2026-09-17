@@ -23,6 +23,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.LinkedHashMap
 
 /** Converts BART's GTFS-RT trip updates into the app's departure model. */
 class GtfsRealtimeContentHandler @JvmOverloads constructor(
@@ -34,6 +35,22 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     private val timeSource: TimeSource = SystemTimeSource,
 ) {
     private val transferPolicy = TransferPolicy(bartGtfsNetwork)
+
+    /** Canonical projections do not need a static route catalog. */
+    constructor(
+        origin: Station,
+        destination: Station?,
+        ignoreDirection: Boolean,
+        bartGtfsNetwork: BartGtfsNetwork,
+        timeSource: TimeSource = SystemTimeSource,
+    ) : this(
+        origin,
+        destination,
+        emptyList(),
+        ignoreDirection,
+        bartGtfsNetwork,
+        timeSource,
+    )
 
     init {
         requireNotNull(bartGtfsNetwork) { "A validated GTFS network is required" }
@@ -77,11 +94,13 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
     ): RealTimeDepartures = getRealTimeDepartures(
         canonical.correctedSchedule,
         canonical.normalizedFeed.provenance.feedTimestampMillis,
+        allowLegacyRouteFallback = false,
     )
 
     private fun getRealTimeDepartures(
         schedule: Schedule,
         feedTime: Long,
+        allowLegacyRouteFallback: Boolean = true,
     ): RealTimeDepartures {
         val departures = DepartureCollection()
         val trips = schedule.trips.map(::snapshotFromSchedule)
@@ -96,16 +115,16 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 feedTime,
                 raptorRouter,
                 raptorTripsBySnapshot,
+                allowLegacyRouteFallback,
             )
         }
         return RealTimeDepartures(
             origin,
             destination,
             feedTime,
-            routes,
             departures.unfiltered,
             departures.filtered,
-            schedule,
+            transfersIncluded = destination != null,
         )
     }
 
@@ -141,17 +160,62 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                 feedTime,
                 raptorRouter,
                 raptorTripsBySnapshot,
+                allowLegacyRouteFallback = true,
             )
         }
         return RealTimeDepartures(
             origin,
             destination,
             feedTime,
-            routes,
             departures.unfiltered,
             departures.filtered,
-            schedule,
+            transfersIncluded = destination != null,
         )
+    }
+
+    /**
+     * Refreshes an existing itinerary from canonical passenger trips. The
+     * itinerary supplies the route metadata needed for connection repair; no
+     * static route enumeration is performed here.
+     */
+    fun updateTripLegs(
+        canonical: CanonicalTransitSnapshot,
+        existingLegs: List<TripLeg>,
+    ): List<TripLeg> {
+        val trips = canonical.correctedSchedule.trips.map(::snapshotFromSchedule)
+        val tripsByIdentity = trips
+            .filter { it.tripId != null && it.serviceDate != null }
+            .associateBy { "${it.serviceDate}:${it.tripId}" }
+        val tripsById = trips.groupBy { it.tripId }
+        val updatedLegs = existingLegs.map { existing ->
+            val current = existing.canonicalIdentity?.let(tripsByIdentity::get)
+                ?: tripsById[existing.tripId].orEmpty().singleOrNull()
+                ?: findMatchingTrip(existing, trips)
+            if (current == null) existing else updateTripLeg(existing, current)
+        }.toMutableList()
+
+        (routeForCanonicalItinerary(trips, existingLegs)
+            ?: routeForExistingLegs(updatedLegs))?.let { route ->
+            refreshConnectingLegs(route, updatedLegs, trips)
+        }
+        return updatedLegs
+    }
+
+    private fun routeForCanonicalItinerary(
+        trips: List<TripSnapshot>,
+        existingLegs: List<TripLeg>,
+    ): Route? {
+        val firstLeg = existingLegs.firstOrNull() ?: return null
+        val departureTime = firstLeg.departureTime.takeIf { it > 0L }
+            ?: firstLeg.scheduledDepartureTime.takeIf { it > 0L }
+            ?: return null
+        val raptorTrips = trips.map(::raptorTrip)
+        val router = RaptorRouter(raptorTrips, bartGtfsNetwork, transferPolicy)
+        val journeys = router.journeys(origin, destination ?: return null, departureTime)
+        val matchingJourney = journeys.firstOrNull { journey ->
+            journey.legs.firstOrNull()?.trip?.id == firstLeg.tripId
+        } ?: journeys.firstOrNull()
+        return matchingJourney?.let(::routeForJourney)
     }
 
     /**
@@ -224,6 +288,42 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             refreshConnectingLegs(route, updatedLegs, trips)
         }
         return updatedLegs
+    }
+
+    private fun routeForExistingLegs(legs: List<TripLeg>): Route? {
+        if (legs.isEmpty()) return null
+        val origin = legs.first().origin ?: return null
+        val finalDestination = destination ?: legs.last().destination ?: return null
+        val lines = legs.map { it.line ?: return null }
+        val transferStations = legs.dropLast(1).map {
+            it.destination ?: return null
+        }
+        val sequences = LinkedHashMap<Line, List<Station>>()
+        legs.forEach { leg ->
+            val line = leg.line ?: return@forEach
+            val sequence = (listOfNotNull(leg.origin)
+                + leg.stops.mapNotNull { it.station }
+                + listOfNotNull(leg.destination)).distinct()
+            sequences.putIfAbsent(line, sequence)
+        }
+        return if (lines.size == 1) {
+            Route.direct(
+                origin,
+                finalDestination,
+                lines.single(),
+                null,
+                sequences[lines.single()].orEmpty(),
+            )
+        } else {
+            Route.transfer(
+                origin,
+                finalDestination,
+                lines,
+                transferStations,
+                null,
+                sequences,
+            )
+        }
     }
 
     /**
@@ -541,6 +641,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
         feedTime: Long,
         raptorRouter: RaptorRouter,
         raptorTripsBySnapshot: Map<TripSnapshot, RaptorRouter.Trip>,
+        allowLegacyRouteFallback: Boolean,
     ) {
         val originPoint = trip.pointAt(origin)
         if (originPoint == null || originPoint.departureTime <= 0) {
@@ -585,6 +686,7 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
 
             if (candidates.isEmpty()) {
                 if (journeys.isNotEmpty()) return
+                if (!allowLegacyRouteFallback) return
                 // Preserve a topology-valid departure when this feed omits the
                 // terminal event entirely. It has no arrival score, so this
                 // fallback is used only when RAPTOR cannot form a timed trip.
@@ -616,17 +718,22 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
             return
         }
 
+        val applicableRoutes = routes.filter {
+            it.trainDestinationIsApplicable(trip.trainDestination, trip.line)
+        }
         if (!ignoreDirection && !origin.ignoreRoutingDirection
-            && routes.none {
-                it.trainDestinationIsApplicable(trip.trainDestination, trip.line)
-            }
+            && routes.isNotEmpty() && applicableRoutes.isEmpty()
         ) return
         // A train can match several route alternatives because they share the
         // same first leg. Rank complete timed itineraries after validating
         // transfers, so a preferred station does not hide a much earlier
         // arrival.
-        val candidates = routes.asSequence()
-            .filter { it.trainDestinationIsApplicable(trip.trainDestination, trip.line) }
+        val stationOnlyRoutes = if (routes.isEmpty()) {
+            listOfNotNull(routeForStationOnlyTrip(trip))
+        } else {
+            applicableRoutes
+        }
+        val candidates = stationOnlyRoutes.asSequence()
             .map { route -> route to buildTripLegs(route, trip, allTrips) }
             .filter { (route, legs) -> legs.size == route.lines.size }
             .toList()
@@ -667,6 +774,18 @@ class GtfsRealtimeContentHandler @JvmOverloads constructor(
                     departures, listOf(route to legs), trip, originPoint, minutes
                 )
             }
+    }
+
+    private fun routeForStationOnlyTrip(trip: TripSnapshot): Route? {
+        val trainDestination = trip.trainDestination ?: return null
+        val stations = trip.points.sortedBy { it.order }.map { it.station }
+        return Route.direct(
+            origin,
+            trainDestination,
+            trip.line,
+            trip.direction,
+            stations,
+        )
     }
 
     private fun addSelectedCandidate(

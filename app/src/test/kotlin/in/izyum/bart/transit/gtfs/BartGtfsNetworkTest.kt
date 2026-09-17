@@ -1,9 +1,7 @@
 package `in`.izyum.bart.transit.gtfs
 
 import `in`.izyum.bart.model.Line
-import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
-import `in`.izyum.bart.backend.Schedule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -41,17 +39,6 @@ class BartGtfsNetworkTest {
         assertTrue(network.canTransfer(Station.LAKE, Line.BLUE, Line.YELLOW))
         assertTrue(network.canTransfer(Station.LAKE, Line.YELLOW, Line.YELLOW))
         assertEquals(90, network.minimumTransferSeconds(Station.LAKE, Line.YELLOW, Line.BLUE))
-    }
-
-    @Test
-    fun plannerUsesAFeedPatternForAStationPair() {
-        val network = BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files()))
-        val routes: List<Route> = Schedule.fromStatic(network, 0L)
-            .routesFor(Station.LAKE, Station.SFIA)
-        assertEquals(1, routes.size)
-        assertEquals(Line.YELLOW, routes[0].directLine)
-        assertEquals("s", routes[0].direction)
-        assertTrue(routes[0].trainDestinationIsApplicable(Station.SFIA, Line.YELLOW))
     }
 
     private fun files() = mutableMapOf(

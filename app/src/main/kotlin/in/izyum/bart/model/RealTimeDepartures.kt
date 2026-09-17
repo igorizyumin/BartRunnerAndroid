@@ -15,10 +15,6 @@ class RealTimeDepartures internal constructor(
     private val unfilteredDepartures = immutableList(unfilteredDepartures)
     private val departures = immutableList(departures)
 
-    init {
-        requireNotNull(schedule) { "A schedule is required" }
-    }
-
     fun getDepartures(): List<Departure> = departures
 
     fun areTransfersIncluded(): Boolean = transfersIncluded

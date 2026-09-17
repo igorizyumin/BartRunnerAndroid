@@ -8,7 +8,6 @@ import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.RealTimeDepartures
-import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.model.TripLeg
@@ -21,13 +20,9 @@ import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import com.google.transit.realtime.GtfsRealtime
 
 import org.junit.Test
-import org.junit.Assume
-
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
-import java.util.EnumMap
-import java.util.IdentityHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
@@ -44,7 +39,6 @@ class LiveGtfsRoutingTest {
             BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(NIGHT_FILES))
     private val COLOR_LINES: List<Line> = listOf(
             Line.RED, Line.ORANGE, Line.YELLOW, Line.BLUE, Line.GREEN)
-    private val ROUTING_SCHEDULES: MutableMap<BartGtfsNetwork, Schedule> = IdentityHashMap()
 
     @Test
     fun liveFeedSatisfiesGenericAndBartInvariants() {
@@ -82,91 +76,9 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun everyColorLineHasDayAndNightServiceAndCrossLineRoutes() {
-        val servicePeriods: Map<String, ServicePeriod> = servicePeriods()
-        for (period in ServicePeriod.values()) {
-            val representatives: Map<Line, Station> = representativeStations(period, servicePeriods)
-            for (originLine in COLOR_LINES) {
-                for (destinationLine in COLOR_LINES) {
-                    if (originLine == destinationLine) {
-                        continue
-                    }
-                    val origin = representatives.getValue(originLine)
-                    val destination = representatives.getValue(destinationLine)
-                    val routes: List<Route> = routesFor(origin,
-                            destination, NETWORK)
-                    assertTrue("$period route " + originLine + " " + origin
-                                    + " -> " + destinationLine + " " + destination
-                                    + " routes=" + routes,
-                            hasServiceableRoute(routes, period, servicePeriods))
-                }
-            }
-        }
-    }
-
-    @Test
-    fun castroValleyToPittsburgUsesTheExpectedThreeLegRoute() {
-        val routes: List<Route> = routesFor(Station.CAST, Station.PITT,
-                NETWORK)
-
-        assertFalse("routes=" + routes, routes.isEmpty())
-        val route = routes[0]
-        assertEquals(listOf(Line.BLUE, Line.ORANGE, Line.YELLOW),
-                route.lines)
-        assertEquals(listOf(Station.LAKE, Station._19TH),
-                route.transferStations)
-        assertTrue(route.hasTransfer())
-    }
-
-    @Test
-    fun sfoToCastroValleyUsesRedToBlueAtBalboaPark() {
-        val routes: List<Route> = routesFor(Station.SFIA, Station.CAST,
-                NETWORK)
-
-        assertFalse("routes=" + routes, routes.isEmpty())
-        assertTrue("routes=" + routes, routes.any { route ->
-            route.lines == listOf(Line.RED, Line.BLUE)
-                && route.transferStations == listOf(Station.BALB)
-        })
-    }
-
-    @Test
-    fun ashbyToBalboaParkIsRouteableOnNightSchedule() {
-        val routes: List<Route> = routesFor(Station.ASHB, Station.BALB,
-                NIGHT_NETWORK)
-
-        assertFalse("routes=" + routes + " blue="
-                        + NIGHT_NETWORK.stationPatternsForLine(Line.BLUE),
-                routes.isEmpty())
-        assertTrue(routes.any { it.lines.contains(Line.RED)
-                || it.lines.contains(Line.BLUE) })
-    }
-
-    @Test
-    fun milpitasToCastroValleyUsesGreenToBlueAtBayFair() {
-        val routes: List<Route> = routesFor(Station.MLPT, Station.CAST,
-                NETWORK)
-
-        assertFalse("routes=" + routes, routes.isEmpty())
-        var greenRoute: Route? = null
-        for (route in routes) {
-            if (route.lines.equals(listOf(Line.GREEN, Line.BLUE))) {
-                greenRoute = route
-                break
-            }
-        }
-        assertTrue("routes=" + routeLines(routes), greenRoute != null)
-        assertTrue("routes=" + routes, routes.any { route ->
-            route.lines == listOf(Line.GREEN, Line.BLUE)
-                && route.transferStations == listOf(Station.LAKE)
-        })
-    }
-
-    @Test
     fun currentGreenDepartureFromMilpitasUsesBlueAtBayFair(){
         val handler = GtfsRealtimeContentHandler(
                 Station.MLPT, Station.CAST,
-                routesFor(Station.MLPT, Station.CAST, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -190,38 +102,9 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun castroValleyToPittsburgCenterRouteReachesTheTerminal() {
-        val routes: List<Route> = routesFor(Station.CAST, Station.PCTR,
-                NETWORK)
-
-        assertFalse("routes=" + routes, routes.isEmpty())
-        val route = routes[0]
-        assertEquals("routes=" + routes,
-                listOf(Line.BLUE, Line.ORANGE, Line.YELLOW),
-                route.lines)
-        assertEquals(listOf(Station.LAKE, Station._19TH),
-                route.transferStations)
-        assertEquals(Station.PCTR, route.destination)
-    }
-
-    @Test
-    fun pleasantHillToPittsburgCenterUsesTheTerminalShuttle() {
-        val routes: List<Route> = routesFor(Station.PHIL, Station.PCTR,
-                NETWORK)
-
-        assertFalse("routes=" + routes, routes.isEmpty())
-        val route = routes[0]
-        assertEquals(listOf(Line.YELLOW),
-                route.lines)
-        assertEquals(emptyList<Station>(), route.transferStations)
-        assertEquals(Station.PCTR, route.destination)
-    }
-
-    @Test
     fun currentFeedKeepsPittsburgCenterAsTheFinalStop(){
         val handler = GtfsRealtimeContentHandler(
                 Station.CAST, Station.PCTR,
-                routesFor(Station.CAST, Station.PCTR, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -250,7 +133,6 @@ class LiveGtfsRoutingTest {
     fun currentFeedConnectsPleasantHillToPittsburgCenterShuttle(){
         val handler = GtfsRealtimeContentHandler(
                 Station.PHIL, Station.PCTR,
-                routesFor(Station.PHIL, Station.PCTR, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -273,24 +155,9 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun castroValleyToAntiochRouteReachesTheTerminal() {
-        val routes: List<Route> = routesFor(Station.CAST, Station.ANTC,
-                NETWORK)
-
-        assertFalse("routes=" + routes, routes.isEmpty())
-        val route = routes[0]
-                assertEquals(listOf(Line.BLUE, Line.ORANGE, Line.YELLOW),
-                route.lines)
-        assertEquals(listOf(Station.LAKE, Station._19TH),
-                route.transferStations)
-        assertEquals(Station.ANTC, route.destination)
-    }
-
-    @Test
     fun currentFeedKeepsAntiochAsTheFinalStop(){
         val handler = GtfsRealtimeContentHandler(
                 Station.CAST, Station.ANTC,
-                routesFor(Station.CAST, Station.ANTC, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -314,7 +181,6 @@ class LiveGtfsRoutingTest {
     fun currentFeedReportsPittsburgToAntiochDepartures(){
         val handler = GtfsRealtimeContentHandler(
                 Station.PITT, Station.ANTC,
-                routesFor(Station.PITT, Station.ANTC, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -332,7 +198,6 @@ class LiveGtfsRoutingTest {
     fun currentFeedReportsAntiochToPittsburgDepartures(){
         val handler = GtfsRealtimeContentHandler(
                 Station.ANTC, Station.PITT,
-                routesFor(Station.ANTC, Station.PITT, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -371,7 +236,6 @@ class LiveGtfsRoutingTest {
     fun capturedAntiochFeedBuildsPassengerDeparturesFromNormalTrips(){
         val handler = GtfsRealtimeContentHandler(
                 Station.ANTC, null,
-                routesFor(Station.ANTC, null, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 antiochLiveTripUpdates())
@@ -444,7 +308,6 @@ class LiveGtfsRoutingTest {
     fun unknownDmuTripIdDoesNotCreatePassengerDeparture() {
         val handler = GtfsRealtimeContentHandler(
                 Station.PITT, Station.PCTR,
-                routesFor(Station.PITT, Station.PCTR, NETWORK),
                 false, NETWORK)
         val feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
@@ -464,7 +327,6 @@ class LiveGtfsRoutingTest {
     fun separatePittsburgPlatformAndDmuUpdatesDoNotBuildPassengerDeparture() {
         val handler = GtfsRealtimeContentHandler(
                 Station.PITT, Station.ANTC,
-                routesFor(Station.PITT, Station.ANTC, NETWORK),
                 false, NETWORK)
         val feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
@@ -485,7 +347,6 @@ class LiveGtfsRoutingTest {
     fun separateReversePlatformAndDmuUpdatesDoNotBuildPassengerDeparture() {
         val handler = GtfsRealtimeContentHandler(
                 Station.ANTC, Station.PITT,
-                routesFor(Station.ANTC, Station.PITT, NETWORK),
                 false, NETWORK)
         val feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
@@ -507,7 +368,6 @@ class LiveGtfsRoutingTest {
     fun currentSfoProjectionDoesNotFabricateARealtimeRedTrip(){
         val handler = GtfsRealtimeContentHandler(
                 Station.SFIA, Station.CAST,
-                routesFor(Station.SFIA, Station.CAST, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
@@ -519,44 +379,10 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun realtimeItineraryIncludesThePittsburgLeg() {
-        val handler = GtfsRealtimeContentHandler(
-                Station.CAST, Station.PITT,
-                routesFor(Station.CAST, Station.PITT, NETWORK),
-                false, NETWORK)
-        val feed = GtfsRealtime.FeedMessage.newBuilder()
-                .setHeader(GtfsRealtime.FeedHeader.newBuilder()
-                        .setGtfsRealtimeVersion("2.0")
-                        .setTimestamp(900L))
-                .addEntity(trip("blue", "11",
-                        arrayOf("CAST", "BAYF", "DALY"),
-                        longArrayOf(1000L, 1100L, 2000L)))
-                .addEntity(trip("orange", "3",
-                        arrayOf("BAYF", "19TH", "RICH"),
-                        longArrayOf(1200L, 1300L, 1400L)))
-                .addEntity(trip("yellow", "2",
-                        arrayOf("19TH", "PITT", "ANTC"),
-                        longArrayOf(1500L, 1600L, 1700L)))
-                .build()
-
-        val departures = handler.getRealTimeDepartures(feed)
-        val legs: List<TripLeg> = departures.getDepartures().get(0).tripLegs
-
-        assertEquals(3, legs.size)
-        assertEquals(Station.PITT, legs.get(2).destination)
-
-        val refreshed: List<TripLeg> = handler.updateTripLegs(feed,
-                legs.subList(0, 2), 900_000L)
-        assertEquals(3, refreshed.size)
-        assertEquals(Station.PITT, refreshed.get(2).destination)
-    }
-
-    @Test
     fun currentTripUpdatesBuildCompleteCastroValleyToPittsburgItinerary(){
         val feed = currentTripUpdates()
         val handler = GtfsRealtimeContentHandler(
                 Station.CAST, Station.PITT,
-                routesFor(Station.CAST, Station.PITT, NETWORK),
                 false, NETWORK)
         val departures = handler.getRealTimeDepartures(feed)
         assertTrue(feed.getEntityCount() > 0)
@@ -585,7 +411,6 @@ class LiveGtfsRoutingTest {
         val feed = currentTripUpdates()
         val handler = GtfsRealtimeContentHandler(
                 Station.CAST, Station.PITT,
-                routesFor(Station.CAST, Station.PITT, NETWORK),
                 false, NETWORK)
         val selected = handler.getRealTimeDepartures(feed).getDepartures()[0]
         val partial: List<TripLeg> = selected.tripLegs.subList(0, 2)
@@ -604,10 +429,8 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun nightTripUpdatesUseStaticTerminalWhenRealtimeStopsAtBalboa(){
-        val routes: List<Route> = routesFor(Station.BALB, Station.DALY,
-                NIGHT_NETWORK)
         val handler = GtfsRealtimeContentHandler(
-                Station.BALB, Station.DALY, routes, false, NIGHT_NETWORK)
+                Station.BALB, Station.DALY, false, NIGHT_NETWORK)
         val departures = handler.getRealTimeDepartures(
                 nightTripUpdates())
 
@@ -636,16 +459,13 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentTripUpdatesProvideTwelfthStreetToSfoRouting(){
-        val routes: List<Route> = routesFor(Station._12TH, Station.SFIA,
-                NETWORK)
         val departures = RouteDepartureProjection(
                 StationPair(Station._12TH, Station.SFIA), NETWORK)
                 .project(TransitFeedSnapshot(
                         currentTripUpdates(), emptyFeed(), 0L))
 
-        assertFalse("routes=" + routes + " departures="
-                        + departures.getDepartures(),
-                departures.getDepartures().isEmpty())
+        assertFalse("departures=" + departures.getDepartures(),
+                        departures.getDepartures().isEmpty())
         var hasSfo = false
         for (departure in departures.getDepartures()) {
             assertFeasibleItinerary(departure, Station._12TH, Station.SFIA)
@@ -654,8 +474,7 @@ class LiveGtfsRoutingTest {
                 break
             }
         }
-        assertTrue("routes=" + routes + " departures="
-                        + departures.getDepartures(), hasSfo)
+        assertTrue("departures=" + departures.getDepartures(), hasSfo)
     }
 
     @Test
@@ -747,15 +566,12 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun latestTripUpdatesRouteTwelfthStreetTo16thStreet(){
-        val routes: List<Route> = routesFor(Station._12TH, Station._16TH,
-                NIGHT_NETWORK)
         val departures = RouteDepartureProjection(
                 StationPair(Station._12TH, Station._16TH), NIGHT_NETWORK)
                 .project(TransitFeedSnapshot(
                         latest12th16thTripUpdates(), emptyFeed(), 0L))
 
-        assertFalse("routes=" + routes + " departures="
-                        + departures.getDepartures(),
+        assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
         for (departure in departures.getDepartures()) {
             assertFeasibleItinerary(departure, Station._12TH, Station._16TH)
@@ -796,65 +612,6 @@ class LiveGtfsRoutingTest {
             assertEquals(Station.MLBR,
                     departure.tripLegs.get(departure.tripLegs.size - 1)
                             .destination)
-        }
-    }
-
-    @Test
-    fun fixtureRoutesCoverLineEndpointsTransfersAndAntioch() {
-        assertRoute(NETWORK, Station.RICH, Station.SFIA,
-                listOf(Line.RED), emptyList())
-        assertRoute(NETWORK, Station.SFIA, Station.RICH,
-                listOf(Line.RED), emptyList())
-        assertRoute(NETWORK, Station.BERY, Station.RICH,
-                listOf(Line.ORANGE), emptyList())
-        assertRoute(NETWORK, Station.RICH, Station.BERY,
-                listOf(Line.ORANGE), emptyList())
-        assertRoute(NETWORK, Station.BERY, Station.DALY,
-                listOf(Line.GREEN), emptyList())
-        assertRoute(NETWORK, Station.DALY, Station.BERY,
-                listOf(Line.GREEN), emptyList())
-        assertRoute(NETWORK, Station.DUBL, Station.DALY,
-                listOf(Line.BLUE), emptyList())
-        assertRoute(NETWORK, Station.DALY, Station.DUBL,
-                listOf(Line.BLUE), emptyList())
-        assertRoute(NETWORK, Station.SFIA, Station.PITT,
-                listOf(Line.YELLOW), emptyList())
-        assertRoute(NETWORK, Station.PITT, Station.SFIA,
-                listOf(Line.YELLOW), emptyList())
-        assertRoute(NETWORK, Station.PITT, Station.ANTC,
-                listOf(Line.YELLOW), emptyList())
-        assertRoute(NETWORK, Station.ANTC, Station.PITT,
-                listOf(Line.YELLOW), emptyList())
-        assertRoute(NETWORK, Station.CAST, Station.PITT,
-                listOf(Line.BLUE, Line.ORANGE, Line.YELLOW),
-                listOf(Station.LAKE, Station._19TH))
-        assertRoute(NETWORK, Station.CAST, Station.ANTC,
-                listOf(Line.BLUE, Line.ORANGE, Line.YELLOW),
-                listOf(Station.LAKE, Station._19TH))
-        assertRoute(NIGHT_NETWORK, Station.ASHB, Station.DALY,
-                listOf(Line.RED), emptyList())
-    }
-
-    @Test
-    fun antiochEastBayTransfersUseMacArthurOnTheLiveStaticSchedule() {
-        for (destination in listOf(Station.BERY, Station.DUBL)) {
-            val routes = routesFor(Station.ANTC, destination, NETWORK)
-            assertFalse("ANTC -> $destination routes=$routes", routes.isEmpty())
-            val expectedLines = if (destination == Station.DUBL) {
-                listOf(Line.YELLOW, Line.ORANGE, Line.BLUE)
-            } else {
-                listOf(Line.YELLOW, Line.ORANGE)
-            }
-            val expectedTransfers = if (destination == Station.DUBL) {
-                listOf(Station.MCAR, Station.LAKE)
-            } else {
-                listOf(Station.MCAR)
-            }
-            assertTrue("ANTC -> $destination routes=" + routes.map {
-                it.lines to it.transferStations
-            }, routes.any {
-                it.lines == expectedLines && it.transferStations == expectedTransfers
-            })
         }
     }
 
@@ -970,61 +727,6 @@ class LiveGtfsRoutingTest {
         assertEquals(PredictionSource.ESTIMATE, found.arrivalSource)
     }
 
-    @Test
-    fun fixtureProtobufsProduceValidRoutingForEveryStationPair(){
-        Assume.assumeTrue(
-                "All-pairs fixture audit is manual: run with -DrunAllPairs=true",
-                java.lang.Boolean.getBoolean("runAllPairs"))
-        assertFixtureRouting("day", NETWORK, currentTripUpdates())
-        assertFixtureRouting("night", NIGHT_NETWORK, nightTripUpdates())
-    }
-
-    private fun assertRoute(
-        network: BartGtfsNetwork,
-        origin: Station,
-        destination: Station,
-        lines: List<Line>,
-        transfers: List<Station>,
-    ) {
-        val feedTime = if (network == NIGHT_NETWORK) {
-            1788846725L * 1000L
-        } else {
-            1788801718L * 1000L
-        }
-        val schedule = Schedule.fromStatic(network, feedTime,
-                COLOR_LINES.toSet())
-        val routes = schedule.routesFor(origin, destination)
-        assertFalse("$origin -> $destination routes=$routes",
-                routes.isEmpty())
-        val route = routes.firstOrNull { candidate ->
-            candidate.lines == lines && candidate.transferStations == transfers
-        }
-        assertTrue("$origin -> $destination routes=$routes", route != null)
-        assertEquals(origin, route!!.origin)
-        assertEquals(destination, route.destination)
-        assertEquals(lines, route.lines)
-        assertEquals(transfers, route.transferStations)
-    }
-
-    private fun routesFor(
-        origin: Station,
-        destination: Station?,
-        network: BartGtfsNetwork,
-    ): List<Route> {
-        var schedule = ROUTING_SCHEDULES[network]
-        if (schedule == null) {
-            val feedTime = if (network == NIGHT_NETWORK) {
-                1788846725L * 1000L
-            } else {
-                1788801718L * 1000L
-            }
-            schedule = Schedule.fromStatic(network, feedTime,
-                    COLOR_LINES.toSet())
-            ROUTING_SCHEDULES[network] = schedule
-        }
-        return schedule.routesFor(origin, destination)
-    }
-
     private fun trip(schedule: Schedule, tripId: String): Schedule.Trip {
         for (trip in schedule.trips) {
             if (trip.key.tripId == tripId) {
@@ -1053,61 +755,6 @@ class LiveGtfsRoutingTest {
         assertEquals("${trip.key} $station departure", departure, stop.departureTime)
         assertEquals("${trip.key} $station arrival source", source, stop.arrivalSource)
         assertEquals("${trip.key} $station departure source", source, stop.departureSource)
-    }
-
-    private fun assertFixtureRouting(
-        fixtureName: String,
-        network: BartGtfsNetwork,
-        feed: GtfsRealtime.FeedMessage,
-    ) {
-        for (origin in Station.getStationList()) {
-            for (destination in Station.getStationList()) {
-                if (origin == destination) {
-                    continue
-                }
-                val routes: List<Route> = routesFor(origin, destination,
-                        network)
-                assertFalse(fixtureName + " has no static route " + origin
-                                + " -> " + destination,
-                        routes.isEmpty())
-                for (route in routes) {
-                    assertEquals(fixtureName + " route origin", origin,
-                            route.origin)
-                    assertEquals(fixtureName + " route destination", destination,
-                            route.destination)
-                    assertFalse(fixtureName + " route has no lines", route.lines.isEmpty())
-                    var legOrigin = origin
-                    for (index in 0 until route.lines.size) {
-                        val legDestination = if (index < route.transferStations.size) {
-                            route.transferStations[index]
-                        } else {
-                            destination
-                        }
-                        val sequence: List<Station> = route.getStationSequence(
-                                route.lines.get(index))
-                        assertTrue(fixtureName + " route misses leg origin",
-                                sequence.indexOf(legOrigin) >= 0)
-                        assertTrue(fixtureName + " route has reversed leg",
-                                sequence.indexOf(legOrigin)
-                                        < sequence.indexOf(legDestination))
-                        legOrigin = legDestination
-                    }
-                }
-            }
-        }
-
-        val stationRoutes: List<Route> = routesFor(Station.ASHB, null, network)
-        val departures = GtfsRealtimeContentHandler(
-                Station.ASHB, null, stationRoutes, false, network)
-                .getRealTimeDepartures(feed)
-        for (departure in departures.getDepartures()) {
-            assertEquals(fixtureName + " departure origin", Station.ASHB,
-                    departure.origin)
-            assertFalse(fixtureName + " station-only departure has no legs",
-                    departure.tripLegs.isEmpty())
-            assertTrue(fixtureName + " station-only departure has no destination",
-                    departure.tripLegs.get(0).destination != null)
-        }
     }
 
     private fun currentTripUpdates(): GtfsRealtime.FeedMessage =
@@ -1182,8 +829,6 @@ class LiveGtfsRoutingTest {
     private fun stationsOf(stops: List<`in`.izyum.bart.model.TripStop>): List<Station> =
         stops.mapNotNull { it.station }
 
-    private fun routeLines(routes: List<Route>): List<List<Line>> = routes.map { it.lines }
-
     private fun trip(
         tripId: String,
         routeId: String,
@@ -1205,135 +850,10 @@ class LiveGtfsRoutingTest {
                 .setTripUpdate(update).build()
     }
 
-    private fun representativeStations(
-        period: ServicePeriod,
-        servicePeriods: Map<String, ServicePeriod>,
-    ): Map<Line, Station> {
-        val result: MutableMap<Line, Station> = EnumMap<Line, Station>(Line::class.java)
-        val usedStations: MutableSet<Station> = HashSet()
-        for (line in COLOR_LINES) {
-            for (pattern in NETWORK.routePatternsForLine(line)) {
-                if (!hasService(pattern, period, servicePeriods)) {
-                    continue
-                }
-                for (station in pattern.stations) {
-                    if (usedStations.add(station)) {
-                        result.put(line, station)
-                        break
-                    }
-                }
-                if (result.containsKey(line)) {
-                    break
-                }
-            }
-            assertTrue("missing " + period + " service for " + line,
-                    result.containsKey(line))
-        }
-        return result
-    }
-
-    private fun hasService(
-        pattern: BartGtfsNetwork.StationPattern,
-        period: ServicePeriod,
-        servicePeriods: Map<String, ServicePeriod>,
-    ): Boolean {
-        for (tripId in pattern.tripIds) {
-            if (period == servicePeriods.get(tripId)) {
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun hasServiceableRoute(
-        routes: List<Route>,
-        period: ServicePeriod,
-        servicePeriods: Map<String, ServicePeriod>,
-    ): Boolean {
-        for (route in routes) {
-            if (routeHasService(route, period, servicePeriods)) {
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun routeHasService(
-        route: Route,
-        period: ServicePeriod,
-        servicePeriods: Map<String, ServicePeriod>,
-    ): Boolean {
-        val lines = route.lines
-        val transfers = route.transferStations
-        for (i in lines.indices) {
-            val origin = if (i == 0) route.origin else transfers[i - 1]
-            val destination = if (i == lines.lastIndex) route.destination else transfers[i]
-            val sequence = route.getStationSequence(lines[i])
-            if (!sequenceHasService(lines[i], sequence, origin,
-                    destination, period, servicePeriods)) {
-                return false
-            }
-        }
-        return true
-    }
-
-    private fun sequenceHasService(
-        line: Line,
-        sequence: List<Station>,
-        origin: Station?,
-        destination: Station?,
-        period: ServicePeriod,
-        servicePeriods: Map<String, ServicePeriod>,
-    ): Boolean {
-        val originIndex = sequence.indexOf(origin)
-        val destinationIndex = sequence.indexOf(destination)
-        if (originIndex < 0 || destinationIndex <= originIndex) {
-            return false
-        }
-        for (pattern in NETWORK.routePatternsForLine(line)) {
-            val patternStations = pattern.stations
-            val patternOriginIndex = patternStations.indexOf(origin)
-            val patternDestinationIndex = patternStations.indexOf(destination)
-            if (patternOriginIndex >= 0
-                    && patternDestinationIndex > patternOriginIndex
-                    && hasService(pattern, period, servicePeriods)) {
-                return true
-            }
-        }
-        return false
-    }
-
     private fun assertNoRepeatedStations(stations: List<Station>) {
         val unique = stations.toSet()
         assertTrue("pattern repeats a station: " + stations,
                 unique.size == stations.size)
-    }
-
-    private fun servicePeriods(): Map<String, ServicePeriod> {
-        val result: MutableMap<String, ServicePeriod> = HashMap()
-        val firstSequence: MutableMap<String, Int> = HashMap()
-        val rows = lines(FILES["stop_times.txt"]!!)
-        val header = rows[0].split(",")
-        val tripIndex = indexOf(header, "trip_id")
-        val timeIndex = indexOf(header, "departure_time")
-        val sequenceIndex = indexOf(header, "stop_sequence")
-        for (row in rows.drop(1)) {
-            val values = row.split(",")
-            val tripId = values[tripIndex]
-            val sequence = values[sequenceIndex].toInt()
-            val previous = firstSequence[tripId]
-            if (previous != null && previous <= sequence) {
-                continue
-            }
-            firstSequence[tripId] = sequence
-            val hour = values[timeIndex].split(":")[0].toInt()
-            result[tripId] = if (hour >= 5 && hour < 21) {
-                ServicePeriod.DAY
-            } else {
-                ServicePeriod.NIGHT
-            }
-        }
-        return result
     }
 
     private fun loadFiles(): Map<String, String> =
@@ -1384,8 +904,4 @@ class LiveGtfsRoutingTest {
         throw AssertionError("missing column $target")
     }
 
-    private enum class ServicePeriod {
-        DAY,
-        NIGHT
-    }
 }
