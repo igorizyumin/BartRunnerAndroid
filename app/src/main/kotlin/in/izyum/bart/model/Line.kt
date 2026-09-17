@@ -9,13 +9,10 @@ enum class Line(
     RED,
     ORANGE,
     YELLOW,
-    YELLOW_LATE_NIGHT,
     BLUE,
     GREEN,
     YELLOW_ORANGE_SCHEDULED_TRANSFER(YELLOW, ORANGE),
-    PURPLE,
-    /** Technical-only identity for BART's separate terminal RT feed. */
-    YELLOW_DMU(label = "Yellow shuttle");
+    PURPLE;
 
     fun getDisplayName(): String = label ?: name
 

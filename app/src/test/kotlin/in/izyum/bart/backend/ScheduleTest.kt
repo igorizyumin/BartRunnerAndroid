@@ -3,7 +3,7 @@ package `in`.izyum.bart.backend
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Station
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
+import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.gtfs.GtfsNetworkCatalog
 import com.google.transit.realtime.GtfsRealtime
@@ -31,17 +31,14 @@ class ScheduleTest {
     }
 
     @Test
-    fun lateNightAugmentationDoesNotInventSfoForYellowTripsThatSkipIt() {
+    fun staticScheduleDoesNotAddSyntheticSfoMillbraeTrips() {
         val schedule = Schedule.fromStatic(
             lateNightYellowOnlyNetwork(),
             epoch("2026-09-07T21:50:00-07:00"),
             setOf(Line.YELLOW),
         )
 
-        assertTrue(schedule.trips.any { it.line == Line.YELLOW && !it.synthetic })
-        assertTrue(schedule.trips.none {
-            it.synthetic && it.line == Line.YELLOW_LATE_NIGHT
-        })
+        assertTrue(schedule.trips.any { it.line == Line.YELLOW })
     }
 
     @Test
@@ -74,7 +71,7 @@ class ScheduleTest {
             )
             .build()
 
-        val corrected = schedule.applyRealtime(GtfsRealtimeFeedIndex.from(feed))
+        val corrected = schedule.applyRealtime(RealtimeFeedNormalizer.normalize(feed))
         val main = corrected.trips.first { it.key.tripId == "main" }
         assertEquals(epoch("2026-09-07T10:05:00-07:00"), main.stops[0].departureTime)
         assertEquals(PredictionSource.REALTIME, main.stops[0].departureSource)
@@ -98,7 +95,7 @@ class ScheduleTest {
             .addEntity(GtfsRealtime.FeedEntity.newBuilder().setId("682").setTripUpdate(dmuUpdate))
             .build()
 
-        val corrected = schedule.applyRealtime(GtfsRealtimeFeedIndex.from(feed))
+        val corrected = schedule.applyRealtime(RealtimeFeedNormalizer.normalize(feed))
         assertEquals(schedule.trips, corrected.trips)
     }
 

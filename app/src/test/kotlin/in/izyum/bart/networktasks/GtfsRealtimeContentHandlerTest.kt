@@ -7,6 +7,9 @@ import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.backend.Schedule
+import `in`.izyum.bart.backend.TransitFeedSnapshot
+import `in`.izyum.bart.transit.normalization.RequiredCounterpartStatus
+import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.gtfs.GtfsNetworkCatalog
 import com.google.transit.realtime.GtfsRealtime
@@ -96,7 +99,7 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
-    fun dmuMergeKeepsAStaticIdAsDynamicPassengerDeparture() {
+    fun dmuTelemetryStaysSeparateFromThePassengerTripIdentity() {
         val network = terminalDirectionNetwork()
         val feedTime = epoch("2026-09-07T09:45:00-07:00")
         val route = Route.direct(
@@ -116,15 +119,15 @@ class GtfsRealtimeContentHandlerTest {
             ),
         )
 
-        val departures = GtfsRealtimeContentHandler(
-            Station.PITT, Station.PCTR, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
+        val canonical = TransitFeedSnapshot(feed, emptyFeed(feedTime / 1000L), feedTime)
+            .getCanonicalSnapshot(network)
 
-        val departure = departures.getDepartures().firstOrNull {
-            it.tripLegs.singleOrNull()?.tripId == "scheduled-n"
-        } ?: throw AssertionError("DMU-enriched realtime trip missing: ${departures.getDepartures()}")
-        assertEquals(PredictionSource.REALTIME, departure.tripLegs.single().arrivalSource)
-        assertEquals(epoch("2026-09-07T10:17:00-07:00"), departure.tripLegs.single().arrivalTime)
+        assertEquals(1, canonical.requiredTransferPairs.size)
+        assertEquals("682", canonical.requiredTransferPairs.single().operationalObservation.tripId)
+        assertEquals(
+            RequiredCounterpartStatus.REQUIRED_COUNTERPART_NOT_OBSERVED,
+            canonical.requiredTransferPairs.single().status,
+        )
     }
 
     @Test
@@ -169,7 +172,7 @@ class GtfsRealtimeContentHandlerTest {
         val network = platformNetwork()
         val feedTime = epoch("2026-09-07T08:00:00-07:00")
         val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.BLUE))
-        val emptyIndex = GtfsRealtimeFeedIndex.from(emptyFeed(feedTime / 1000L))
+        val emptyIndex = RealtimeFeedNormalizer.normalize(emptyFeed(feedTime / 1000L))
 
         val southRoute = schedule.routesFor(Station.CAST, Station.DALY).single()
         val southHandler = GtfsRealtimeContentHandler(
@@ -214,9 +217,9 @@ class GtfsRealtimeContentHandlerTest {
 
         val overriddenDeparture = southHandler
             .getRealTimeDepartures(
-                GtfsRealtimeFeedIndex.from(realtimeFeed),
+                RealtimeFeedNormalizer.normalize(realtimeFeed),
                 feedTime,
-                schedule.applyRealtime(GtfsRealtimeFeedIndex.from(realtimeFeed)),
+                schedule.applyRealtime(RealtimeFeedNormalizer.normalize(realtimeFeed)),
             )
             .getDepartures()
             .single()
@@ -311,11 +314,11 @@ class GtfsRealtimeContentHandlerTest {
             .build()
 
         val refreshed = handler.updateTripLegs(
-            GtfsRealtimeFeedIndex.from(delayedFeed),
+            RealtimeFeedNormalizer.normalize(delayedFeed),
             initialLegs,
             900_000L,
             Schedule.fromStatic(network, 0L).applyRealtime(
-                GtfsRealtimeFeedIndex.from(delayedFeed)
+                RealtimeFeedNormalizer.normalize(delayedFeed)
             ),
         )
 

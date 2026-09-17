@@ -1,5 +1,13 @@
 # Schedule and realtime merge audit
 
+# Current runtime note
+
+The design described below is a historical audit of the pre-canonical path.
+The current runtime uses `CanonicalTransitSnapshot` as the single source of
+truth, merges electric and DMU GTFS-Realtime observations there, and does not
+use ETD. The ETD sections remain only to explain the evidence behind retiring
+that path.
+
 Status: documentation-only audit of the current working tree. No application
 or test code was changed for this audit.
 

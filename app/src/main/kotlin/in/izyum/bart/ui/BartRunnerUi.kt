@@ -1740,7 +1740,7 @@ private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
 @Composable
 private fun LineBadge(line: Line?) {
     val color = lineColor(line)
-    val contentColor = if (line == Line.YELLOW || line == Line.ORANGE || line == Line.YELLOW_DMU || line == Line.YELLOW_LATE_NIGHT || line == Line.PURPLE) Color(0xFF1B1B1B) else Color.White
+    val contentColor = if (line == Line.YELLOW || line == Line.ORANGE || line == Line.PURPLE) Color(0xFF1B1B1B) else Color.White
     Box(
         modifier = Modifier.size(30.dp).clip(RoundedCornerShape(7.dp)).background(color),
         contentAlignment = Alignment.Center,
@@ -1873,7 +1873,7 @@ internal fun defaultSystemMapStyle(calendar: Calendar = Calendar.getInstance()):
 private fun lineColor(line: Line?): Color = when (line) {
     Line.RED -> Color(0xFFFF0000)
     Line.ORANGE -> Color(0xFFFF9933)
-    Line.YELLOW, Line.YELLOW_DMU, Line.YELLOW_LATE_NIGHT ->
+    Line.YELLOW ->
         if (androidx.compose.foundation.isSystemInDarkTheme()) Color(0xFFFFFF33)
         else LightYellowLine
     Line.BLUE -> Color(0xFF0099CC)

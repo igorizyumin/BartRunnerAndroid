@@ -1,14 +1,10 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.RealTimeDepartures
-import `in`.izyum.bart.model.Route
-import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.networktasks.GtfsRealtimeContentHandler
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
 import `in`.izyum.bart.performance.PerformanceTrace
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
-import com.google.transit.realtime.GtfsRealtime
 import java.util.function.Supplier
 
 /** Builds departures for one route from the already-downloaded feed. */
@@ -30,139 +26,22 @@ class RouteDepartureProjection private constructor(
     ) : this(query, ignoreDirection, Supplier { bartGtfsNetwork })
 
     fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures =
-        project(snapshot, emptySet(), emptyMap(), true, emptySet())
+        projectInternal(snapshot)
 
-    /** Projects while excluding trips corroborated as unavailable by ETD. */
-    fun project(
+    private fun projectInternal(
         snapshot: TransitFeedSnapshot,
-        excludedTripIds: Set<String>,
-    ): RealTimeDepartures = project(
-        snapshot, excludedTripIds, emptyMap(), true, emptySet()
-    )
-
-    /**
-     * Builds the uncut candidate set for ETD reconciliation. Schedule-only
-     * candidates covered by realtime are admitted temporarily so ETD can
-     * corroborate a real departure that the GTFS-RT feed omitted.
-     */
-    internal fun projectForEtd(
-        snapshot: TransitFeedSnapshot,
-        excludedTripIds: Set<String> = emptySet(),
-        departureOverrides: Map<Pair<String, Station>, Long> = emptyMap(),
-    ): RealTimeDepartures = project(
-        snapshot,
-        excludedTripIds,
-        departureOverrides,
-        false,
-        emptySet(),
-    )
-
-    /** Projects with operational departure times for ETD-correlated trips. */
-    fun project(
-        snapshot: TransitFeedSnapshot,
-        excludedTripIds: Set<String>,
-        departureOverrides: Map<Pair<String, Station>, Long>,
-        forcedScheduleTripIds: Set<String> = emptySet(),
-    ): RealTimeDepartures = project(
-        snapshot,
-        excludedTripIds,
-        departureOverrides,
-        true,
-        forcedScheduleTripIds,
-    )
-
-    private fun project(
-        snapshot: TransitFeedSnapshot,
-        excludedTripIds: Set<String>,
-        departureOverrides: Map<Pair<String, Station>, Long>,
-        suppressScheduleCoveredByRealtime: Boolean,
-        forcedScheduleTripIds: Set<String>,
     ): RealTimeDepartures {
         val name = "BART route ${query.origin.abbreviation}-${query.destination?.abbreviation.orEmpty()}"
         return PerformanceTrace.section(name) {
             val network = networkSupplier.get()
-            val feedIndex = snapshot.getTripUpdateIndex()
-            val feedTime = snapshot.getTripUpdatesTimestampMillis()
-            // A later fallback may add transfer routes whose lines are not present
-            // in the first route set. Build one complete time-scoped graph so the
-            // fallback cannot accidentally lose its static connecting trains.
-            val schedule = snapshot.getCorrectedSchedule(network)
-                .applyDepartureOverrides(departureOverrides)
-            val routes = schedule.routesFor(query.origin, query.destination)
-            projectWithRouting(
-                routes,
-                network,
-                feedIndex,
-                feedTime,
-                schedule,
-                excludedTripIds,
-                suppressScheduleCoveredByRealtime,
-                forcedScheduleTripIds,
-            )
-        }
-    }
-
-    private fun projectWithRouting(
-        routes: List<Route>,
-        network: BartGtfsNetwork,
-        feedIndex: GtfsRealtimeFeedIndex,
-        feedTime: Long,
-        schedule: Schedule,
-        excludedTripIds: Set<String>,
-        suppressScheduleCoveredByRealtime: Boolean,
-        forcedScheduleTripIds: Set<String>,
-    ): RealTimeDepartures {
-        var result = projectRoutes(
-            routes,
-            network,
-            feedIndex,
-            feedTime,
-            schedule,
-            excludedTripIds,
-            suppressScheduleCoveredByRealtime,
-            forcedScheduleTripIds,
-        )
-
-        if (result.getDepartures().isEmpty() && query.destination != null) {
-            val transferRoutes = schedule.preferredTransferRoutes(
+            val canonical = snapshot.getCanonicalSnapshot(network)
+            GtfsRealtimeContentHandler(
                 query.origin,
-                query.destination
-            )
-            val transferResult = projectRoutes(
-                routes + transferRoutes,
+                query.destination,
+                ignoreDirection,
                 network,
-                feedIndex,
-                feedTime,
-                schedule,
-                excludedTripIds,
-                suppressScheduleCoveredByRealtime,
-                forcedScheduleTripIds,
-            )
-            if (transferResult.getDepartures().isNotEmpty()) {
-                result = transferResult.includeTransferRoutes()
-            }
+            ).getRealTimeDepartures(canonical).finalizeDeparturesList()
         }
-        result = result.sortDepartures()
-        if (result.getDepartures().isEmpty() && query.destination != null) {
-            val doubleTransferRoutes = schedule.doubleTransferRoutes(
-                query.origin,
-                query.destination
-            )
-            val doubleTransferResult = projectRoutes(
-                routes + doubleTransferRoutes,
-                network,
-                feedIndex,
-                feedTime,
-                schedule,
-                excludedTripIds,
-                suppressScheduleCoveredByRealtime,
-                forcedScheduleTripIds,
-            )
-            if (doubleTransferResult.getDepartures().isNotEmpty()) {
-                result = doubleTransferResult.includeDoubleTransferRoutes()
-            }
-        }
-        return result.finalizeDeparturesList()
     }
 
     fun areEquivalent(
@@ -171,29 +50,5 @@ class RouteDepartureProjection private constructor(
     ): Boolean = previous != null && current != null
         && previous.areTransfersIncluded() == current.areTransfersIncluded()
         && previous.getDepartures() == current.getDepartures()
-
-    private fun projectRoutes(
-        routes: List<Route>,
-        network: BartGtfsNetwork,
-        feedIndex: GtfsRealtimeFeedIndex,
-        feedTime: Long,
-        schedule: Schedule,
-        excludedTripIds: Set<String>,
-        suppressScheduleCoveredByRealtime: Boolean,
-        forcedScheduleTripIds: Set<String>,
-    ): RealTimeDepartures = GtfsRealtimeContentHandler(
-        query.origin,
-        query.destination,
-        routes,
-        ignoreDirection,
-        network
-    ).getRealTimeDepartures(
-        feedIndex,
-        feedTime,
-        schedule,
-        excludedTripIds,
-        suppressScheduleCoveredByRealtime,
-        forcedScheduleTripIds,
-    )
 
 }

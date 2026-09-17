@@ -84,7 +84,8 @@ class TransitProjectionTest {
             "stops.txt" to "stop_id,stop_name,zone_id\nM20-1,Montgomery,MONT\nR60-1,Richmond,RICH\n",
             "routes.txt" to "route_id,route_short_name,route_long_name\n8,Red-N,Richmond - Daly City\n",
             "trips.txt" to "route_id,service_id,trip_id\n8,weekday,red-1\n",
-            "stop_times.txt" to "trip_id,stop_id,stop_sequence\nred-1,M20-1,1\nred-1,R60-1,2\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\nred-1,16:20:00,16:20:00,M20-1,1\nred-1,16:30:00,16:30:00,R60-1,2\n",
+            "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nweekday,1,1,1,1,1,1,1,19691201,19700131\n",
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }

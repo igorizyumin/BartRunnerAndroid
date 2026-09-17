@@ -1,7 +1,6 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.Alert
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
 import `in`.izyum.bart.performance.PerformanceTrace
 import com.google.transit.realtime.GtfsRealtime
 
@@ -9,9 +8,8 @@ import com.google.transit.realtime.GtfsRealtime
 class AlertProjection {
     fun project(snapshot: TransitFeedSnapshot): Alert.AlertList {
         return PerformanceTrace.section("BART alert projection") {
-            val index: GtfsRealtimeFeedIndex = snapshot.getAlertIndex()
             val alerts = mutableListOf<Alert>()
-            for (entity in index.alertEntities) {
+            for (entity in snapshot.getNormalizedAlerts().entities) {
                 if (!entity.hasAlert()) {
                     continue
                 }

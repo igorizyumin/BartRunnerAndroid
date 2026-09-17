@@ -6,6 +6,7 @@ import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.TripStop
+import java.time.LocalDate
 
 /** Versioned JSON schema for the durable followed-trip state. */
 class FollowedTripRecord constructor() {
@@ -23,7 +24,6 @@ class FollowedTripRecord constructor() {
     @JvmField var requiresTransfer = false
     @JvmField var transferScheduled = false
     @JvmField var canceled = false
-    @JvmField var listedInETDs = true
     @JvmField var minutes = 0
     @JvmField var minEstimate = 0L
     @JvmField var maxEstimate = 0L
@@ -50,7 +50,6 @@ class FollowedTripRecord constructor() {
             .setRequiresTransfer(requiresTransfer)
             .setTransferScheduled(transferScheduled)
             .setCanceled(canceled)
-            .setListedInETDs(listedInETDs)
             .setMinutes(minutes)
             .setMinEstimate(minEstimate)
             .setMaxEstimate(maxEstimate)
@@ -61,7 +60,7 @@ class FollowedTripRecord constructor() {
     }
 
     companion object {
-        const val CURRENT_VERSION = 1
+        const val CURRENT_VERSION = 2
 
         @JvmStatic
         fun fromDeparture(departure: Departure): FollowedTripRecord =
@@ -79,7 +78,6 @@ class FollowedTripRecord constructor() {
                 requiresTransfer = departure.requiresTransfer
                 transferScheduled = departure.transferScheduled
                 canceled = departure.canceled
-                listedInETDs = departure.listedInETDs
                 minutes = departure.minutes
                 minEstimate = departure.minEstimate
                 maxEstimate = departure.maxEstimate
@@ -108,6 +106,7 @@ class FollowedTripRecord constructor() {
         @JvmField var departureSource: String? = null
         @JvmField var arrivalSource: String? = null
         @JvmField var platform: String? = null
+        @JvmField var serviceDate: String? = null
         @JvmField var stops: MutableList<TripStopRecord> = mutableListOf()
 
         fun toTripLeg(): TripLeg = TripLeg(
@@ -125,6 +124,7 @@ class FollowedTripRecord constructor() {
             predictionSource(departureSource),
             predictionSource(arrivalSource),
             platform,
+            serviceDate?.let { value -> runCatching { LocalDate.parse(value) }.getOrNull() },
         )
 
         companion object {
@@ -143,6 +143,7 @@ class FollowedTripRecord constructor() {
                 departureSource = leg.departureSource.name
                 arrivalSource = leg.arrivalSource.name
                 platform = leg.platform
+                serviceDate = leg.serviceDate?.toString()
                 stops = leg.stops.map(TripStopRecord::fromTripStop).toMutableList()
             }
         }

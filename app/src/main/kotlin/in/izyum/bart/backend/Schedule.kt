@@ -4,11 +4,13 @@ import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
 import `in`.izyum.bart.routing.TransferPolicy
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import `in`.izyum.bart.transit.gtfs.GtfsScheduledTrip
 import `in`.izyum.bart.transit.gtfs.GtfsStopTime
+import `in`.izyum.bart.transit.normalization.NormalizedRealtimeFeed
+import `in`.izyum.bart.transit.normalization.RequiredTransferPair
+import `in`.izyum.bart.transit.normalization.StaticTripIdentity
 import com.google.transit.realtime.GtfsRealtime
 import java.time.Instant
 import java.time.LocalDate
@@ -30,7 +32,7 @@ class Schedule private constructor(
     private val stationResolver: (String?) -> Station?,
 ) {
     private val transferPolicy = TransferPolicy(network)
-    data class TripKey(val serviceDate: LocalDate?, val tripId: String)
+    data class TripKey(val serviceDate: LocalDate, val tripId: String)
 
     data class Stop(
         val station: Station,
@@ -53,7 +55,6 @@ class Schedule private constructor(
         val trainDestination: Station,
         val stops: List<Stop>,
         val canceled: Boolean = false,
-        val synthetic: Boolean = false,
     ) {
         fun stopAt(station: Station?): Stop? = stops.firstOrNull { it.station == station }
 
@@ -70,15 +71,22 @@ class Schedule private constructor(
         if (from == null || to == null) null else nominalTravelTimes[from to to]
 
     /** Returns a corrected immutable graph using the supplied realtime feed. */
-    fun applyRealtime(feedIndex: GtfsRealtimeFeedIndex): Schedule {
-        val updates = feedIndex.tripUpdatesById
-        // Realtime may contain separate 600-series Antioch/DMU updates. They
-        // are operational telemetry, not passenger trips, so only exact
-        // static trip IDs are eligible to change this schedule graph.
-        val correctedBaseTrips = trips.filterNot { it.synthetic }.map { trip ->
-            val entity = updates[trip.key.tripId]
-            if (entity?.hasTripUpdate() == true) {
-                correctTrip(trip, entity.tripUpdate)
+    fun applyRealtime(feed: NormalizedRealtimeFeed): Schedule {
+        val updates = feed.projectedTripUpdatesByIdentity
+        val updatesById = feed.projectedTripUpdatesById
+        // Only a static trip with the same ID is eligible to change this graph.
+        // Operational telemetry remains in the normalized feed for its own
+        // projection and cannot fabricate a static passenger identity here.
+        val correctedBaseTrips = trips.map { trip ->
+            val identity = StaticTripIdentity(trip.key.serviceDate, trip.key.tripId)
+            val observation = updates[identity] ?: updatesById[trip.key.tripId]
+                ?.takeIf { fallback ->
+                    !fallback.isOperationalTelemetry
+                        && fallback.startDate == null
+                        && trips.count { it.key.tripId == trip.key.tripId } == 1
+                }
+            if (observation != null) {
+                correctTrip(trip, observation.rawEntity.tripUpdate)
             } else {
                 trip
             }
@@ -93,42 +101,94 @@ class Schedule private constructor(
     }
 
     /**
-     * Applies operational departure times without changing the static schedule.
-     * ETD has no trip IDs, so callers must first make the station/time
-     * association. Once associated, shift predicted times at and after the
-     * station so transfer validation uses the observed departure and the
-     * scheduled running time remains intact.
+     * Applies canonical DMU observations at every resolved stop to the
+     * electric passenger trip they serve at Pittsburg. The DMU identifier
+     * remains provenance; the electric static identity remains the passenger
+     * identity.
      */
-    fun applyDepartureOverrides(
-        overrides: Map<Pair<String, Station>, Long>,
+    fun applyDmuTransferPairs(
+        pairs: Collection<RequiredTransferPair>,
     ): Schedule {
-        if (overrides.isEmpty()) return this
+        if (pairs.isEmpty()) return this
+        val timingByIdentity = pairs.mapNotNull { pair ->
+            val identity = pair.passengerIdentity
+                ?: pair.electricAssociation?.staticIdentity
+                ?: return@mapNotNull null
+            val observed = pair.operationalObservation.stops.mapNotNull { stop ->
+                val station = stationResolver(stop.stopId) ?: return@mapNotNull null
+                if (stop.arrivalTimeMillis == null && stop.departureTimeMillis == null) {
+                    return@mapNotNull null
+                }
+                station to stop
+            }.toMap()
+            identity to observed
+        }.toMap()
         val adjustedTrips = trips.map { trip ->
-            val tripId = trip.key.tripId
-            val override = trip.stops.mapIndexedNotNull { index, stop ->
-                overrides[tripId to stop.station]?.let { index to it }
-            }.firstOrNull()
-            if (override == null) {
-                trip
-            } else {
-                val (startIndex, departureTime) = override
-                val scheduledDeparture = trip.stops[startIndex].scheduledDepartureTime
-                val delay = departureTime - scheduledDeparture
-                trip.copy(
-                    stops = immutableList(trip.stops.mapIndexed { index, stop ->
-                        if (index < startIndex) {
-                            stop
-                        } else {
-                            stop.copy(
-                                arrivalTime = shifted(stop.arrivalTime, delay),
-                                departureTime = shifted(stop.departureTime, delay),
-                                arrivalSource = PredictionSource.ESTIMATE,
-                                departureSource = PredictionSource.ESTIMATE,
-                            )
+            val observed = timingByIdentity[StaticTripIdentity(trip.key.serviceDate, trip.key.tripId)]
+                ?: return@map trip
+            val lastObservedIndex = trip.stops.indexOfLast { it.station in observed }
+            trip.copy(stops = immutableList(trip.stops.mapIndexed { index, stop ->
+                val observedStop = observed[stop.station]
+                val observedArrival = observedStop?.arrivalTimeMillis
+                    ?: observedStop?.departureTimeMillis
+                val observedDeparture = observedStop?.departureTimeMillis
+                    ?: observedStop?.arrivalTimeMillis
+                when {
+                    observedArrival != null || observedDeparture != null -> stop.copy(
+                        arrivalTime = observedArrival ?: stop.arrivalTime,
+                        departureTime = observedDeparture ?: stop.departureTime,
+                        arrivalSource = PredictionSource.REALTIME,
+                        departureSource = PredictionSource.REALTIME,
+                    )
+                    index > lastObservedIndex -> {
+                        val previous = trip.stops.take(index).lastOrNull { candidate ->
+                            candidate.station in observed
                         }
-                    })
-                )
-            }
+                        val previousStop = previous?.let { observed[it.station] }
+                        val previousTime = previousStop?.departureTimeMillis
+                            ?: previousStop?.arrivalTimeMillis
+                        if (previous != null && previousTime != null) {
+                            val travel = nominalTravelTimeMillis(previous.station, stop.station)
+                            if (travel != null && travel > 0L) {
+                                val arrival = previousTime + travel
+                                val dwell = (stop.scheduledDepartureTime - stop.scheduledArrivalTime)
+                                    .coerceAtLeast(0L)
+                                // The electric update may already have supplied
+                                // a realtime PITT time. DMU propagation fills
+                                // gaps; it must never downgrade an existing
+                                // realtime field to an estimate.
+                                stop.copy(
+                                    arrivalTime = if (stop.arrivalSource == PredictionSource.REALTIME) {
+                                        stop.arrivalTime
+                                    } else {
+                                        arrival
+                                    },
+                                    departureTime = if (stop.departureSource == PredictionSource.REALTIME) {
+                                        stop.departureTime
+                                    } else {
+                                        arrival + dwell
+                                    },
+                                    arrivalSource = if (stop.arrivalSource == PredictionSource.REALTIME) {
+                                        PredictionSource.REALTIME
+                                    } else {
+                                        PredictionSource.ESTIMATE
+                                    },
+                                    departureSource = if (stop.departureSource == PredictionSource.REALTIME) {
+                                        PredictionSource.REALTIME
+                                    } else {
+                                        PredictionSource.ESTIMATE
+                                    },
+                                )
+                            } else {
+                                stop
+                            }
+                        } else {
+                            stop
+                        }
+                    }
+                    else -> stop
+                }
+            }))
         }
         return create(
             adjustedTrips,
@@ -139,7 +199,16 @@ class Schedule private constructor(
         )
     }
 
-    /** Routes are selected from this corrected schedule, not from static data alone. */
+    internal fun stationForStopId(stopId: String?): Station? = stationResolver(stopId)
+
+    /**
+     * Legacy static route-topology API. Timed route selection belongs to
+     * RaptorRouter; callers should migrate before this API is removed.
+     */
+    @Deprecated(
+        "Use RaptorRouter for timed route selection; this static topology API is legacy.",
+        level = DeprecationLevel.WARNING,
+    )
     fun routesFor(origin: Station?, destination: Station?): List<Route> {
         if (origin == null || origin == destination) return emptyList()
         if (destination == null) {
@@ -151,18 +220,15 @@ class Schedule private constructor(
         // Keep every policy-valid transfer topology.  The realtime projector
         // needs to be able to compare their complete, timed itineraries.
         val transferAlternatives = preferredTransferRoutes(origin, destination)
-        val lateNightSfoMillbrae = if (isLateNightSfoMillbraeService()
-            && destination == Station.MLBR
-        ) {
-            lateNightSfoMillbraeRoutes(origin, destination)
-        } else {
-            emptyList()
-        }
         return immutableList(
-            sortRoutes(uniqueRoutes(direct + transferAlternatives + lateNightSfoMillbrae))
+            sortRoutes(uniqueRoutes(direct + transferAlternatives))
         )
     }
 
+    @Deprecated(
+        "Use RaptorRouter for timed route selection; this static topology API is legacy.",
+        level = DeprecationLevel.WARNING,
+    )
     fun preferredTransferRoutes(origin: Station?, destination: Station?): List<Route> {
         if (origin == null || destination == null || origin == destination) {
             return emptyList()
@@ -177,6 +243,10 @@ class Schedule private constructor(
         )
     }
 
+    @Deprecated(
+        "Use RaptorRouter for timed route selection; this static topology API is legacy.",
+        level = DeprecationLevel.WARNING,
+    )
     fun doubleTransferRoutes(origin: Station?, destination: Station?): List<Route> {
         if (origin == null || destination == null || origin == destination) {
             return emptyList()
@@ -188,6 +258,10 @@ class Schedule private constructor(
         )
     }
 
+    @Deprecated(
+        "Use RaptorRouter for timed route selection; this static topology API is legacy.",
+        level = DeprecationLevel.WARNING,
+    )
     fun transferRoutes(origin: Station?, destination: Station?): List<Route> {
         if (origin == null || destination == null || origin == destination) {
             return emptyList()
@@ -197,40 +271,6 @@ class Schedule private constructor(
                 .let(::sortRoutes)
                 .filter(::hasUsableService)
         )
-    }
-
-    fun lateNightSfoMillbraeRoutes(origin: Station?, destination: Station?): List<Route> {
-        if (origin == null || destination != Station.MLBR) return emptyList()
-        if (origin == Station.SFIA) {
-            return listOf(Route.direct(
-                origin, destination, Line.YELLOW_LATE_NIGHT, "s",
-                listOf(Station.SFIA, Station.MLBR)
-            ))
-        }
-        val pattern = network.routePatternsForLine(Line.YELLOW)
-            .filter { pattern ->
-                val originIndex = pattern.stations.indexOf(origin)
-                val sfoIndex = pattern.stations.indexOf(Station.SFIA)
-                originIndex >= 0 && sfoIndex > originIndex
-            }
-            .maxByOrNull { it.stations.size } ?: return emptyList()
-        val route = Route.transfer(
-            origin, destination,
-            listOf(Line.YELLOW, Line.YELLOW_LATE_NIGHT),
-            listOf(Station.SFIA), pattern.direction,
-            mapOf(
-                Line.YELLOW to pattern.stations,
-                Line.YELLOW_LATE_NIGHT to listOf(Station.SFIA, Station.MLBR),
-            )
-        )
-        return if (hasUsableService(route)) listOf(route) else emptyList()
-    }
-
-    /** Whether the feed represents BART's late-night SFO/Millbrae service. */
-    fun isLateNightSfoMillbraeService(): Boolean {
-        if (feedTime <= 0L) return false
-        val hour = Instant.ofEpochMilli(feedTime).atZone(PACIFIC_ZONE).hour
-        return hour >= LATE_NIGHT_START_HOUR || hour < LATE_NIGHT_END_HOUR
     }
 
     private fun sortRoutes(routes: List<Route>): List<Route> = routes
@@ -466,7 +506,7 @@ class Schedule private constructor(
         // The terminal vehicle is an operational feed detail, not a
         // passenger-facing line or transfer.
         val lines = Line.values().filter {
-            it != Line.YELLOW_DMU && network.routePatternsForLine(it).isNotEmpty()
+            network.routePatternsForLine(it).isNotEmpty()
         }
         for (first in lines) {
             if (!contains(first, origin)) continue
@@ -584,11 +624,6 @@ class Schedule private constructor(
         private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
         private const val LOOK_AHEAD_MILLIS = 2L * 60L * 60L * 1000L
         private const val LOOK_BEHIND_MILLIS = 30L * 60L * 1000L
-        private const val LATE_NIGHT_START_HOUR = 21
-        private const val LATE_NIGHT_END_HOUR = 5
-        private const val DEFAULT_SFO_MILLBRAE_RUNNING_TIME_MILLIS = 5L * 60L * 1000L
-        private const val LATE_NIGHT_SFO_MILLBRAE_ROUTE_ID = "LATE_NIGHT_SFO_MILLBRAE"
-
         @JvmStatic
         fun fromStatic(
             network: BartGtfsNetwork,
@@ -615,9 +650,7 @@ class Schedule private constructor(
                         }
                     }
                     .forEach { scheduledTrip ->
-                        if (staticTrips.none { it.key.tripId == scheduledTrip.trip.tripId }) {
-                            toTrip(network, serviceDate, scheduledTrip)?.let(staticTrips::add)
-                        }
+                        toTrip(network, serviceDate, scheduledTrip)?.let(staticTrips::add)
                     }
             }
             val nominal = nominalTravelTimes(staticTrips)
@@ -702,98 +735,13 @@ class Schedule private constructor(
             network: BartGtfsNetwork,
             feedTime: Long,
         ): Schedule {
-            val baseTrips = trips.filterNot {
-                it.synthetic && it.line == Line.YELLOW_LATE_NIGHT
-            }
-            val augmentedTrips = if (isLateNightSfoMillbraeService(feedTime)) {
-                baseTrips + lateNightSfoMillbraeTrips(
-                    baseTrips, nominalTravelTimes, network, feedTime
-                )
-            } else {
-                baseTrips
-            }
-            val immutableTrips = immutableList(augmentedTrips)
             return Schedule(
                 network,
                 feedTime,
-                immutableTrips,
+                immutableList(trips),
                 immutableMap(nominalTravelTimes),
                 stationResolver,
             )
-        }
-
-        /** Adds the late-night SFO–Millbrae connection as an ordinary timed trip. */
-        private fun lateNightSfoMillbraeTrips(
-            trips: List<Trip>,
-            nominalTravelTimes: Map<Pair<Station, Station>, Long>,
-            network: BartGtfsNetwork,
-            feedTime: Long,
-        ): List<Trip> {
-            val runningTime = nominalTravelTimes[Station.SFIA to Station.MLBR]
-                ?.takeIf { it > 0L }
-                ?: DEFAULT_SFO_MILLBRAE_RUNNING_TIME_MILLIS
-            val transferMillis = network.minimumTransferSeconds(
-                Station.SFIA, Line.YELLOW, Line.RED
-            ).coerceAtLeast(0) * 1000L
-
-            return trips.asSequence()
-                .filter { it.line == Line.YELLOW && !it.canceled }
-                .filter { it.stopAt(Station.SFIA) != null && it.stopAt(Station.MLBR) == null }
-                .mapNotNull { yellowTrip ->
-                    val sfo = yellowTrip.stopAt(Station.SFIA) ?: return@mapNotNull null
-                    val scheduledArrival = sfo.scheduledArrivalTime
-                    val effectiveArrival = sfo.arrivalTime.takeIf { it > 0L }
-                        ?: scheduledArrival
-                    if (scheduledArrival <= 0L || effectiveArrival <= 0L) {
-                        return@mapNotNull null
-                    }
-
-                    val scheduledDeparture = scheduledArrival + transferMillis
-                    val departure = effectiveArrival + transferMillis
-                    if (departure < feedTime) return@mapNotNull null
-                    val scheduledArrivalAtMillbrae = scheduledDeparture + runningTime
-                    val arrivalAtMillbrae = departure + runningTime
-                    Trip(
-                        key = TripKey(
-                            yellowTrip.key.serviceDate,
-                            "${yellowTrip.key.tripId}-late-night-sfo-millbrae",
-                        ),
-                        routeId = LATE_NIGHT_SFO_MILLBRAE_ROUTE_ID,
-                        line = Line.YELLOW_LATE_NIGHT,
-                        direction = "s",
-                        trainDestination = Station.MLBR,
-                        stops = immutableList(
-                            listOf(
-                                Stop(
-                                    station = Station.SFIA,
-                                    scheduledArrivalTime = scheduledDeparture,
-                                    scheduledDepartureTime = scheduledDeparture,
-                                    arrivalTime = departure,
-                                    departureTime = departure,
-                                    arrivalSource = PredictionSource.ESTIMATE,
-                                    departureSource = PredictionSource.ESTIMATE,
-                                ),
-                                Stop(
-                                    station = Station.MLBR,
-                                    scheduledArrivalTime = scheduledArrivalAtMillbrae,
-                                    scheduledDepartureTime = scheduledArrivalAtMillbrae,
-                                    arrivalTime = arrivalAtMillbrae,
-                                    departureTime = arrivalAtMillbrae,
-                                    arrivalSource = PredictionSource.ESTIMATE,
-                                    departureSource = PredictionSource.ESTIMATE,
-                                ),
-                            )
-                        ),
-                        synthetic = true,
-                    )
-                }
-                .toList()
-        }
-
-        private fun isLateNightSfoMillbraeService(feedTime: Long): Boolean {
-            if (feedTime <= 0L) return false
-            val hour = Instant.ofEpochMilli(feedTime).atZone(PACIFIC_ZONE).hour
-            return hour >= LATE_NIGHT_START_HOUR || hour < LATE_NIGHT_END_HOUR
         }
 
         private fun shifted(time: Long, delay: Long): Long =

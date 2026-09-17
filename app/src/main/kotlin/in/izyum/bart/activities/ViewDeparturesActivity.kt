@@ -51,7 +51,6 @@ class ViewDeparturesActivity : ComponentActivity() {
             app.transitRepository,
             app.bartGtfsNetworkSupplier,
             stationPair,
-            app.etdStationCache,
         )
         setContent {
             val state by departuresViewModel.uiState.collectAsStateWithLifecycle()

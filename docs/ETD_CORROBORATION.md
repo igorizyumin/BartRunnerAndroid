@@ -1,5 +1,10 @@
 # Legacy ETD corroboration
 
+> Retired runtime design. The application no longer fetches, merges, or uses
+> ETD data. This document is retained as historical audit evidence only; the
+> current runtime source of truth is `CanonicalTransitSnapshot` and its
+> canonical GTFS-Realtime merge.
+
 BART's GTFS-Realtime trip-update feed is useful for delays and stop-level
 estimates, but it can omit scheduled trains that BART's operations system still
 knows about. It also often omits updates for trips canceled operationally

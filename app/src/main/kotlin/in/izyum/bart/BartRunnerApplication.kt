@@ -11,8 +11,6 @@ import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.networktasks.GtfsStaticData
-import `in`.izyum.bart.networktasks.EtdStationCache
-import `in`.izyum.bart.networktasks.HttpEtdClient
 import `in`.izyum.bart.platform.OfflineStatusController
 import `in`.izyum.bart.platform.DeparturePollingAlarm
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
@@ -25,7 +23,6 @@ class BartRunnerApplication : Application() {
     lateinit var transitRepository: TransitRepository
     lateinit var gtfsStaticData: GtfsStaticData
     lateinit var offlineStatusController: OfflineStatusController
-    lateinit var etdStationCache: EtdStationCache
 
     val timeSource: TimeSource = SystemTimeSource
 
@@ -42,7 +39,6 @@ class BartRunnerApplication : Application() {
         favoritesRepository = FavoritesRepository(this)
         followedTripRepository = FollowedTripRepository(this)
         gtfsStaticData = GtfsStaticData(this, timeSource)
-        etdStationCache = EtdStationCache(HttpEtdClient(), timeSource)
         transitRepository = TransitRepository(
             HttpTransitFeedClient(),
             15_000L,

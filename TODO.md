@@ -1,142 +1,183 @@
-# BART Runner cleanup and efficiency plan
+# BART transit data-model rearchitecture
 
-This is the post-Compose cleanup backlog. The major migration work is complete;
-the remaining work should reduce duplicate computation, remove accidental state,
-and keep the implementation simple.
+This document tracks the migration from the former static/GTFS-RT routing
+pipeline to one canonical transit snapshot. The target architecture is:
 
-## Working principles
+```text
+Static GTFS + raw GTFS-RT
+          ↓
+normalization, association, and source reconciliation
+          ↓
+CanonicalTransitSnapshot
+          ↓
+RaptorRouter
+          ↓
+Departure / trip-progress projections
+          ↓
+ViewModels and GUI
+```
 
-- Favorites persist only their origin and destination.
-- Fares and other schedule-derived values are transient UI data.
-- Prefer a small cache or shared projection over a new abstraction layer.
-- Keep the existing serialized persistence writers unless batching or coalescing
-  is needed.
-- Measure startup and rendering changes before optimizing Compose recomposition.
-- Do not migrate storage technologies merely for modernization.
+The canonical snapshot is the only source that should decide how static
+schedule facts and realtime observations combine. Downstream code may query,
+route, or format that result; it should not reinterpret the two feeds.
 
-## Phase 1: remove dead pre-Compose code
+## Status — September 17, 2026
 
-- [x] Delete `FavoritesArrayAdapter` and `DepartureArrayAdapter`.
-- [x] Delete `CheckableLinearLayout` and `ScreenTicker`.
-- [x] Delete the obsolete route-selection and alarm dialog fragments.
-- [x] Delete unused XML layouts, menus, and legacy action icons.
-- [x] Remove obsolete styles, colors, dimensions, and strings.
-- [x] Remove `viewBinding` after the XML layer was removed.
+Completed foundation:
 
-## Phase 2: simplify dependencies and activity plumbing
+- Lossless GTFS-Realtime normalization with immutable entity and stop
+  observations.
+- Service-date-scoped static trip identity.
+- Exact static/realtime association before heuristic association.
+- Explicit cancellation and duplicate-decision metadata.
+- Canonical static-plus-realtime schedule correction.
+- DMU/electric transfer pairing with provenance and confidence.
+- Canonical DMU stop-time enrichment, including reported PITT timing.
+- ETD corroboration and synthetic late-night SFO–Millbrae service removed from
+  the runtime path.
+- `RouteDepartureProjection` now receives a canonical snapshot and its route
+  projection path does not parse unmatched realtime trips.
+- Legacy raw/normalized handler APIs and static route helpers are now marked
+  deprecated so remaining migration points are visible in compiler warnings.
 
-- [x] Remove unused RecyclerView, PhotoView, Material Components, and AppCompat dependencies.
-- [x] Convert Compose activities to `ComponentActivity`.
-- [x] Use `by viewModels()` where it improves readability.
-- [x] Remove duplicate or transitively supplied lifecycle dependencies.
-- [x] Update migration documentation to describe Compose as the production UI.
+Existing verification recorded for the completed slice: unit tests, lint,
+debug APK build, connected Android tests, and canonical DMU regression tests.
 
-## Phase 3: lifecycle-aware Compose state
+## Architectural rules
 
-- [x] Add lifecycle-aware collection with `collectAsStateWithLifecycle()`.
-- [x] Move alarm state into repository/ViewModel state.
-- [x] Replace the UI-local clock with the shared `TimeSource`-based ticker.
-- [x] Move user-visible text and content descriptions into resources.
-- [x] Add baseline Compose UI coverage for the home screen, route picker,
-  departures, trip actions, alarm picker, and map controls.
-- [ ] Expand interaction coverage for route selection, following a trip, alarm
-  cancellation, permission denial, and process restoration.
+- Static GTFS owns published service dates, station order, platform stops,
+  route/line identity, directions, and scheduled times.
+- GTFS-Realtime owns observed timing and explicit status changes.
+- A partial realtime update must overlay the static pattern; it must not
+  shorten or replace the passenger pattern merely because its stop list is
+  incomplete.
+- Operational 600–799 DMU records remain provenance/transfer evidence. They
+  are not passenger trips.
+- An omitted realtime entity means unknown, not canceled.
+- `RaptorRouter` is the application’s timed routing implementation. Static
+  route enumeration is legacy and must not remain a second routing engine.
+- Projection code must consume canonical data and must not normalize feeds,
+  rebuild schedules, associate trips, or parse raw protobuf entities.
 
-## Phase 4: make favorite persistence minimal
+## Remaining work, in priority order
 
-- [x] Persist favorites as records containing only `origin` and `destination`.
-- [x] Stop serializing fare, fare timestamps, average trip length, and sample
-  count as part of favorite state.
-- [x] Remove `updateFare()` from `FavoritesRepository` and `RoutesViewModel`.
-- [x] Remove `fareLastUpdated`, `averageTripLength`, and
-  `averageTripSampleCount` from `StationPair` if no remaining callers need them.
-- [x] Load fares as transient derived data from the cached static GTFS data.
-- [x] Existing persisted data is intentionally not supported during this
-  zero-user development phase; the next write uses the minimal schema.
+### 1. Make RAPTOR the only route-selection path
 
-## Phase 5: remove duplicate feed and projection work
+- [ ] Remove `Schedule.routesFor`, `preferredTransferRoutes`,
+  `doubleTransferRoutes`, and `transferRoutes` from production callers.
+  They are deprecated static-topology APIs, currently still referenced by
+  `RouteDepartureProjection`, `TripProgressProjection`, and
+  `RealTimeDepartures`; tests also exercise them directly.
+- [ ] Change `RouteDepartureProjection` to construct RAPTOR input from the
+  canonical passenger schedule and ask `RaptorRouter` for journeys directly.
+  Remove direct-route, transfer-route, and double-transfer fallback passes.
+- [ ] Keep `Route` only where it is needed as journey/display metadata. It
+  should be derived from a selected RAPTOR journey rather than used to drive a
+  separate static search.
+- [ ] Migrate `RealTimeDepartures` transfer metadata away from calling static
+  schedule route helpers.
+- [ ] Decide whether the old static route helpers can then be deleted, or
+  retain them only in explicitly labeled historical compatibility tests.
 
-- [x] Establish a clear base-schedule versus realtime-corrected-schedule
-  contract between `Schedule` and `GtfsRealtimeContentHandler`.
-- [x] Ensure each feed snapshot applies realtime corrections only once.
-- [x] Avoid rebuilding a protobuf feed and `GtfsRealtimeFeedIndex` from an
-  already-indexed entity list during normal projection.
-- [x] Cache the corrected schedule/feed context per `TransitFeedSnapshot` so
-  multiple consumers reuse it.
-- [ ] Consolidate per-favorite projection jobs in `RoutesViewModel` where this
-  remains simpler than maintaining one full projection per favorite.
-- [x] Cache immutable GTFS-derived route patterns per line in `BartGtfsNetwork`.
-- [ ] Re-evaluate the explicit startup refresh after measuring first-render
-  latency; remove it if shared-feed subscription polling is sufficient.
+### 2. Split `GtfsRealtimeContentHandler`
 
-## Phase 6: keep persistence efficient without adding machinery
+`GtfsRealtimeContentHandler` currently combines several unrelated roles:
 
-- [ ] Keep the single-thread persistence writers for deterministic ordering.
-- [x] Coalesce pending favorite writes when several real favorite changes occur
-  in quick succession, especially drag-to-reorder operations.
-- [x] Coalesce followed-trip cache writes when successive realtime updates do
-  not materially change durable state.
-- [ ] Keep atomic temporary-file replacement for followed-trip and static-feed
-  caches, and improve replacement behavior if the platform permits a safer
-  atomic move.
+- raw-feed compatibility entry points;
+- legacy schedule reconstruction;
+- canonical-schedule departure projection;
+- RAPTOR input conversion and journey selection;
+- `Departure`/`TripLeg`/`TripStop` construction;
+- existing-itinerary refresh and connection repair.
 
-## Phase 7: static-feed cache reliability and derived-data caching
+- [ ] Extract a canonical `DepartureProjector` that converts selected RAPTOR
+  journeys into app models.
+- [ ] Move RAPTOR-trip conversion and journey selection into a focused routing
+  adapter, or make `RouteDepartureProjection` own that thin adapter.
+- [ ] Move existing-itinerary refresh into a separate
+  `TripProgressProjector`/`ItineraryRefreshProjector`.
+- [ ] Remove the handler’s raw-feed overloads after all production callers
+  migrate to canonical inputs.
+- [ ] Remove `correctedSchedule(...)` from the handler; schedule correction is
+  owned by `CanonicalTransitSnapshot`.
+- [ ] Remove `parseRealtimeOnlyTrips(...)` from the route-departure path. The
+  canonical passenger-trip collection is authoritative; this fallback must not
+  synthesize an additional departure set.
+- [ ] Replace the handler’s manual `findConnectingTrip` and
+  `refreshConnectingLegs` logic, or isolate it as an explicit itinerary-repair
+  algorithm. It must not become a second general-purpose router.
 
-- [x] Make a corrupt or unparsable static cache fall back to a refresh instead
-  of failing from the fresh-cache path.
-- [x] Persist normalized static GTFS data in Room/SQLite so process restarts
-  load topology from the database and query only active, time-windowed trips.
-- [ ] Avoid holding the static-data lock across network I/O if profiling shows
-  contention; do not redesign this preemptively.
+### 3. Finish trip-progress migration
 
-## Phase 8: lint, resource, and manifest cleanup
+- [ ] Make `TripProgressProjection` consume canonical trip state without
+  calling deprecated static route helpers or legacy handler overloads.
+- [ ] Use the same transfer-policy predicate for initial routing and itinerary
+  refresh.
+- [ ] Make replacement of a canceled or infeasible connecting leg
+  deterministic and preserve the selected trip identity where possible.
+- [ ] Ensure a partially completed leg retains passed stops while future legs
+  are refreshed from the canonical snapshot.
 
-- [x] Remove the stale lint suppression for deleted `train_alarm_dialog.xml`.
-- [x] Remove unused `ACCESS_NETWORK_STATE` and `WAKE_LOCK` permissions.
-- [x] Remove lint-reported unused strings and plurals.
-- [x] Move the map bitmap to an appropriate density-independent resource folder.
-- [x] Keep the adaptive launcher icon in `mipmap-anydpi-v31` with a legacy
-  fallback for devices below Android 12.
-- [x] Replace the raster notification icon with a white vector drawable and
-  make the cancel-alarm action asset density-independent.
-- [x] Add API annotations around full-screen-intent settings access and remove
-  redundant SDK guards made unnecessary by `minSdk`.
-- [x] Fix the remaining low-risk Compose lint hints.
-- [x] Keep debug lint at zero errors; the two remaining resource-layout warnings
-  are intentional for the adaptive launcher/resource setup.
+### 4. Stabilize departure identity and presentation
 
-## Phase 9: staged dependency and SDK maintenance
+- [ ] Separate stable departure identity from mutable timing/platform/display
+  metadata in `Departure.merge` and `Departure.replaceFeed`.
+- [ ] Ensure a platform or terminal correction updates one departure rather
+  than creating a duplicate or stranding the old identity.
+- [ ] Ensure every visible departure carries stable identity and source
+  provenance sufficient to explain schedule-only, realtime, estimated, and
+  canceled states.
 
-- [x] Upgrade the version catalog, including lifecycle, coroutines, AndroidX,
-  Compose, OkHttp, Jackson, GTFS-RT, and the AndroidX test libraries.
-- [x] Run unit tests, lint, and debug assembly after the dependency upgrade.
-- [x] Run the release assembly and device smoke tests on the Pixel 10a
-  emulator.
-- [x] Re-evaluate compile/target SDK against the installed SDK 37; target SDK
-  is now 37.
-- [ ] Remove obsolete resource qualifiers only after confirming the supported
-  device range.
+### 5. Fixture and parity coverage
 
-## Verification checklist
+- [ ] Add or retain focused fixtures for after-midnight service, calendar
+  exceptions, parent stations/platforms, missing route IDs, missing stop
+  sequences, partial stop lists, explicit cancellations, duplicate IDs, stale
+  origins, DMU observations, and source ambiguity/skew.
+- [ ] Add tests proving route projection uses only the canonical corrected
+  passenger schedule and does not independently parse realtime entities.
+- [ ] Compare legacy and canonical outputs for every checked-in capture until
+  each difference is classified as an intentional behavior change.
+- [ ] Remove or rewrite static-routing tests once the production migration is
+  complete; retain only tests for behavior still required by the canonical
+  router.
 
-- [x] `:app:testDebugUnitTest`
-- [x] `:app:assembleDebug`
-- [x] `:app:lintDebug`
-- [x] Instrumentation smoke tests on the connected Pixel 10a emulator.
-- [ ] Manually verify route selection and editing.
-- [ ] Manually verify live departures and trip following.
-- [ ] Manually verify alarm setup, cancellation, exact-alarm denial, and
-  notification/full-screen-intent denial.
-- [ ] Manually verify background alarm delivery and notification actions.
-- [ ] Manually verify process-death restoration of favorites and followed trips.
-- [ ] Decide whether connected instrumentation should run periodically in CI;
-  keep normal CI fast if emulator startup remains too expensive.
+## Deprecated API inventory
 
-## Explicitly deferred unless evidence changes
+These are intentionally still present because they have callers. Do not add
+new call sites:
 
-- Do not migrate tiny preference values to DataStore solely for modernization.
-- Do not move followed-trip JSON to Proto DataStore unless the current schema or
-  file-backed cache becomes a real maintenance problem.
-- Do not replace the serialized executors with application coroutine scopes
-  unless it simplifies the code or fixes a measured issue.
-- Do not redesign the Compose ticker unless profiling shows meaningful UI cost.
+- `Schedule.routesFor(...)`
+- `Schedule.preferredTransferRoutes(...)`
+- `Schedule.doubleTransferRoutes(...)`
+- `Schedule.transferRoutes(...)`
+- Raw and normalized-feed `GtfsRealtimeContentHandler` departure overloads
+- Legacy `GtfsRealtimeContentHandler.updateTripLegs(...)` overloads
+- Private handler compatibility path for realtime-only trip parsing
+
+The compiler warnings are migration markers, not errors to suppress globally.
+Once production callers are removed, delete the deprecated APIs and their
+obsolete compatibility tests rather than merely silencing the warnings.
+
+## Verification gate
+
+- [ ] All focused canonical, routing, departure, and trip-progress tests pass.
+- [ ] Full `:app:testDebugUnitTest` passes.
+- [ ] `:app:lintDebug` passes.
+- [ ] `:app:assembleDebug` passes.
+- [ ] Connected tests pass on the Pixel 10a emulator.
+- [ ] No production code depends on deprecated static-routing or raw-feed
+  projection APIs.
+
+## Completion criteria
+
+- [ ] One canonical passenger-trip truth feeds routing, departures, trip
+  following, persistence updates, and notifications.
+- [ ] RAPTOR is the only timed route-selection implementation.
+- [ ] No projection rebuilds or independently interprets static and realtime
+  data.
+- [ ] Partial realtime updates cannot truncate static service patterns.
+- [ ] DMU telemetry remains available as provenance without becoming a
+  passenger GTFS trip.
+- [ ] Connection refresh uses the same transfer semantics as initial routing.
+- [ ] Visible departures have stable identities and explainable provenance.

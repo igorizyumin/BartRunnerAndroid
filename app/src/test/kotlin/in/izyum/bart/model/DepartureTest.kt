@@ -59,6 +59,17 @@ class DepartureTest {
     }
 
     @Test
+    fun identityIgnoresMutablePlatformAndTerminalMetadata() {
+        val first = departure(1_000L, 2_000L, "trip-1")
+        val corrected = first.copy(platform = "2", trainDestination = Station.DUBL)
+
+        assertEquals(first.identity, corrected.identity)
+        val merged = Departure.replaceFeed(listOf(first), listOf(corrected)) { 900L }.single()
+        assertEquals("2", merged.platform)
+        assertEquals(Station.DUBL, merged.trainDestination)
+    }
+
+    @Test
     fun initialArrivalRemovesStationDwellAndCanUseTheLatestEstimate() {
         val departure = Departure.builder()
             .setOrigin(Station.CAST)

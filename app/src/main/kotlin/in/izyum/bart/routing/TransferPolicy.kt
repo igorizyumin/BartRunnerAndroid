@@ -20,11 +20,7 @@ class TransferPolicy(
         if (arrivalTime <= 0 || departureTime < arrivalTime) {
             return false
         }
-        return network.canTransfer(
-            transferStation,
-            effectiveTransferLine(transferStation, fromLine),
-            effectiveTransferLine(transferStation, toLine),
-        )
+        return network.canTransfer(transferStation, fromLine, toLine)
     }
 
     /** Returns whether a passenger can make this transfer within its required margin. */
@@ -63,19 +59,17 @@ class TransferPolicy(
         val station = transferStation ?: return null
         val incoming = fromLine ?: return null
         val outgoing = toLine ?: return null
-        val effectiveIncoming = effectiveTransferLine(station, incoming)
-        val effectiveOutgoing = effectiveTransferLine(station, outgoing)
-        if (!network.canTransfer(station, effectiveIncoming, effectiveOutgoing)) return null
+        if (!network.canTransfer(station, incoming, outgoing)) return null
 
         val feedMinimum = network.minimumTransferSeconds(
-            station, effectiveIncoming, effectiveOutgoing
+            station, incoming, outgoing
         ).coerceAtLeast(0)
         val requiredMinimum = maxOf(minimumTransferSeconds ?: 0, feedMinimum)
         val hasOfficialMargin = network.isTimedTransfer(
-            station, effectiveIncoming, effectiveOutgoing
+            station, incoming, outgoing
         ) || network.hasExplicitMinimumTransferTime(
-            station, effectiveIncoming, effectiveOutgoing
-        ) || isOfficialSfoShuttleTransfer(station, incoming, outgoing)
+            station, incoming, outgoing
+        )
             || isPreferredMacArthurYellowOrange(
                 station, incoming, outgoing, yellowStationSequence.orEmpty()
             )
@@ -86,19 +80,15 @@ class TransferPolicy(
         return arrivalTime + marginMillis
     }
 
-    /** Resolves the late-night shuttle's platform transfer to its Red-line connection. */
     fun minimumTransferSeconds(
         station: Station?,
         fromLine: Line?,
         toLine: Line?,
     ): Int = network.minimumTransferSeconds(
         station,
-        effectiveTransferLine(station, fromLine),
-        effectiveTransferLine(station, toLine),
+        fromLine,
+        toLine,
     ).coerceAtLeast(0)
-
-    private fun effectiveTransferLine(station: Station?, line: Line?): Line? =
-        if (station == Station.SFIA && line == Line.YELLOW_LATE_NIGHT) Line.RED else line
 
     /** Returns whether the connection meets a specified minimum time. */
     fun meetsMinimumTransferTime(
@@ -221,13 +211,6 @@ class TransferPolicy(
         return departureTime >= earliestDeparture
     }
 
-    private fun isOfficialSfoShuttleTransfer(
-        station: Station,
-        fromLine: Line,
-        toLine: Line,
-    ): Boolean = station == Station.SFIA
-        && samePair(fromLine, toLine, Line.YELLOW, Line.YELLOW_LATE_NIGHT)
-
     private fun isPreferredMacArthurYellowOrange(
         station: Station,
         fromLine: Line,
@@ -304,11 +287,9 @@ class TransferPolicy(
         val eastBayLine = first == Line.BLUE || first == Line.GREEN
         val sanFranciscoTrunk = second == Line.RED
             || second == Line.YELLOW
-            || second == Line.YELLOW_LATE_NIGHT
         val reversedEastBayLine = second == Line.BLUE || second == Line.GREEN
         val reversedSanFranciscoTrunk = first == Line.RED
             || first == Line.YELLOW
-            || first == Line.YELLOW_LATE_NIGHT
         return (eastBayLine && sanFranciscoTrunk)
             || (reversedEastBayLine && reversedSanFranciscoTrunk)
     }

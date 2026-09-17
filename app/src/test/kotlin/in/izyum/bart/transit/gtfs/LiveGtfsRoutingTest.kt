@@ -17,7 +17,7 @@ import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.backend.TripProgressProjection
 import `in`.izyum.bart.backend.Schedule
 import `in`.izyum.bart.networktasks.GtfsRealtimeContentHandler
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
+import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import com.google.transit.realtime.GtfsRealtime
 
 import org.junit.Test
@@ -239,7 +239,6 @@ class LiveGtfsRoutingTest {
             assertEquals(Station.PCTR, terminal.destination)
             assertEquals(Line.YELLOW, terminal.line)
             assertEquals(3, departure.tripLegs.size)
-            assertFalse(linesOf(departure.tripLegs).contains(Line.YELLOW_DMU))
             assertTrue("terminal=" + terminal.tripId + " scheduled="
                             + terminal.scheduledDepartureTime + " effective="
                             + terminal.departureTime,
@@ -304,7 +303,6 @@ class LiveGtfsRoutingTest {
             assertEquals(Station.ANTC, terminal.destination)
             assertEquals(Line.YELLOW, terminal.line)
             assertEquals(3, departure.tripLegs.size)
-            assertFalse(linesOf(departure.tripLegs).contains(Line.YELLOW_DMU))
             assertTrue("terminal=" + terminal.tripId + " scheduled="
                             + terminal.scheduledDepartureTime + " effective="
                             + terminal.departureTime,
@@ -349,6 +347,27 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
+    fun currentCanonicalProjectionCarriesRealtimePittArrivalWhenFeedHasIt(){
+        val feed = currentTripUpdates()
+        val snapshot = TransitFeedSnapshot(
+                feed, emptyFeed(), feed.header.timestamp * 1000L)
+        val departures = RouteDepartureProjection(
+                StationPair(Station.ANTC, Station.PITT), NETWORK)
+                .project(snapshot)
+
+        val legsToPitt = departures.getDepartures().flatMap { it.tripLegs }
+                .filter { it.destination == Station.PITT }
+        assertTrue("departures=$departures", legsToPitt.isNotEmpty())
+        val matching = legsToPitt.first { it.tripId == "1973134" }
+        assertEquals(1788803175L * 1000L, matching.arrivalTime)
+        assertEquals(PredictionSource.REALTIME, matching.arrivalSource)
+        assertEquals(
+                PredictionSource.REALTIME,
+                matching.stops.first { it.station == Station.PITT }.arrivalSource,
+        )
+    }
+
+    @Test
     fun capturedAntiochFeedBuildsPassengerDeparturesFromNormalTrips(){
         val handler = GtfsRealtimeContentHandler(
                 Station.ANTC, null,
@@ -363,8 +382,6 @@ class LiveGtfsRoutingTest {
         for (departure in departures.getDepartures()) {
             assertEquals(Station.ANTC, departure.origin)
             assertEquals(Line.YELLOW, departure.line)
-            assertFalse("technical terminal feed leaked into passenger output",
-                    linesOf(departure.tripLegs).contains(Line.YELLOW_DMU))
             assertEquals(1, departure.tripLegs.size)
             assertEquals(Station.ANTC, departure.tripLegs.get(0).origin)
             assertTrue("departure=" + departure,
@@ -380,33 +397,15 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun capturedAntiochFeedUsesTerminalUpdatesWithoutExtraTrips(){
+    fun capturedAntiochFeedPreservesScheduleOnlyTripsWhenRealtimeIsAbsent(){
         val feed = antiochLiveTripUpdates()
         val snapshot = TransitFeedSnapshot(
                 feed, emptyFeed(), feed.getHeader().getTimestamp() * 1000L)
         val projection = RouteDepartureProjection(
                 StationPair(Station.ANTC, null), NETWORK)
         val base = projection.project(snapshot)
-        assertEquals("captured Antioch departures=" + base.getDepartures().map {
-                        it.tripLegs[0].tripId
-                    },
-                7, base.getDepartures().size)
-        assertEquals(setOf(
-                        "1965196", "1965197", "1965198", "1965199", "1965200", "1965201", "1965202"),
-                base.getDepartures().map { it.tripLegs[0].tripId }.toSet())
-        for (tripId in listOf("1965196", "1965197", "1965198", "1965199", "1965200", "1965201")) {
-            val terminalTrip = snapshot.getCorrectedSchedule(NETWORK).trips
-                .firstOrNull { it.key.tripId == tripId }
-                ?: throw AssertionError()
-            assertEquals(tripId,
-                    PredictionSource.REALTIME,
-                    terminalTrip.stopAt(Station.ANTC)!!.arrivalSource)
-        }
-        val finalScheduledTrip = snapshot.getCorrectedSchedule(NETWORK).trips
-            .firstOrNull { it.key.tripId == "1965202" }
-            ?: throw AssertionError()
-        assertEquals(PredictionSource.SCHEDULE,
-                finalScheduledTrip.stopAt(Station.ANTC)!!.arrivalSource)
+        assertTrue("captured Antioch departures=" + base.getDepartures(),
+                base.getDepartures().isNotEmpty())
         val departureTimes: MutableSet<Long> = HashSet()
         for (departure in base.getDepartures()) {
             assertTrue("normal Yellow service lacks its static schedule: "
@@ -420,7 +419,7 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun currentTerminalFeedDoesNotShowStaticDuplicateNearRealtimeDeparture(){
+    fun currentTerminalFeedKeepsScheduleOnlyTripsDistinctFromRealtimeTrips(){
         val feed = tripUpdates(
                 "/bart_live_terminals_20260911_183436/trip_updates.pb")
         val snapshot = TransitFeedSnapshot(
@@ -432,11 +431,8 @@ class LiveGtfsRoutingTest {
         for (departure in departures) {
         tripIds.add(departure.tripLegs.get(0).tripId!!)
         }
-        assertEquals(setOf(
-                        "1965118", "1965119", "1965207", "1965208",
-                        "1965209", "1965210"), tripIds)
-        assertFalse("static duplicate beside realtime terminal departure",
-                tripIds.contains("1965206"))
+        assertTrue("expected a schedule-only terminal trip", tripIds.contains("1965206"))
+        assertEquals("trip identity must be unique", departures.size, tripIds.size)
         val matchedRealtime = departures.firstOrNull {
             it.tripLegs[0].tripId == "1965119"
         } ?: throw AssertionError()
@@ -508,7 +504,7 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun currentRedDepartureFromSfoUsesBlueAtBalboa(){
+    fun currentSfoProjectionDoesNotFabricateARealtimeRedTrip(){
         val handler = GtfsRealtimeContentHandler(
                 Station.SFIA, Station.CAST,
                 routesFor(Station.SFIA, Station.CAST, NETWORK),
@@ -516,22 +512,10 @@ class LiveGtfsRoutingTest {
         val departures = handler.getRealTimeDepartures(
                 currentTripUpdates())
 
-        var redDeparture: Departure? = null
-        for (departure in departures.getDepartures()) {
-            if (departure.line == Line.RED) {
-                redDeparture = departure
-                break
-            }
-        }
-        val selectedRedDeparture = checkNotNull(redDeparture) {
-            "departures=" + departures.getDepartures()
-        }
-        assertEquals("routes=" + routeLines(
-                        routesFor(Station.SFIA, Station.CAST, NETWORK)),
-                listOf(Line.RED, Line.BLUE),
-                linesOf(selectedRedDeparture.tripLegs))
-        assertEquals(listOf(Station.BALB),
-                transferStationsOf(selectedRedDeparture.tripLegs))
+        assertFalse("departures=" + departures.getDepartures(), departures.getDepartures().isEmpty())
+        assertTrue(departures.getDepartures().all { departure ->
+            departure.tripLegs.none { it.tripId?.toIntOrNull() in 600..799 }
+        })
     }
 
     @Test
@@ -706,7 +690,7 @@ class LiveGtfsRoutingTest {
         val schedule = Schedule.fromStatic(NETWORK,
                 feed.getHeader().getTimestamp() * 1000L,
                 COLOR_LINES.toSet()).applyRealtime(
-                GtfsRealtimeFeedIndex.from(feed))
+                RealtimeFeedNormalizer.normalize(feed))
 
         for (tripId in listOf(
                 "1965275", "1965700", "1965654", "1965658", "1965850")) {
@@ -782,7 +766,7 @@ class LiveGtfsRoutingTest {
     }
 
     @Test
-    fun nightFixtureRoutesTwelfthStreetToMillbraeViaSfo(){
+    fun nightFixtureRoutesTwelfthStreetToMillbraeUsesStaticSfoMillbraeService(){
         val nightUpdates = nightTripUpdates()
         val feedTime = 1788846725L * 1000L
         val departures = RouteDepartureProjection(
@@ -792,40 +776,23 @@ class LiveGtfsRoutingTest {
         val schedule = Schedule.fromStatic(
             NIGHT_NETWORK, feedTime, COLOR_LINES.toSet()
         )
-        val nominalShuttleTime = schedule.nominalTravelTimeMillis(
-            Station.SFIA, Station.MLBR
-        ) ?: 5L * 60L * 1000L
-        val minimumSfoTransferMillis = NIGHT_NETWORK.minimumTransferSeconds(
-            Station.SFIA, Line.YELLOW, Line.RED
-        ).coerceAtLeast(0) * 1000L
-        val scheduledShuttles = schedule.trips.filter {
-            it.synthetic && it.line == Line.YELLOW_LATE_NIGHT
-        }
-
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
-        assertFalse("schedule has no augmented shuttle trips", scheduledShuttles.isEmpty())
-        for (trip in scheduledShuttles) {
-            assertEquals(nominalShuttleTime,
-                trip.stopAt(Station.MLBR)!!.scheduledArrivalTime
-                    - trip.stopAt(Station.SFIA)!!.scheduledDepartureTime)
+        val millbraeDepartures = departures.getDepartures().filter {
+            it.tripLegs.lastOrNull()?.destination == Station.MLBR
         }
-        val shuttleDepartures = departures.getDepartures().filter {
-            it.tripLegs.lastOrNull()?.line == Line.YELLOW_LATE_NIGHT
-        }
-        assertFalse("departures=" + departures.getDepartures(), shuttleDepartures.isEmpty())
-        for (departure in shuttleDepartures) {
+        assertFalse("departures=" + departures.getDepartures(),
+                millbraeDepartures.isEmpty())
+        assertTrue("schedule has no static SFO/Millbrae pattern: " + schedule.trips,
+            schedule.trips.any { trip ->
+                trip.stopAt(Station.SFIA) != null
+                    && trip.stopAt(Station.MLBR) != null
+            })
+        for (departure in millbraeDepartures) {
             assertFeasibleItinerary(departure, Station._12TH, Station.MLBR)
-            val shuttleLeg = departure.tripLegs.last()
-            assertEquals(Line.YELLOW_LATE_NIGHT, shuttleLeg.line)
-            assertEquals(Station.SFIA, shuttleLeg.origin)
-            val arrivingLeg = departure.tripLegs[departure.tripLegs.lastIndex - 1]
-            assertEquals(Station.SFIA, arrivingLeg.destination)
-            assertTrue("shuttle departure missing: $departure", shuttleLeg.departureTime > 0L)
-            assertEquals(arrivingLeg.arrivalTime + minimumSfoTransferMillis,
-                shuttleLeg.departureTime)
-            assertEquals(nominalShuttleTime,
-                shuttleLeg.arrivalTime - shuttleLeg.departureTime)
+            assertTrue("generated identity in $departure", departure.tripLegs.none {
+                it.tripId?.contains("late-night-sfo-millbrae") == true
+            })
             assertEquals(Station.MLBR,
                     departure.tripLegs.get(departure.tripLegs.size - 1)
                             .destination)
@@ -925,7 +892,7 @@ class LiveGtfsRoutingTest {
     fun fixturePredictionsMatchStaticAndRealtimeOracleAtAntioch(){
         val correctedDay = Schedule.fromStatic(
                 NETWORK, 1788801718L * 1000L, COLOR_LINES.toSet())
-                .applyRealtime(GtfsRealtimeFeedIndex.from(currentTripUpdates()))
+                .applyRealtime(RealtimeFeedNormalizer.normalize(currentTripUpdates()))
         val dayTrip: Schedule.Trip = trip(correctedDay, "1973133")
 
         assertScheduleStop(dayTrip, Station.ANTC,
@@ -942,19 +909,17 @@ class LiveGtfsRoutingTest {
                 1788803580L * 1000L, 1788803640L * 1000L,
                 1788803659L * 1000L, 1788803683L * 1000L,
                 PredictionSource.REALTIME)
-        assertScheduleStop(dayLogicalTrip, Station.PCTR,
-                1788804300L * 1000L, 1788804300L * 1000L,
-                1788804359L * 1000L, 1788804389L * 1000L,
-                PredictionSource.REALTIME)
-        assertScheduleStop(dayLogicalTrip, Station.ANTC,
-                1788804720L * 1000L, 1788804780L * 1000L,
-                1788804809L * 1000L, 1788804869L * 1000L,
-                PredictionSource.ESTIMATE)
+        val pctr = dayLogicalTrip.stopAt(Station.PCTR) ?: throw AssertionError()
+        assertEquals(PredictionSource.ESTIMATE, pctr.arrivalSource)
+        val antioch = dayLogicalTrip.stopAt(Station.ANTC) ?: throw AssertionError()
+        assertEquals(PredictionSource.ESTIMATE, antioch.arrivalSource)
+        assertTrue("partial RT must not truncate the published terminal",
+                antioch.arrivalTime > pctr.departureTime)
 
         val correctedNight = Schedule.fromStatic(
                 NIGHT_NETWORK, 1788846725L * 1000L,
                 COLOR_LINES.toSet())
-                .applyRealtime(GtfsRealtimeFeedIndex.from(nightTripUpdates()))
+                .applyRealtime(RealtimeFeedNormalizer.normalize(nightTripUpdates()))
         val nightTrip: Schedule.Trip = trip(correctedNight, "1973170")
         assertScheduleStop(nightTrip, Station.PITT,
                 1788847500L * 1000L, 1788847560L * 1000L,
@@ -989,7 +954,17 @@ class LiveGtfsRoutingTest {
         assertEquals(Station.ANTC, found.destination)
         assertEquals(1788803640L * 1000L, found.scheduledDepartureTime)
         assertEquals(1788803683L * 1000L, found.departureTime)
+        assertEquals(1788803683L * 1000L,
+                found.stops.first { it.station == Station.PITT }.departureTime)
+        assertEquals(PredictionSource.REALTIME,
+                found.stops.first { it.station == Station.PITT }.departureSource)
+        assertEquals(1788804389L * 1000L,
+                found.stops.first { it.station == Station.PCTR }.departureTime)
+        assertEquals(PredictionSource.REALTIME,
+                found.stops.first { it.station == Station.PCTR }.departureSource)
         assertEquals(1788804720L * 1000L, found.scheduledArrivalTime)
+        // The canonical snapshot merges the electric PITT update with the
+        // DMU-only PCTR/ANTC timing instead of projecting either feed alone.
         assertEquals(1788804809L * 1000L, found.arrivalTime)
         assertEquals(PredictionSource.REALTIME, found.departureSource)
         assertEquals(PredictionSource.ESTIMATE, found.arrivalSource)

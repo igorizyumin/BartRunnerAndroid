@@ -24,22 +24,19 @@ data class Departure(
     val estimatedTripTime: Int,
     val beganAsDeparted: Boolean,
     val arrivalTimeOverride: Long,
-    val listedInETDs: Boolean,
     val tripLegs: List<TripLeg>,
 ) : Comparable<Departure> {
 
     /** Stable identity used to match a departure across feed refreshes. */
     val identity: String
         get() = buildString {
-            append(line).append('|')
-                .append(trainDestination?.abbreviation).append('|')
-                .append(direction).append('|')
-                .append(platform).append('|')
             if (tripLegs.isEmpty()) {
-                append("no-legs")
+                append("observation|")
+                    .append(origin?.abbreviation).append('|')
+                    .append(minEstimate)
             } else {
                 tripLegs.forEach {
-                    append(it.tripId ?: "etd@").append(
+                    append(it.canonicalIdentity ?: "etd@").append(
                         if (it.tripId == null) it.departureTime else ""
                     ).append(';')
                 }
@@ -56,8 +53,6 @@ data class Departure(
         }
 
     fun hasTransfers(): Boolean = tripLegs.size > 1
-
-    fun isListedInETDs(): Boolean = listedInETDs
 
     fun hasAnyArrivalEstimate(): Boolean =
         (tripLegs.isNotEmpty() && hasCompleteTripLegs() && tripLegs.last().hasArrivalTime())
@@ -231,7 +226,10 @@ data class Departure(
                 previous.tripLegs
             }
 
-            var merged = previous.copy(tripLegs = immutableList(tripLegs))
+            // Identity is stable across platform/terminal changes. Refresh all
+            // display metadata from the incoming projection while preserving
+            // only the deliberate estimate-smoothing policy below.
+            var merged = incoming.copy(tripLegs = immutableList(tripLegs))
             if (incoming.hasDeparted(now)
                 && previous.origin?.longStationLinger == true
                 && previous.minEstimate > 0
@@ -311,7 +309,6 @@ data class Departure(
         private var estimatedTripTime = 0
         private var beganAsDeparted = false
         private var arrivalTimeOverride = 0L
-        private var listedInETDs = true
         private var tripLegs: List<TripLeg> = emptyList()
 
         fun setOrigin(value: Station?) = apply { origin = value }
@@ -335,7 +332,6 @@ data class Departure(
         fun setMaxEstimate(value: Long) = apply { maxEstimate = value }
         fun setEstimatedTripTime(value: Int) = apply { estimatedTripTime = value }
         fun setArrivalTimeOverride(value: Long) = apply { arrivalTimeOverride = value }
-        fun setListedInETDs(value: Boolean) = apply { listedInETDs = value }
         fun setTripLegs(value: List<TripLeg>?) = apply { tripLegs = value ?: emptyList() }
 
         fun build(): Departure {
@@ -360,7 +356,6 @@ data class Departure(
                 estimatedTripTime,
                 beganAsDeparted,
                 arrivalTimeOverride,
-                listedInETDs,
                 immutableLegs,
             )
             return departure.withImmutableTripLegs(immutableLegs)

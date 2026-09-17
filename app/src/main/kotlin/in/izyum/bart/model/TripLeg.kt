@@ -2,6 +2,7 @@ package `in`.izyum.bart.model
 
 import java.util.ArrayList
 import java.util.Collections
+import java.time.LocalDate
 
 /** One train in a possibly multi-train itinerary. */
 class TripLeg @JvmOverloads constructor(
@@ -19,8 +20,13 @@ class TripLeg @JvmOverloads constructor(
     val departureSource: PredictionSource = PredictionSource.UNKNOWN,
     val arrivalSource: PredictionSource = PredictionSource.UNKNOWN,
     val platform: String? = null,
+    /** Static service date keeps trip IDs stable across midnight refreshes. */
+    val serviceDate: LocalDate? = null,
 ) {
     val stops: List<TripStop> = immutableTripLegList(stops)
+
+    val canonicalIdentity: String?
+        get() = tripId?.let { id -> serviceDate?.let { "$it:$id" } ?: id }
 
     fun hasArrivalTime(): Boolean = arrivalTime > 0
 }

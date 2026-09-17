@@ -1,5 +1,8 @@
 # BART live ETD audit
 
+> Historical fixture audit only. ETD is not a runtime input; production
+> projections now use `CanonicalTransitSnapshot` and GTFS-Realtime data.
+
 The checked-in captures under `app/src/test/resources/bart_live_*` contain:
 
 - BART trip-update GTFS-Realtime protobuf;

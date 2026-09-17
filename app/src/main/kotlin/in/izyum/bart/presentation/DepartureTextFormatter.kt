@@ -321,7 +321,7 @@ object DepartureTextFormatter {
         val secondsLeft = (arrivalTime - nowMillis) / 1000L
         return when {
             departure.isCanceled() -> context.getString(R.string.departure_canceled)
-            nowMillis >= departureTime -> context.getString(if (departure.isListedInETDs()) R.string.leaving else R.string.departed)
+            nowMillis >= departureTime -> context.getString(R.string.departed)
             nowMillis >= arrivalTime -> context.getString(R.string.departure_at_station)
             else -> context.getString(
                 R.string.departure_countdown,

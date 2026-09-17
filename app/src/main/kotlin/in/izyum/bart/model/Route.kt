@@ -60,8 +60,7 @@ class Route private constructor(
                     || viaLine == directLine.transferLine2
             }
             // Departures are queried at the passenger origin, so only the
-            // first line of a multi-leg route can be represented by an ETD
-            // returned for this route. The remaining lines are paired later.
+            // first line of a multi-leg route is represented on the board.
             if (viaLine != lines.first()) {
                 return false
             }
