@@ -12,6 +12,18 @@ Run the reproducible audit from the repository root:
 python -m tools.bart_data_audit audit
 ```
 
+Diagnose one capture's ETD/GTFS-Realtime/projection discrepancies after running
+the Android projection test:
+
+```text
+python -m tools.bart_data_audit debug-projection --capture bart_live_20260917_123018
+```
+
+The diagnostic reports active ETD rows without a nearby realtime stop, raw
+GTFS-Realtime-only stop rows, partial/stale realtime entities, and the
+projection test's source-tagged extras (`REALTIME`, `SCHEDULE`, or `ESTIMATE`).
+Use `--json --output path.json` for machine-readable output.
+
 With the official Yellow-line PDFs downloaded under
 `docs/bart_data_audit/schedule_pdfs/`, extract their timetable cells and compare
 Yellow GTFS-Realtime predictions:

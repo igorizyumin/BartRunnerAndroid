@@ -1,9 +1,9 @@
 package `in`.izyum.bart.transit.normalization
 
 import com.google.transit.realtime.GtfsRealtime
+import `in`.izyum.bart.transit.BartDataPolicy
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.Collections
 
 /** Stable identity for a published static trip on one GTFS service date. */
@@ -48,7 +48,7 @@ data class RealtimeTripObservation(
         get() = scheduleRelationship == GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED
 
     val isOperationalTelemetry: Boolean
-        get() = tripId?.toIntOrNull()?.let { it in 600..799 } == true
+        get() = tripId?.toIntOrNull()?.let { it in BartDataPolicy.DMU_TRIP_ID_RANGE } == true
 }
 
 /** A deterministic selection, with all raw observations still retained. */
@@ -101,7 +101,7 @@ data class NormalizedRealtimeFeed(
 
 /** Parses GTFS-Realtime without applying static-trip, terminal, or UI policy. */
 object RealtimeFeedNormalizer {
-    private val pacific = ZoneId.of("America/Los_Angeles")
+    private val pacific = BartDataPolicy.PACIFIC_ZONE
 
     @JvmStatic
     fun normalize(

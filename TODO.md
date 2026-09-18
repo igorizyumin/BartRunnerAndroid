@@ -37,11 +37,22 @@ Completed foundation:
   the runtime path.
 - `RouteDepartureProjection` now receives a canonical snapshot and its route
   projection path does not parse unmatched realtime trips.
-- Legacy raw/normalized handler APIs and static route helpers are now marked
-  deprecated so remaining migration points are visible in compiler warnings.
+- Legacy raw/normalized handler APIs and static route helpers have been removed
+  from production; the canonical projectors are now the only supported path.
 
-Existing verification recorded for the completed slice: unit tests, lint,
-debug APK build, connected Android tests, and canonical DMU regression tests.
+Existing verification recorded for the completed slice: focused/full unit
+tests, lint, debug APK build, and canonical DMU regression tests. Connected
+Android-test execution remains unfinished work below.
+
+## Code-review assessment — September 17, 2026
+
+The accompanying code review is substantially correct. The canonical data
+pipeline and RAPTOR migration are complete enough to preserve, but the
+following follow-ups are warranted. KSP releases no longer need to match the
+Kotlin compiler version; the remaining build task is to move the pinned KSP
+version to the proposed `2.3.12` and verify the build. The elevator API key is
+intentionally public and needs no remediation. Line colors are intentionally
+UI-owned so themes can customize them; they should not be derived from GTFS.
 
 ## Architectural rules
 
@@ -58,124 +69,52 @@ debug APK build, connected Android tests, and canonical DMU regression tests.
   route enumeration is legacy and must not remain a second routing engine.
 - Projection code must consume canonical data and must not normalize feeds,
   rebuild schedules, associate trips, or parse raw protobuf entities.
+## Remaining work
 
-## Remaining work, in priority order
+### Priority 1 — build and realtime correctness
 
-### 1. Make RAPTOR the only route-selection path
+- [x] Update the pinned KSP plugin to `2.3.12` and verify the complete build
+  gate.
+- [x] Define one partial-feed policy for every refresh path. Retain the
+  last-known-good trip-updates and alert feeds independently, attach per-feed
+  freshness/error metadata, and use schedule-only data only when no usable
+  realtime remains.
+- [x] Add repository tests for each partial-failure direction, initial failure,
+  recovery, and stale-feed expiry.
 
-- [x] Remove `Schedule.routesFor`, `preferredTransferRoutes`,
-  `doubleTransferRoutes`, and `transferRoutes` from production callers.
-  They are deprecated static-topology APIs; compatibility tests still
-  exercise them directly.
-- [x] Change `RouteDepartureProjection` to construct RAPTOR input from the
-  canonical passenger schedule and ask `RaptorRouter` for journeys directly.
-  Remove direct-route, transfer-route, and double-transfer fallback passes.
-- [x] Keep `Route` only where it is needed as journey/display metadata. It
-  should be derived from a selected RAPTOR journey rather than used to drive a
-  separate static search.
-- [x] Migrate `RealTimeDepartures` transfer metadata away from calling static
-  schedule route helpers.
-- [x] Delete the old static route helpers and remove the historical tests that
-  existed only to validate that obsolete routing engine.
+### Priority 2 — alarm lifecycle and API safety
 
-### 2. Split `GtfsRealtimeContentHandler`
+- [x] Re-arm persisted followed-trip and polling alarms after reboot with a
+  minimal non-exported boot receiver; handle exact-alarm permission, expiry,
+  idempotence, and emulator verification.
+- [x] Provide a suspend refresh operation or explicitly named blocking test
+  helper, migrate production callers, and guard against main-thread refreshes.
 
-`GtfsRealtimeContentHandler` currently combines several unrelated roles:
+### Priority 3 — maintainability and policy ownership
 
-- raw-feed compatibility entry points;
-- legacy schedule reconstruction;
-- canonical-schedule departure projection;
-- RAPTOR input conversion and journey selection;
-- `Departure`/`TripLeg`/`TripStop` construction;
-- existing-itinerary refresh and connection repair.
+- [ ] Split `ui/BartRunnerUi.kt` by screen and shared UI concerns while
+  preserving public composable entry points.
+- [x] Centralize BART routing/data policy constants, including route-ranking
+  weights, station sets, the DMU range, OAKL filtering, and Pacific time zone;
+  keep display colors UI-owned.
+- [x] Add a short data-audit note for intentionally BART-specific policy facts.
 
-- [x] Extract a canonical `DepartureProjector` that converts selected RAPTOR
-  journeys into app models.
-- [x] Move RAPTOR-trip conversion and journey selection into a focused routing
-  adapter, or make `RouteDepartureProjection` own that thin adapter.
-- [x] Move existing-itinerary refresh into a separate
-  `TripProgressProjector`/`ItineraryRefreshProjector`.
-- [ ] Remove the handler’s raw-feed overloads after all production callers
-  migrate to canonical inputs.
-- [ ] Remove `correctedSchedule(...)` from the handler; schedule correction is
-  owned by `CanonicalTransitSnapshot`.
-- [x] Remove `parseRealtimeOnlyTrips(...)` from the route-departure path. The
-  canonical passenger-trip collection is authoritative; this fallback must not
-  synthesize an additional departure set.
-- [x] Replace the handler’s manual `findConnectingTrip` and
-  `refreshConnectingLegs` logic with complete RAPTOR replanning after the
-  current itinerary becomes infeasible. Preserve only traveled portions.
+### Priority 4 — hygiene and verification
 
-### 3. Finish trip-progress migration
-
-- [x] Make `TripProgressProjection` consume canonical trip state without
-  calling deprecated static route helpers or legacy handler overloads.
-- [x] Use the same transfer-policy predicate for initial routing and itinerary
-  refresh.
-- [x] Make replacement of a canceled or infeasible connecting leg
-  deterministic through canonical RAPTOR replanning, preserving the selected
-  trip identity while the current route remains feasible.
-- [x] Ensure a partially completed leg retains passed stops while future legs
-  are replanned from the canonical snapshot.
-
-### 4. Stabilize departure identity and presentation
-
-- [ ] Separate stable departure identity from mutable timing/platform/display
-  metadata in `Departure.merge` and `Departure.replaceFeed`.
-- [ ] Ensure a platform or terminal correction updates one departure rather
-  than creating a duplicate or stranding the old identity.
-- [ ] Ensure every visible departure carries stable identity and source
-  provenance sufficient to explain schedule-only, realtime, estimated, and
-  canceled states.
-
-### 5. Fixture and parity coverage
-
-- [ ] Add or retain focused fixtures for after-midnight service, calendar
-  exceptions, parent stations/platforms, missing route IDs, missing stop
-  sequences, partial stop lists, explicit cancellations, duplicate IDs, stale
-  origins, DMU observations, and source ambiguity/skew.
-- [ ] Add tests proving route projection uses only the canonical corrected
-  passenger schedule and does not independently parse realtime entities.
-- [ ] Compare legacy and canonical outputs for every checked-in capture until
-  each difference is classified as an intentional behavior change.
-- [ ] Remove or rewrite static-routing tests once the production migration is
-  complete; retain only tests for behavior still required by the canonical
-  router.
-
-## Deprecated API inventory
-
-These are intentionally still present because they have callers. Do not add
-new call sites:
-
-- Deprecated `GtfsRealtimeContentHandler` compatibility façade and its raw/
-  normalized-feed departure overloads
-- Legacy `GtfsRealtimeContentHandler.updateTripLegs(...)` overloads
-- Private legacy compatibility path for realtime-only trip parsing
-- `TransitFeedSnapshot.getCorrectedSchedule(...)` convenience API
-
-The compiler warnings are migration markers, not errors to suppress globally.
-Once production callers are removed, delete the deprecated APIs and their
-obsolete compatibility tests rather than merely silencing the warnings.
-
-## Verification gate
-
-- [ ] All focused canonical, routing, departure, and trip-progress tests pass.
-- [ ] Full `:app:testDebugUnitTest` passes.
-- [ ] `:app:lintDebug` passes.
-- [ ] `:app:assembleDebug` passes.
-- [ ] Connected tests pass on the Pixel 10a emulator.
-- [ ] No production code depends on deprecated static-routing or raw-feed
-  projection APIs.
-
-## Completion criteria
-
-- [ ] One canonical passenger-trip truth feeds routing, departures, trip
-  following, persistence updates, and notifications.
-- [ ] RAPTOR is the only timed route-selection implementation.
-- [ ] No projection rebuilds or independently interprets static and realtime
-  data.
-- [ ] Partial realtime updates cannot truncate static service patterns.
-- [ ] DMU telemetry remains available as provenance without becoming a
-  passenger GTFS trip.
-- [ ] Connection refresh uses the same transfer semantics as initial routing.
-- [ ] Visible departures have stable identities and explainable provenance.
+- [x] Add backup/data-extraction rules excluding the re-fetchable GTFS Room
+  cache while preserving user-followed-trip state where appropriate.
+- [x] Remove the unused release NDK debug-symbol setting, update the package
+  name in `AGENTS.md`, and remove obsolete empty source-tree remnants.
+- [x] Bound or prune expired `DepartureAlarmScheduler` preference keys; split
+  polling/show-activity request-code constants if that file is touched.
+- [x] Document the intentional destructive Room migration and bounded
+  background RAPTOR cost.
+- [x] Add the remaining canonical fixture matrix for feed-shape edge cases:
+  after-midnight service, calendar exceptions, parent stations/platforms,
+  missing route IDs/sequences, partial stops, cancellations, duplicates,
+  stale origins, DMU observations, and source ambiguity/skew.
+- [x] Run connected Android tests on the Pixel 10a emulator.
+- [x] Audit persistence and notification consumers for canonical departures or
+  canonical trip state rather than reconstructed feed data.
+- [x] Confirm one canonical passenger-trip truth feeds routing, departures,
+  trip following, persistence updates, and notifications.

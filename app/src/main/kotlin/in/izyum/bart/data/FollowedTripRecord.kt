@@ -1,6 +1,7 @@
 package `in`.izyum.bart.data
 
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Station
@@ -15,14 +16,8 @@ class FollowedTripRecord constructor() {
     @JvmField var trainDestination: String? = null
     @JvmField var passengerDestination: String? = null
     @JvmField var line: String? = null
-    @JvmField var trainDestinationColorHex: String? = null
-    @JvmField var trainDestinationColorText: String? = null
     @JvmField var platform: String? = null
-    @JvmField var direction: String? = null
-    @JvmField var bikeAllowed = false
     @JvmField var trainLength: String? = null
-    @JvmField var requiresTransfer = false
-    @JvmField var transferScheduled = false
     @JvmField var canceled = false
     @JvmField var minutes = 0
     @JvmField var minEstimate = 0L
@@ -30,6 +25,17 @@ class FollowedTripRecord constructor() {
     @JvmField var arrivalTimeOverride = 0L
     @JvmField var estimatedTripTime = 0
     @JvmField var tripLegs: MutableList<TripLegRecord> = mutableListOf()
+
+    fun toItinerary(): Itinerary {
+        require(version == CURRENT_VERSION) {
+            "Unsupported followed trip format version: $version"
+        }
+        val itineraryOrigin = station(origin)
+            ?: throw IllegalArgumentException("Followed trip has no origin")
+        val itineraryDestination = station(passengerDestination ?: trainDestination)
+            ?: throw IllegalArgumentException("Followed trip has no destination")
+        return Itinerary(itineraryOrigin, itineraryDestination, tripLegs.map { it.toTripLeg() })
+    }
 
     fun toDeparture(): Departure {
         require(version == CURRENT_VERSION) {
@@ -41,14 +47,8 @@ class FollowedTripRecord constructor() {
             .setTrainDestination(station(trainDestination))
             .setPassengerDestination(station(passengerDestination) ?: station(trainDestination))
             .setLine(line?.let(Line::valueOf))
-            .setTrainDestinationColorHex(trainDestinationColorHex)
-            .setTrainDestinationColorText(trainDestinationColorText)
             .setPlatform(platform)
-            .setDirection(direction)
-            .setBikeAllowed(bikeAllowed)
             .setTrainLength(trainLength)
-            .setRequiresTransfer(requiresTransfer)
-            .setTransferScheduled(transferScheduled)
             .setCanceled(canceled)
             .setMinutes(minutes)
             .setMinEstimate(minEstimate)
@@ -69,14 +69,8 @@ class FollowedTripRecord constructor() {
                 trainDestination = abbreviation(departure.trainDestination)
                 passengerDestination = abbreviation(departure.passengerDestination)
                 line = departure.line?.name
-                trainDestinationColorHex = departure.destinationColorHex
-                trainDestinationColorText = departure.destinationColorText
                 platform = departure.platform
-                direction = departure.direction
-                bikeAllowed = departure.bikeAllowed
                 trainLength = departure.trainLength
-                requiresTransfer = departure.requiresTransfer
-                transferScheduled = departure.transferScheduled
                 canceled = departure.canceled
                 minutes = departure.minutes
                 minEstimate = departure.minEstimate
@@ -84,6 +78,23 @@ class FollowedTripRecord constructor() {
                 arrivalTimeOverride = departure.arrivalTimeOverride
                 estimatedTripTime = departure.estimatedTripTime
                 tripLegs = departure.tripLegs.map(TripLegRecord::fromTripLeg).toMutableList()
+            }
+
+        @JvmStatic
+        fun fromItinerary(itinerary: Itinerary): FollowedTripRecord =
+            FollowedTripRecord().apply {
+                origin = itinerary.origin.abbreviation
+                trainDestination = itinerary.trainDestination?.abbreviation
+                passengerDestination = itinerary.destination.abbreviation
+                line = itinerary.line?.name
+                platform = itinerary.platform
+                canceled = itinerary.canceled
+                minEstimate = itinerary.getInitialDepartureTime()
+                maxEstimate = itinerary.getInitialDepartureTime()
+                estimatedTripTime = (
+                    itinerary.getEstimatedArrivalTime() - itinerary.getInitialDepartureTime()
+                ).coerceAtLeast(0L).toInt()
+                tripLegs = itinerary.legs.map(TripLegRecord::fromTripLeg).toMutableList()
             }
 
         private fun abbreviation(station: Station?): String? = station?.abbreviation
@@ -107,6 +118,8 @@ class FollowedTripRecord constructor() {
         @JvmField var arrivalSource: String? = null
         @JvmField var platform: String? = null
         @JvmField var serviceDate: String? = null
+        @JvmField var canceled = false
+        @JvmField var direction: String? = null
         @JvmField var stops: MutableList<TripStopRecord> = mutableListOf()
 
         fun toTripLeg(): TripLeg = TripLeg(
@@ -125,6 +138,8 @@ class FollowedTripRecord constructor() {
             predictionSource(arrivalSource),
             platform,
             serviceDate?.let { value -> runCatching { LocalDate.parse(value) }.getOrNull() },
+            canceled,
+            direction,
         )
 
         companion object {
@@ -144,6 +159,8 @@ class FollowedTripRecord constructor() {
                 arrivalSource = leg.arrivalSource.name
                 platform = leg.platform
                 serviceDate = leg.serviceDate?.toString()
+                canceled = leg.canceled
+                direction = leg.direction
                 stops = leg.stops.map(TripStopRecord::fromTripStop).toMutableList()
             }
         }

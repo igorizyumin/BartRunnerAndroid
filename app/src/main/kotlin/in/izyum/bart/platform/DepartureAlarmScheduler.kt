@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 import `in`.izyum.bart.activities.RoutesListActivity
-import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /** Owns Android alarm scheduling for one followed departure. */
 class DepartureAlarmScheduler @JvmOverloads constructor(
     context: Context,
-    private val departure: Departure,
+    private val itinerary: Itinerary,
     private val timeSource: TimeSource = SystemTimeSource
 ) :
     AutoCloseable {
@@ -35,6 +35,8 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         const val LEAD_TIME_SUFFIX = ".leadTimeMinutes"
         const val PENDING_SUFFIX = ".pending"
         const val TRACKING_SUFFIX = ".tracking"
+        const val LAST_USED_SUFFIX = ".lastUsedMillis"
+        const val MAX_PERSISTED_ALARM_STATES = 16
     }
 
     private val applicationContext = context.applicationContext
@@ -42,7 +44,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         .getSystemService(Context.ALARM_SERVICE) as? AlarmManager
     private val preferences = applicationContext.getSharedPreferences(
         ALARM_PREFS, Context.MODE_PRIVATE)
-    private val stateKey = buildStateKey(departure)
+    private val stateKey = buildStateKey(itinerary)
     private val _state = MutableStateFlow(
         DepartureAlarmState(
             leadTimeMinutes = preferences.getInt(
@@ -53,10 +55,11 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     val state: StateFlow<DepartureAlarmState> = _state.asStateFlow()
 
     init {
+        prunePersistedStates()
         val nowMillis = timeSource.nowMillis()
         if (DepartureAlarmPolicy.shouldRestore(isPending,
-                departure.hasInitialDeparturePassed(nowMillis, pessimistic = true),
-                departure.hasExpired(nowMillis))) {
+                itinerary.hasInitialDeparturePassed(nowMillis, pessimistic = true),
+                itinerary.hasExpired(nowMillis))) {
             schedule()
         } else if (isPending) {
             cancel()
@@ -74,7 +77,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
 
     val secondsUntilAlarm: Int
         get() = DepartureAlarmPolicy.secondsUntilAlarm(
-            departure, leadTimeMinutes, timeSource.nowMillis())
+            itinerary, leadTimeMinutes, timeSource.nowMillis())
 
     fun setUp(leadTimeMinutes: Int) {
         require(leadTimeMinutes >= 0) {
@@ -86,7 +89,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     fun startTracking() {
-        preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, true) }
+        preferences.edit {
+            putBoolean(stateKey + TRACKING_SUFFIX, true)
+            putLong(stateKey + LAST_USED_SUFFIX, timeSource.nowMillis())
+        }
     }
 
     fun cancel() {
@@ -96,7 +102,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     fun stopTracking() {
-        preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, false) }
+        preferences.edit {
+            putBoolean(stateKey + TRACKING_SUFFIX, false)
+            putLong(stateKey + LAST_USED_SUFFIX, timeSource.nowMillis())
+        }
     }
 
     fun notifyAlarmHasBeenHandled() {
@@ -140,7 +149,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     private fun alarmClockTime(): Long = DepartureAlarmPolicy.alarmTime(
-        departure, leadTimeMinutes)
+        itinerary, leadTimeMinutes)
 
     private fun schedule() {
         val manager = alarmManager
@@ -177,7 +186,28 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         preferences.edit {
             putInt(stateKey + LEAD_TIME_SUFFIX, leadTimeMinutes)
             putBoolean(stateKey + PENDING_SUFFIX, pending)
+            putLong(stateKey + LAST_USED_SUFFIX, timeSource.nowMillis())
         }
+    }
+
+    private fun prunePersistedStates() {
+        val bases = preferences.all.keys
+            .filter { it.startsWith("alarm.") && it.endsWith(PENDING_SUFFIX) }
+            .map { it.removeSuffix(PENDING_SUFFIX) }
+            .filter { it != stateKey }
+            .distinct()
+        val excess = bases.size - (MAX_PERSISTED_ALARM_STATES - 1)
+        if (excess <= 0) return
+        val editor = preferences.edit()
+        bases.sortedBy { base ->
+            preferences.getLong(base + LAST_USED_SUFFIX, Long.MIN_VALUE)
+        }.take(excess).forEach { base ->
+            editor.remove(base + LEAD_TIME_SUFFIX)
+            editor.remove(base + PENDING_SUFFIX)
+            editor.remove(base + TRACKING_SUFFIX)
+            editor.remove(base + LAST_USED_SUFFIX)
+        }
+        editor.apply()
     }
 
     private fun showIntent(): PendingIntent = PendingIntent.getActivity(
@@ -189,13 +219,13 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    private fun buildStateKey(departure: Departure): String = buildString {
+    private fun buildStateKey(itinerary: Itinerary): String = buildString {
         append("alarm.")
-        appendStation(this, departure.origin)
-        appendStation(this, departure.trainDestination)
-        append('|').append(departure.line)
-        append('|').append(departure.direction)
-        append('|').append(departure.platform)
+        appendStation(this, itinerary.origin)
+        appendStation(this, itinerary.trainDestination)
+        append('|').append(itinerary.line)
+        append('|').append(itinerary.direction)
+        append('|').append(itinerary.platform)
     }
 
     private fun appendStation(builder: StringBuilder, station: Station?) {

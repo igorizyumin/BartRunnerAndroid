@@ -22,11 +22,16 @@ class TripLeg @JvmOverloads constructor(
     val platform: String? = null,
     /** Static service date keeps trip IDs stable across midnight refreshes. */
     val serviceDate: LocalDate? = null,
+    val canceled: Boolean = false,
+    val direction: String? = null,
 ) {
     val stops: List<TripStop> = immutableTripLegList(stops)
 
     val canonicalIdentity: String?
-        get() = tripId?.let { id -> serviceDate?.let { "$it:$id" } ?: id }
+        get() = tripIdentity?.toString() ?: tripId
+
+    val tripIdentity: TripIdentity?
+        get() = tripId?.let { id -> serviceDate?.let { TripIdentity(it, id) } }
 
     fun hasArrivalTime(): Boolean = arrivalTime > 0
 }

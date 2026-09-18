@@ -11,17 +11,18 @@ that path.
 Status: documentation-only audit of the current working tree. No application
 or test code was changed for this audit.
 
-The working tree already contains a substantial uncommitted refactor in the
-schedule, realtime handler, routing, and related test files. The observations
-below describe that current working tree, not a clean-branch baseline.
+The observations below preserve the pre-canonical findings for historical
+context. The current runtime has completed this migration: the legacy handler
+and its compatibility facade have been deleted, and canonical projectors are
+the only production projection path.
 
 ## Executive summary
 
-The app currently has three different representations of service:
+The pre-canonical app had three different representations of service:
 
 1. `Schedule` is a static, time-windowed GTFS graph with exact-trip realtime
    corrections.
-2. `GtfsRealtimeContentHandler` builds a second snapshot list from the same
+2. The legacy `GtfsRealtimeContentHandler` built a second snapshot list from the same
    static graph plus every parsed trip-update entity, then performs a local
    Yellow/DMU join and suppression pass.
 3. UI and trip-following code merges the resulting `Departure` values by a
@@ -31,7 +32,7 @@ These layers do not share one authoritative trip identity or one authoritative
 terminal-service model. That is the main reason the Yellow line can look
 plausible in one projection and be wrong in another.
 
-The most important confirmed discrepancies are:
+The most important confirmed discrepancies in that historical path were:
 
 - BART's DMU telemetry does not carry a valid `trip_id` that identifies the
   electric portion of the same passenger trip. `Schedule.applyRealtime()`
@@ -72,8 +73,6 @@ GTFS static catalog
                                       |
                                       v
                          RouteDepartureProjection
-                                      |
-          GtfsRealtimeContentHandler: static + RT + DMU join/suppression
                                       |
                                       v
                             RealTimeDepartures
@@ -138,7 +137,7 @@ It does not add realtime-only trips, infer a missing trip ID, or apply a
 600–799 DMU update. This is the authoritative behavior of the cached corrected
 schedule, even though the handler has additional parsing behavior later.
 
-## Yellow and DMU behavior in the handler
+## Yellow and DMU behavior in the legacy handler
 
 The handler parses the static schedule into mutable `TripSnapshot` objects and
 parses every trip-update entity separately. It resolves a missing route ID from
@@ -160,15 +159,13 @@ For a DMU join, the handler:
    electric trip ID; and
 7. drops DMU-only snapshots before passenger departures are emitted.
 
-Consequences that must remain visible in any future redesign:
+Consequences that motivated the canonical redesign:
 
 - the join is not an identity join because BART does not provide a shared trip
   ID; it is a time/direction/platform heuristic;
 - it cannot enrich an electric trip that exists only in static GTFS;
 - it can only claim one DMU update per electric realtime snapshot;
-- the handler's enriched copy exists only for that projection call; and
-- `TransitFeedSnapshot.getCorrectedSchedule()` still has the un-enriched static terminal
-  values when queried independently by routing, ETD corroboration, or tests.
+- the handler's enriched copy existed only for that projection call.
 
 The late-night SFO–Millbrae case is similar but currently modeled differently:
 the schedule layer creates a synthetic `YELLOW_LATE_NIGHT` trip when the static
@@ -278,13 +275,14 @@ Run on 2026-09-15 from the current working tree with the repository-local
 Gradle cache:
 
 ```text
-.\gradlew.bat :app:testDebugUnitTest --tests in.izyum.bart.backend.ScheduleTest --tests in.izyum.bart.networktasks.GtfsRealtimeContentHandlerTest --tests in.izyum.bart.backend.LiveEtdStationBoardAuditTest
+.\gradlew.bat :app:testDebugUnitTest --tests in.izyum.bart.backend.ScheduleTest --tests in.izyum.bart.networktasks.CanonicalProjectionRegressionTest --tests in.izyum.bart.backend.LiveEtdStationBoardAuditTest
 ```
 
 Results:
 
 - `ScheduleTest`: 4/4 passed.
-- `GtfsRealtimeContentHandlerTest`: 11/11 passed.
+- `CanonicalProjectionRegressionTest`: canonical regression coverage retained
+  after the legacy handler tests were migrated.
 - `LiveEtdStationBoardAuditTest`: 1 passed, 1 failed.
 - Failure: `capturedFixturesHaveNoEtdOnlyDepartures` reports that
   `bart_live_20260911_161720` has an ETD row not found in the base projection.

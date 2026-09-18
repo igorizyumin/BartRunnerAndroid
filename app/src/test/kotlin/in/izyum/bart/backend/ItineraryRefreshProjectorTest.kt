@@ -1,6 +1,7 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.Line
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
@@ -14,6 +15,32 @@ import org.junit.Test
 
 class ItineraryRefreshProjectorTest {
     @Test
+    fun typedItineraryOwnsTheReplannedLegs() {
+        val fixture = fixture()
+        val schedule = schedule(fixture)
+        val itinerary = Itinerary(
+            Station.RICH,
+            Station.SFIA,
+            itinerary(schedule, "old-yellow", "old-blue"),
+        )
+        val canonical = TransitFeedSnapshot(
+            feedWithCancellation(fixture.feedTime, "old-yellow"),
+            emptyFeed(fixture.feedTime),
+            fixture.feedTime,
+        ).getCanonicalSnapshot(fixture.network)
+
+        val refreshed = ItineraryRefreshProjector(
+            Station.RICH,
+            Station.SFIA,
+            fixture.network,
+        ).project(canonical, itinerary)
+
+        assertEquals(Station.RICH, refreshed.origin)
+        assertEquals(Station.SFIA, refreshed.destination)
+        assertItinerary(refreshed.legs, "alt-yellow", "alt-blue")
+    }
+
+    @Test
     fun feasibleItineraryRemainsUnchanged() {
         val fixture = fixture()
         val schedule = schedule(fixture)
@@ -23,6 +50,34 @@ class ItineraryRefreshProjectorTest {
 
         assertItinerary(refreshed, "old-yellow", "old-blue")
         assertEquals(existing.map(::legShape), refreshed.map(::legShape))
+    }
+
+    @Test
+    fun alarmRefreshUpdatesOnlyTheFollowedDepartureLeg() {
+        val fixture = fixture()
+        val schedule = schedule(fixture)
+        val existing = Itinerary(
+            Station.RICH,
+            Station.SFIA,
+            itinerary(schedule, "old-yellow", "old-blue"),
+        )
+        val feedTime = epoch("2026-09-07T09:45:00-07:00")
+        val updated = FollowedItineraryAlarmProjection(fixture.network).project(
+            TransitFeedSnapshot(
+                feedWithDelay(
+                    feedTime,
+                    "old-yellow",
+                    Station.RICH,
+                    epoch("2026-09-07T10:05:00-07:00"),
+                ),
+                emptyFeed(feedTime),
+                feedTime,
+            ),
+            existing,
+        )
+
+        assertEquals(epoch("2026-09-07T10:05:00-07:00"), updated.legs.first().departureTime)
+        assertEquals(legShape(existing.legs[1]), legShape(updated.legs[1]))
     }
 
     @Test

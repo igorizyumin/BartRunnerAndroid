@@ -100,7 +100,7 @@ class AuditHelpersTest(unittest.TestCase):
     def test_full_audit_has_lossless_associations_and_projection(self):
         audit = build_audit()
         self.assertEqual(len(audit["associations"]), len(audit["entities"]))
-        self.assertEqual(len(audit["projected_entities"]), 481)
+        self.assertEqual(len(audit["projected_entities"]), 565)
         self.assertTrue(all(row["static_identity_status"] in {"exact", "no_static_counterpart"} for row in audit["associations"]))
 
     def test_official_pdf_cells_include_late_night_millbrae(self):

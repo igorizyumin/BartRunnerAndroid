@@ -33,7 +33,6 @@ class DeparturesViewModelTest {
         .setOrigin(Station.CAST)
         .setTrainDestination(Station.MLPT)
         .setLine(Line.ORANGE)
-        .setDirection("north")
         .setPlatform("1")
         .setMinEstimate(estimate)
         .setMaxEstimate(estimate + 60_000L)

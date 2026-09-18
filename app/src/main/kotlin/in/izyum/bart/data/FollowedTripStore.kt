@@ -1,6 +1,7 @@
 package `in`.izyum.bart.data
 
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
@@ -39,6 +40,42 @@ class FollowedTripStore @JvmOverloads constructor(
             temporaryFile.outputStream().use { output ->
                 objectMapper.writeValue(output,
                     FollowedTripRecord.fromDeparture(departure))
+            }
+            if (storageFile.exists() && !storageFile.delete()) {
+                throw IllegalStateException("Could not replace followed trip state")
+            }
+            if (!temporaryFile.renameTo(storageFile)) {
+                throw IllegalStateException("Could not save followed trip state")
+            }
+        } catch (exception: Exception) {
+            temporaryFile.delete()
+            throw exception
+        }
+    }
+
+    fun loadItinerary(): Itinerary? {
+        if (!storageFile.exists()) return null
+        return try {
+            storageFile.inputStream().use { input ->
+                objectMapper.readValue(input, FollowedTripRecord::class.java).toItinerary()
+            }
+        } catch (exception: Exception) {
+            delete()
+            null
+        }
+    }
+
+    fun saveItinerary(itinerary: Itinerary?) {
+        if (itinerary == null) {
+            delete()
+            return
+        }
+
+        storageFile.parentFile?.mkdirs()
+        val temporaryFile = File(storageFile.parentFile, storageFile.name + ".tmp")
+        try {
+            temporaryFile.outputStream().use { output ->
+                objectMapper.writeValue(output, FollowedTripRecord.fromItinerary(itinerary))
             }
             if (storageFile.exists() && !storageFile.delete()) {
                 throw IllegalStateException("Could not replace followed trip state")

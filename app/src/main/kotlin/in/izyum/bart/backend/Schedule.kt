@@ -9,10 +9,10 @@ import `in`.izyum.bart.transit.gtfs.GtfsStopTime
 import `in`.izyum.bart.transit.normalization.NormalizedRealtimeFeed
 import `in`.izyum.bart.transit.normalization.RequiredTransferPair
 import `in`.izyum.bart.transit.normalization.StaticTripIdentity
+import `in`.izyum.bart.transit.BartDataPolicy
 import com.google.transit.realtime.GtfsRealtime
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.Collections
 import java.util.LinkedHashMap
 
@@ -302,7 +302,7 @@ class Schedule private constructor(
             GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SKIPPED
 
     companion object {
-        private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
+        private val PACIFIC_ZONE = BartDataPolicy.PACIFIC_ZONE
         private const val LOOK_AHEAD_MILLIS = 2L * 60L * 60L * 1000L
         private const val LOOK_BEHIND_MILLIS = 30L * 60L * 1000L
         @JvmStatic

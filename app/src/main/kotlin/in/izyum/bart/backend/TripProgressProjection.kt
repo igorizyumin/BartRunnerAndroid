@@ -1,6 +1,7 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.TripLeg
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.util.function.Supplier
@@ -15,6 +16,7 @@ class TripProgressProjection(
     private val origin = origin
     private val destination = destination
     private val existingLegs = existingLegs.toList()
+    private var currentItinerary = Itinerary(origin, destination, this.existingLegs)
 
     constructor(
         origin: Station,
@@ -24,13 +26,19 @@ class TripProgressProjection(
     ) : this(origin, destination, existingLegs ?: emptyList(), Supplier { bartGtfsNetwork })
 
     fun project(snapshot: TransitFeedSnapshot): List<TripLeg> {
+        return projectItinerary(snapshot).legs
+    }
+
+    fun projectItinerary(snapshot: TransitFeedSnapshot): Itinerary {
         val network = networkSupplier.get()
         val canonical = snapshot.getCanonicalSnapshot(network)
-        return ItineraryRefreshProjector(
+        val refreshed = ItineraryRefreshProjector(
             origin,
             destination,
             network
-        ).project(canonical, existingLegs)
+        ).project(canonical, currentItinerary)
+        currentItinerary = refreshed
+        return refreshed
     }
 
 }

@@ -3,6 +3,7 @@ package `in`.izyum.bart.presentation
 import android.content.Context
 import `in`.izyum.bart.R
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.model.TripLeg
@@ -132,6 +133,11 @@ object DepartureTextFormatter {
         estimatedArrivalTime(context, departure, false)
 
     @JvmStatic
+    fun estimatedArrivalTime(context: Context, itinerary: Itinerary): String =
+        if (!itinerary.hasAnyArrivalEstimate()) ""
+        else formatTime(timeFormatter(context), itinerary.getEstimatedArrivalTime())
+
+    @JvmStatic
     fun estimatedArrivalTime(context: Context, departure: Departure, compact: Boolean): String {
         if (!departure.hasAnyArrivalEstimate()) return ""
         return formatTime(timeFormatter(context), departure.getEstimatedArrivalTime())
@@ -140,6 +146,11 @@ object DepartureTextFormatter {
     @JvmStatic
     fun estimatedDepartureTime(context: Context, departure: Departure): String =
         estimatedDepartureTime(context, departure, false)
+
+    @JvmStatic
+    fun estimatedDepartureTime(context: Context, itinerary: Itinerary): String =
+        if (itinerary.getInitialDepartureTime() <= 0L) ""
+        else formatTime(timeFormatter(context), itinerary.getInitialDepartureTime())
 
     @JvmStatic
     fun estimatedDepartureTime(context: Context, departure: Departure, compact: Boolean): String {

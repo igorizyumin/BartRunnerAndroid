@@ -4,6 +4,7 @@ import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
+import `in`.izyum.bart.transit.BartDataPolicy
 
 /** Hard transfer rules and application preferences used during route selection. */
 class TransferPolicy(
@@ -119,7 +120,7 @@ class TransferPolicy(
 
     /** Scores a route according to BART-specific transfer preferences. */
     fun routeScore(route: Route): Int {
-        var score = route.transferStations.size * 100
+        var score = route.transferStations.size * BartDataPolicy.RoutingScore.TRANSFER_WEIGHT
         val lines = route.lines
         if ((route.origin == Station.DUBL || route.origin == Station.CAST)
             && (route.destination == Station.PITT
@@ -130,13 +131,13 @@ class TransferPolicy(
             && lines[1] == Line.ORANGE
             && lines[2] == Line.YELLOW
             && route.transferStations.size == 2
-        ) score -= 200
+        ) score += BartDataPolicy.RoutingScore.EAST_BAY_TRUNK_BONUS
         route.transferStations.indices.forEach { index ->
             val station = route.transferStations[index]
             if (isAvoidedForRouteRanking(route, index)) {
-                score += 80
+                score += BartDataPolicy.RoutingScore.AVOIDED_STATION_PENALTY
             } else if (isBusyStation(station)) {
-                score += 3
+                score += BartDataPolicy.RoutingScore.BUSY_STATION_PENALTY
             }
             val preferred = preferredTransferStation(
                 route, lines[index], lines[index + 1], index
@@ -144,7 +145,8 @@ class TransferPolicy(
             if (station != preferred) {
                 score += if (preferred == Station.LAKE
                     && station == Station.BAYF
-                ) 4 else 10
+                ) BartDataPolicy.RoutingScore.BAYF_FOR_LAKE_PENALTY
+                else BartDataPolicy.RoutingScore.NON_PREFERRED_STATION_PENALTY
             }
         }
         return score
@@ -305,28 +307,7 @@ class TransferPolicy(
     companion object {
         const val EXTRA_MARGIN_SECONDS = 5 * 60
 
-        private val avoidedStations: Set<Station> = setOf(
-            Station.DALY,
-            Station.DELN,
-            Station.PLZA,
-            Station.FTVL,
-            Station.HAYW,
-            Station.MCAR,
-            Station.MLBR,
-            Station.MLPT,
-            Station.PHIL,
-            Station.RICH,
-            Station.SANL,
-            Station.SHAY,
-            Station.UCTY,
-            Station.WOAK,
-        )
-
-        private val busyStations: Set<Station> = setOf(
-            Station.CIVC,
-            Station.EMBR,
-            Station.MONT,
-            Station.POWL,
-        )
+        private val avoidedStations = BartDataPolicy.AVOIDED_TRANSFER_STATIONS
+        private val busyStations = BartDataPolicy.BUSY_TRANSFER_STATIONS
     }
 }

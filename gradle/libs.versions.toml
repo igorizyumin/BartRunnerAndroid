@@ -16,12 +16,13 @@ commonsCsv = "1.14.1"
 composeBom = "2026.08.00"
 activityCompose = "1.13.0"
 composeCompiler = "2.4.20"
+ksp = "2.3.12"
 room = "2.8.4"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "composeCompiler" }
-ksp = { id = "com.google.devtools.ksp", version = "2.3.10" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }

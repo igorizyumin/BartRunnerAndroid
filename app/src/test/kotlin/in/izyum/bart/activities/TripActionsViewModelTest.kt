@@ -13,7 +13,6 @@ class TripActionsViewModelTest {
             .setOrigin(Station.CAST)
             .setTrainDestination(Station.BALB)
             .setLine(Line.BLUE)
-            .setDirection("south")
             .build()
 
         val prepared = prepareDepartureForFollowing(departure)

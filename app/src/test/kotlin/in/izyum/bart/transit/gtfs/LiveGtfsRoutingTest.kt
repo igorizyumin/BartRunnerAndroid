@@ -15,7 +15,6 @@ import `in`.izyum.bart.backend.TransitFeedSnapshot
 import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.backend.TripProgressProjection
 import `in`.izyum.bart.backend.Schedule
-import `in`.izyum.bart.networktasks.GtfsRealtimeContentHandler
 import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import com.google.transit.realtime.GtfsRealtime
 
@@ -77,11 +76,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentGreenDepartureFromMilpitasUsesBlueAtBayFair(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.MLPT, Station.CAST,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.MLPT, Station.CAST, currentTripUpdates(), NETWORK)
 
         var greenDeparture: Departure? = null
         for (departure in departures.getDepartures()) {
@@ -103,11 +98,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentFeedKeepsPittsburgCenterAsTheFinalStop(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.CAST, Station.PCTR,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.CAST, Station.PCTR, currentTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
@@ -131,11 +122,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentFeedConnectsPleasantHillToPittsburgCenterShuttle(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.PHIL, Station.PCTR,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.PHIL, Station.PCTR, currentTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
@@ -156,11 +143,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentFeedKeepsAntiochAsTheFinalStop(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.CAST, Station.ANTC,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.CAST, Station.ANTC, currentTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
@@ -179,11 +162,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentFeedReportsPittsburgToAntiochDepartures(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.PITT, Station.ANTC,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.PITT, Station.ANTC, currentTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
@@ -196,11 +175,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun currentFeedReportsAntiochToPittsburgDepartures(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.ANTC, Station.PITT,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.ANTC, Station.PITT, currentTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
@@ -234,11 +209,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun capturedAntiochFeedBuildsPassengerDeparturesFromNormalTrips(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.ANTC, null,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                antiochLiveTripUpdates())
+        val departures = projectDepartures(Station.ANTC, null, antiochLiveTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(),
                 departures.getDepartures().isEmpty())
@@ -306,9 +277,6 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun unknownDmuTripIdDoesNotCreatePassengerDeparture() {
-        val handler = GtfsRealtimeContentHandler(
-                Station.PITT, Station.PCTR,
-                false, NETWORK)
         val feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                         .setGtfsRealtimeVersion("2.0")
@@ -318,16 +286,13 @@ class LiveGtfsRoutingTest {
                         longArrayOf(1000L, 1100L)))
                 .build()
 
-        val departures = handler.getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.PITT, Station.PCTR, feed, NETWORK)
         assertTrue("technical DMU updates must not create a passenger trip",
                 departures.getDepartures().isEmpty())
     }
 
     @Test
     fun separatePittsburgPlatformAndDmuUpdatesDoNotBuildPassengerDeparture() {
-        val handler = GtfsRealtimeContentHandler(
-                Station.PITT, Station.ANTC,
-                false, NETWORK)
         val feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                         .setGtfsRealtimeVersion("2.0")
@@ -338,16 +303,13 @@ class LiveGtfsRoutingTest {
                         arrayOf("E20-1"), longArrayOf(1706L)))
                 .build()
 
-        val departures = handler.getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.PITT, Station.ANTC, feed, NETWORK)
         assertTrue("technical DMU updates must not create a passenger trip",
                 departures.getDepartures().isEmpty())
     }
 
     @Test
     fun separateReversePlatformAndDmuUpdatesDoNotBuildPassengerDeparture() {
-        val handler = GtfsRealtimeContentHandler(
-                Station.ANTC, Station.PITT,
-                false, NETWORK)
         val feed = GtfsRealtime.FeedMessage.newBuilder()
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                         .setGtfsRealtimeVersion("2.0")
@@ -359,18 +321,14 @@ class LiveGtfsRoutingTest {
                         longArrayOf(800L, 1000L)))
                 .build()
 
-        val departures = handler.getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.ANTC, Station.PITT, feed, NETWORK)
         assertTrue("technical DMU updates must not create a passenger trip",
                 departures.getDepartures().isEmpty())
     }
 
     @Test
     fun currentSfoProjectionDoesNotFabricateARealtimeRedTrip(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.SFIA, Station.CAST,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                currentTripUpdates())
+        val departures = projectDepartures(Station.SFIA, Station.CAST, currentTripUpdates(), NETWORK)
 
         assertFalse("departures=" + departures.getDepartures(), departures.getDepartures().isEmpty())
         assertTrue(departures.getDepartures().all { departure ->
@@ -381,10 +339,7 @@ class LiveGtfsRoutingTest {
     @Test
     fun currentTripUpdatesBuildCompleteCastroValleyToPittsburgItinerary(){
         val feed = currentTripUpdates()
-        val handler = GtfsRealtimeContentHandler(
-                Station.CAST, Station.PITT,
-                false, NETWORK)
-        val departures = handler.getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.CAST, Station.PITT, feed, NETWORK)
         assertTrue(feed.getEntityCount() > 0)
         assertEquals("departures=" + departures.getDepartures(),
                 listOf("1973728", "1973729", "1973730", "1973731",
@@ -409,10 +364,8 @@ class LiveGtfsRoutingTest {
     @Test
     fun progressProjectionRestoresMissingPittsburgLegFromCurrentFeed(){
         val feed = currentTripUpdates()
-        val handler = GtfsRealtimeContentHandler(
-                Station.CAST, Station.PITT,
-                false, NETWORK)
-        val selected = handler.getRealTimeDepartures(feed).getDepartures()[0]
+        val selected = projectDepartures(Station.CAST, Station.PITT, feed, NETWORK)
+                .getDepartures()[0]
         val partial: List<TripLeg> = selected.tripLegs.subList(0, 2)
 
         val refreshed: List<TripLeg> = TripProgressProjection(
@@ -429,10 +382,7 @@ class LiveGtfsRoutingTest {
 
     @Test
     fun nightTripUpdatesUseStaticTerminalWhenRealtimeStopsAtBalboa(){
-        val handler = GtfsRealtimeContentHandler(
-                Station.BALB, Station.DALY, false, NIGHT_NETWORK)
-        val departures = handler.getRealTimeDepartures(
-                nightTripUpdates())
+        val departures = projectDepartures(Station.BALB, Station.DALY, nightTripUpdates(), NIGHT_NETWORK)
 
         val matching = departures.getDepartures().firstOrNull {
             it.tripLegs[0].tripId == "1973764"
@@ -786,6 +736,19 @@ class LiveGtfsRoutingTest {
                 .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                         .setGtfsRealtimeVersion("2.0"))
                 .build()
+
+    private fun projectDepartures(
+        origin: Station,
+        destination: Station?,
+        feed: GtfsRealtime.FeedMessage,
+        network: BartGtfsNetwork,
+    ): RealTimeDepartures = RouteDepartureProjection(
+        StationPair(origin, destination), network,
+    ).project(TransitFeedSnapshot(
+        feed,
+        emptyFeed(),
+        feed.header.timestamp * 1000L,
+    ))
 
     private fun linesOf(legs: List<TripLeg>): List<Line> = legs.map { it.line!! }
 

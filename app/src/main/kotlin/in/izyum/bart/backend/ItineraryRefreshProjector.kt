@@ -1,6 +1,7 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.Line
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
@@ -18,7 +19,32 @@ class ItineraryRefreshProjector(
     private val routing = CanonicalRoutingAdapter(network)
     private val transferPolicy = TransferPolicy(network)
 
-    fun project(canonical: CanonicalTransitSnapshot, existingLegs: List<TripLeg>): List<TripLeg> {
+    fun project(canonical: CanonicalTransitSnapshot, itinerary: Itinerary): Itinerary {
+        val refreshed = projectLegs(canonical, itinerary.origin, itinerary.destination, itinerary.legs)
+        return itinerary.replaceLegs(refreshed)
+    }
+
+    /** Refreshes one existing leg without validating or replanning its route. */
+    fun refreshLeg(canonical: CanonicalTransitSnapshot, existing: TripLeg): TripLeg {
+        val trips = canonical.correctedSchedule.trips
+        val byIdentity = trips.associateBy { routing.canonicalTripId(it) }
+        val byId = trips.groupBy { it.key.tripId }
+        val current = existing.canonicalIdentity?.let(byIdentity::get)
+            ?: byId[existing.tripId].orEmpty().singleOrNull()
+            ?: findMatchingTrip(existing, trips)
+        return if (current == null) existing else updateTripLeg(existing, current)
+    }
+
+    /** Compatibility entry point for board/projection regression tests. */
+    fun project(canonical: CanonicalTransitSnapshot, existingLegs: List<TripLeg>): List<TripLeg> =
+        projectLegs(canonical, origin, destination, existingLegs)
+
+    private fun projectLegs(
+        canonical: CanonicalTransitSnapshot,
+        origin: Station,
+        destination: Station,
+        existingLegs: List<TripLeg>,
+    ): List<TripLeg> {
         val trips = canonical.correctedSchedule.trips
         val byIdentity = trips.associateBy { routing.canonicalTripId(it) }
         val byId = trips.groupBy { it.key.tripId }
@@ -183,6 +209,8 @@ class ItineraryRefreshProjector(
             passedStop.arrivalSource,
             leg.platform,
             leg.serviceDate,
+            leg.canceled,
+            leg.direction,
         )
     }
 
@@ -221,6 +249,8 @@ class ItineraryRefreshProjector(
             arrival?.arrivalSource ?: PredictionSource.UNKNOWN,
             departure?.platform,
             trip.key.serviceDate,
+            trip.canceled,
+            trip.direction,
         )
     }
 
@@ -255,6 +285,8 @@ class ItineraryRefreshProjector(
             destinationStop?.arrivalSource ?: existing.arrivalSource,
             originStop?.platform ?: existing.platform,
             trip.key.serviceDate,
+            trip.canceled,
+            trip.direction,
         )
     }
 

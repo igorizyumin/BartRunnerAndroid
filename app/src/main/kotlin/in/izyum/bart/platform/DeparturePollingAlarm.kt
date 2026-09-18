@@ -12,7 +12,8 @@ import `in`.izyum.bart.receivers.DeparturePollingReceiver
 /** Schedules one-shot alarm-clock wakeups for background followed-trip refreshes. */
 object DeparturePollingAlarm {
     private const val TAG = "DeparturePollingAlarm"
-    private const val REQUEST_CODE = 1241
+    private const val POLL_REQUEST_CODE = 1241
+    private const val SHOW_ACTIVITY_REQUEST_CODE = 1243
     private const val ACTION_POLL = "in.izyum.bart.action.POLL_DEPARTURE"
 
     fun schedule(context: Context, delayMillis: Long = 0L) {
@@ -47,14 +48,14 @@ object DeparturePollingAlarm {
 
     fun refresh(context: Context, repository: FollowedTripRepository) {
         val applicationContext = context.applicationContext
-        val departure = repository.peekFollowedDeparture()
+        val itinerary = repository.peekFollowedItinerary()
         if (repository.backgroundPollingNeeded.value &&
-            departure != null &&
+            itinerary != null &&
             ExactAlarmPermission.isGranted(applicationContext)
         ) {
             schedule(
                 applicationContext,
-                repository.backgroundPollingDelayMillis(departure),
+                repository.backgroundPollingDelayMillis(itinerary),
             )
         } else {
             cancel(applicationContext)
@@ -63,14 +64,14 @@ object DeparturePollingAlarm {
 
     private fun pendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
         context,
-        REQUEST_CODE,
+        POLL_REQUEST_CODE,
         Intent(context, DeparturePollingReceiver::class.java).setAction(ACTION_POLL),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
     private fun showIntent(context: Context): PendingIntent = PendingIntent.getActivity(
         context,
-        REQUEST_CODE,
+        SHOW_ACTIVITY_REQUEST_CODE,
         Intent(context, RoutesListActivity::class.java).addFlags(
             Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
         ),

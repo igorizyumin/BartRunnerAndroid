@@ -16,7 +16,7 @@ def appProject = project(":app")
 
 tasks.register("verifyCompatibility") {
     group = "verification"
-    description = "Checks the supported Gradle, Java, Kotlin, AGP, and AndroidX baseline."
+    description = "Checks the supported Gradle, Java, Kotlin, AGP, AndroidX, and KSP baseline."
     doLast {
         if (GradleVersion.current() < GradleVersion.version("9.7.1")) {
             throw new GradleException("Gradle 9.7.1 or newer is required")
@@ -27,6 +27,7 @@ tasks.register("verifyCompatibility") {
         [
                 agp: [actual: libs.versions.agp.get(), required: "9.4.0"],
                 kotlin: [actual: libs.versions.kotlin.get(), required: "2.4.20"],
+                ksp: [actual: libs.versions.ksp.get(), required: "2.3.12"],
                 androidxCore: [actual: libs.versions.androidxCore.get(), required: "1.19.0"],
         ].each { name, version ->
             if (version.actual != version.required) {

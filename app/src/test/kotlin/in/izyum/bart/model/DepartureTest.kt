@@ -96,7 +96,7 @@ class DepartureTest {
         Departure.builder()
             .setOrigin(Station.CAST).setTrainDestination(Station.MLPT)
             .setPassengerDestination(Station.MLPT).setLine(Line.ORANGE)
-            .setDirection("north").setPlatform("1")
+            .setPlatform("1")
             .setMinEstimate(minEstimate).setMaxEstimate(maxEstimate)
             .setTripLegs(listOf(TripLeg(
                 Line.ORANGE, Station.CAST, Station.MLPT, Station.MLPT,

@@ -68,13 +68,6 @@ class TransitFeedSnapshot(
         }
     }
 
-    @Deprecated(
-        "Use getCanonicalSnapshot(network).correctedSchedule; canonical data owns schedule correction.",
-        level = DeprecationLevel.WARNING,
-    )
-    fun getCorrectedSchedule(network: BartGtfsNetwork): Schedule =
-        getCanonicalSnapshot(network).correctedSchedule
-
     /** Returns true when a new fetch contains no changed feed data. */
     fun hasSameFeedData(other: TransitFeedSnapshot?): Boolean =
         other != null && tripUpdates == other.tripUpdates && alerts == other.alerts

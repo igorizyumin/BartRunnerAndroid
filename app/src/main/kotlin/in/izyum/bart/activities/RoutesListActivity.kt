@@ -89,7 +89,7 @@ class RoutesListActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch(Dispatchers.IO) {
-            PerformanceTrace.section("BART startup refresh") {
+            PerformanceTrace.suspendSection("BART startup refresh") {
                 application.transitRepository.refreshIfStale()
             }
         }
@@ -110,8 +110,8 @@ class RoutesListActivity : ComponentActivity() {
                         }
                     }
                     val followedTripState by application.followedTripRepository.state.collectAsStateWithLifecycle()
-                    val followedTrip = if (followedTripState.departure != null) {
-                        application.followedTripRepository.getFollowedDeparture()
+                    val followedTrip = if (followedTripState.itinerary != null) {
+                        application.followedTripRepository.getFollowedItinerary()
                     } else {
                         null
                     }
@@ -129,12 +129,12 @@ class RoutesListActivity : ComponentActivity() {
                         onRemoveFavorite = routesViewModel::removeFavorite,
                         onMoveFavorite = routesViewModel::moveFavorite,
                         onInsertFavorite = routesViewModel::insertFavorite,
-                        onViewTrip = { departure ->
+                        onViewTrip = { itinerary ->
                             startActivity(Intent(this, TripInProgressActivity::class.java).apply {
                                 RouteArguments.putTrip(
                                     this,
-                                    departure.getStationPair(),
-                                    departure.identity,
+                                    itinerary.getStationPair(),
+                                    itinerary.selectionIdentity,
                                     RouteArguments.MODE_FOLLOWED,
                                 )
                             })

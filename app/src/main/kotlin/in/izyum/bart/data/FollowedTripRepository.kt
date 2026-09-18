@@ -2,6 +2,7 @@ package `in`.izyum.bart.data
 
 import android.content.Context
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.platform.DepartureAlarmScheduler
@@ -14,7 +15,7 @@ import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-/** Owns the followed trip, its process-death cache, and its observable state. */
+/** Owns the followed itinerary, its process-death cache, and its observable state. */
 class FollowedTripRepository @JvmOverloads constructor(
     context: Context,
     private val timeSource: TimeSource = SystemTimeSource
@@ -28,68 +29,81 @@ class FollowedTripRepository @JvmOverloads constructor(
     private val store = FollowedTripStore(storageFile)
     private val persistenceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val stateLock = Any()
-    private var pendingDeparture: Departure? = null
+    private var pendingItinerary: Itinerary? = null
     private var hasPendingPersistence = false
     private var persistenceWriteQueued = false
-    private var followedDeparture: Departure? = restore()
-    private var alarmScheduler: DepartureAlarmScheduler? = followedDeparture?.let {
+    private var followedItinerary: Itinerary? = restore()
+    private var alarmScheduler: DepartureAlarmScheduler? = followedItinerary?.let {
         DepartureAlarmScheduler(applicationContext, it)
     }
 
-    private val _state = MutableStateFlow(toState(followedDeparture))
+    private val _state = MutableStateFlow(toState(followedItinerary))
     private val _backgroundPollingNeeded = MutableStateFlow(
         alarmScheduler?.isTracking == true,
     )
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
     val backgroundPollingNeeded: StateFlow<Boolean> = _backgroundPollingNeeded.asStateFlow()
 
-    fun getFollowedDeparture(): Departure? {
-        val departure = synchronized(stateLock) { followedDeparture }
-        if (departure != null && departure.hasInitialDeparturePassed(timeSource.nowMillis(), pessimistic = true)) {
+    fun getFollowedItinerary(): Itinerary? {
+        val itinerary = synchronized(stateLock) { followedItinerary }
+        if (itinerary != null && itinerary.hasInitialDeparturePassed(timeSource.nowMillis(), pessimistic = true)) {
             // A followed train is monitored only until departure. Stop the
             // background work as soon as the cached estimate crosses departure,
             // even if no realtime refresh is available.
             stopTracking()
         }
-        if (departure != null && departure.hasExpired(timeSource.nowMillis())) {
-            clearFollowedDeparture()
+        if (itinerary != null && itinerary.hasExpired(timeSource.nowMillis())) {
+            clearFollowedItinerary()
             return null
         }
-        return departure
+        return itinerary
     }
 
-    fun setFollowedDeparture(
-        departure: Departure?,
+    fun getFollowedDeparture(): Departure? = getFollowedItinerary()?.toDeparture()
+
+    fun setFollowedItinerary(
+        itinerary: Itinerary?,
         refreshBackgroundWork: Boolean = true,
     ) {
         val previousScheduler: DepartureAlarmScheduler?
         val preserveAlarm = synchronized(stateLock) {
-            followedDeparture?.let { previous ->
-                departure != null && isSameAlarmDeparture(previous, departure)
+            followedItinerary?.let { previous ->
+                itinerary != null && isSameAlarmItinerary(previous, itinerary)
             } == true
         }
         synchronized(stateLock) {
-            if (departure == followedDeparture) {
+            if (itinerary == followedItinerary) {
                 return
             }
             previousScheduler = alarmScheduler
             previousScheduler?.close(preservePending = preserveAlarm)
-            followedDeparture = departure
-            alarmScheduler = departure?.let {
+            followedItinerary = itinerary
+            alarmScheduler = itinerary?.let {
                 DepartureAlarmScheduler(applicationContext, it)
             }
-            _state.value = toState(departure)
+            _state.value = toState(itinerary)
             refreshBackgroundPollingStateLocked()
         }
 
-        persist(departure)
+        persist(itinerary)
         if (refreshBackgroundWork) {
             DeparturePollingAlarm.refresh(applicationContext, this)
         }
     }
 
+    fun setFollowedDeparture(departure: Departure?, refreshBackgroundWork: Boolean = true) {
+        setFollowedItinerary(
+            departure?.let { Itinerary.fromDeparture(it) },
+            refreshBackgroundWork,
+        )
+    }
+
+    fun clearFollowedItinerary() {
+        setFollowedItinerary(null)
+    }
+
     fun clearFollowedDeparture() {
-        setFollowedDeparture(null)
+        clearFollowedItinerary()
     }
 
     fun getAlarmScheduler(): DepartureAlarmScheduler? {
@@ -126,21 +140,24 @@ class FollowedTripRepository @JvmOverloads constructor(
     }
 
     /** Atomically claims a pending alarm and returns the departure it belongs to. */
-    fun handleAlarmTriggered(): Departure? {
-        val departure = synchronized(stateLock) {
+    fun handleAlarmTriggered(): Itinerary? {
+        val itinerary = synchronized(stateLock) {
             if (alarmScheduler?.isPending != true) {
                 return@synchronized null
             }
             alarmScheduler?.notifyAlarmHasBeenHandled()
-            followedDeparture
+            followedItinerary
         }
         refreshBackgroundPollingState()
-        return departure
+        return itinerary
     }
 
     /** Reads the cached trip without applying expiry or tracking side effects. */
+    internal fun peekFollowedItinerary(): Itinerary? =
+        synchronized(stateLock) { followedItinerary }
+
     internal fun peekFollowedDeparture(): Departure? =
-        synchronized(stateLock) { followedDeparture }
+        peekFollowedItinerary()?.toDeparture()
 
     private fun refreshBackgroundPollingStateInternal() {
         synchronized(stateLock) { refreshBackgroundPollingStateLocked() }
@@ -156,22 +173,22 @@ class FollowedTripRepository @JvmOverloads constructor(
         _backgroundPollingNeeded.value = alarmScheduler?.isTracking == true
     }
 
-    internal fun backgroundPollingDelayMillis(departure: Departure?): Long {
+    internal fun backgroundPollingDelayMillis(itinerary: Itinerary?): Long {
         val nowMillis = timeSource.nowMillis()
         val scheduler = getAlarmScheduler()
-        val alarmTime = if (scheduler?.isPending == true && departure != null) {
-            DepartureAlarmPolicy.alarmTime(departure, scheduler.leadTimeMinutes)
+        val alarmTime = if (scheduler?.isPending == true && itinerary != null) {
+            DepartureAlarmPolicy.alarmTime(itinerary, scheduler.leadTimeMinutes)
         } else {
-            departure?.getInitialArrivalTime(pessimistic = true) ?: nowMillis
+            itinerary?.getInitialArrivalTime(pessimistic = true) ?: nowMillis
         }
         return DepartureAlarmPolicy.nextPollingDelayMillis(alarmTime - nowMillis)
     }
 
-    private fun restore(): Departure? = store.load()
+    private fun restore(): Itinerary? = store.loadItinerary()
 
-    private fun persist(departure: Departure?) {
+    private fun persist(itinerary: Itinerary?) {
         synchronized(stateLock) {
-            pendingDeparture = departure
+            pendingItinerary = itinerary
             hasPendingPersistence = true
             if (persistenceWriteQueued) {
                 return
@@ -180,16 +197,16 @@ class FollowedTripRepository @JvmOverloads constructor(
         }
         persistenceExecutor.execute {
             while (true) {
-                val nextDeparture = synchronized(stateLock) {
+                val nextItinerary = synchronized(stateLock) {
                     if (!hasPendingPersistence) {
                         persistenceWriteQueued = false
                         return@execute
                     }
                     hasPendingPersistence = false
-                    pendingDeparture
+                    pendingItinerary
                 }
                 try {
-                    store.save(nextDeparture)
+                    store.saveItinerary(nextItinerary)
                 } catch (exception: Exception) {
                     // Persistence is best effort; the in-memory state remains authoritative.
                 }
@@ -197,24 +214,26 @@ class FollowedTripRepository @JvmOverloads constructor(
         }
     }
 
-    private fun toState(departure: Departure?): FollowedTripState =
-        FollowedTripState(departure)
+    private fun toState(itinerary: Itinerary?): FollowedTripState =
+        FollowedTripState(itinerary)
 
     /**
      * Realtime updates can add trip-leg IDs after a trip has been followed. The
      * alarm belongs to the train, not to that feed detail, so retain it when the
      * route and nearby departure still identify the same train.
      */
-    private fun isSameAlarmDeparture(previous: Departure, next: Departure): Boolean {
-        if (previous.identity == next.identity) {
+    private fun isSameAlarmItinerary(previous: Itinerary, next: Itinerary): Boolean {
+        if (previous.selectionIdentity == next.selectionIdentity) {
             return true
         }
-        return previous.origin?.abbreviation == next.origin?.abbreviation
-            && previous.trainDestination?.abbreviation == next.trainDestination?.abbreviation
+        return previous.origin == next.origin
+            && previous.destination == next.destination
             && previous.line == next.line
             && previous.direction == next.direction
             && previous.platform == next.platform
-            && kotlin.math.abs(previous.getMeanEstimate() - next.getMeanEstimate()) <= 5 * 60_000L
+            && kotlin.math.abs(
+                previous.getInitialDepartureTime() - next.getInitialDepartureTime(),
+            ) <= 5 * 60_000L
     }
 
     override fun close() {

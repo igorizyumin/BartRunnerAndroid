@@ -45,7 +45,7 @@ class BartRunnerApplication : Application() {
             offlineSnapshotProvider = { TransitFeedSnapshot.empty(timeSource.nowMillis()) },
         )
         offlineStatusController = OfflineStatusController(this, transitRepository, followedTripRepository) {
-            transitRepository.refreshNow()
+            transitRepository.refresh()
         }
         DeparturePollingAlarm.refresh(this, followedTripRepository)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {

@@ -67,11 +67,8 @@ class DepartureProjector(
                 .setOrigin(origin)
                 .setTrainDestination(trip.trainDestination)
                 .setLine(line)
-                .setDirection(trip.direction)
                 .setPlatform(originStop.platform)
                 .setCanceled(trip.canceled)
-                .setTrainDestinationColorText(line.name)
-                .setTrainDestinationColorHex(colorForLine(line))
                 .setMinutes(minutes)
                 .setMinEstimate(originStop.departureTime - ESTIMATE_TOLERANCE_MILLIS)
                 .setMaxEstimate(originStop.departureTime + ESTIMATE_TOLERANCE_MILLIS)
@@ -83,10 +80,7 @@ class DepartureProjector(
                 }
                 .build()
             unfiltered += departure
-            filtered += departure.copy(
-                requiresTransfer = route.hasTransfer(),
-                transferScheduled = Line.YELLOW_ORANGE_SCHEDULED_TRANSFER == route.directLine,
-            )
+            filtered += departure
         }
 
         return RealTimeDepartures(
@@ -139,6 +133,8 @@ class DepartureProjector(
             arrival?.arrivalSource ?: PredictionSource.UNKNOWN,
             departure?.platform,
             trip.key.serviceDate,
+            trip.canceled,
+            trip.direction,
         )
     }
 
@@ -149,15 +145,6 @@ class DepartureProjector(
             fromLine,
             route.lines[index + 1],
         )
-    }
-
-    private fun colorForLine(line: Line): String = when (line) {
-        Line.RED -> "#ffff0000"
-        Line.ORANGE -> "#ffff9933"
-        Line.YELLOW -> "#ffffff33"
-        Line.GREEN -> "#ff339933"
-        Line.BLUE -> "#ff0099cc"
-        else -> "#ffffffff"
     }
 
     private companion object {

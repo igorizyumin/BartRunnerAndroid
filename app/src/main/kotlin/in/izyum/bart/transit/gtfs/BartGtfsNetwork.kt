@@ -2,6 +2,7 @@ package `in`.izyum.bart.transit.gtfs
 
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
+import `in`.izyum.bart.transit.BartDataPolicy
 import java.util.ArrayList
 import java.util.Collections
 import java.util.EnumMap
@@ -212,7 +213,7 @@ class BartGtfsNetwork private constructor(
         scheduledTrip.trip.routeId in routeIds
             && scheduledTrip.stopTimes.any { stopTime ->
                 val time = stopTime.departureSeconds ?: stopTime.arrivalSeconds ?: return@any false
-                val epoch = serviceDate.atStartOfDay(java.time.ZoneId.of("America/Los_Angeles"))
+                val epoch = serviceDate.atStartOfDay(BartDataPolicy.PACIFIC_ZONE)
                     .toInstant().toEpochMilli() + time * 1000L
                 epoch in windowStartMillis..windowEndMillis
             }
@@ -439,7 +440,7 @@ class BartGtfsNetwork private constructor(
 
         private fun isNonRevenueOaklandAirportStop(stop: GtfsStop): Boolean =
             listOf(stop.stopId, stop.parentStationId, stop.zoneId)
-                .any { it.equals("OAKL", ignoreCase = true) }
+                .any { it.equals(BartDataPolicy.OAKL_STOP_ID, ignoreCase = true) }
     }
 }
 

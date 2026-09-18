@@ -41,14 +41,15 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             return
         }
         val application = context.applicationContext as BartRunnerApplication
-        val boardedDeparture = application.followedTripRepository.handleAlarmTriggered()
+        val boardedItinerary = application.followedTripRepository.handleAlarmTriggered()
             ?: return
+        val boardedDeparture = boardedItinerary.toDeparture()
 
         val targetIntent = Intent(context, TripInProgressActivity::class.java).apply {
             RouteArguments.putTrip(
                 this,
                 boardedDeparture.getStationPair(),
-                boardedDeparture.identity,
+                boardedItinerary.selectionIdentity,
                 RouteArguments.MODE_FOLLOWED,
             )
             addFlags(

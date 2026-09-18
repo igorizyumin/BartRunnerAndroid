@@ -4615,6 +4615,1206 @@ etd_index,stop_index,entity_id,trip_id,station,method,time_delta_seconds,confide
 ,580,705,705,ANTC,gtfsrt_only,,unmatched,False,bart_live_20260913_201652,no ETD row with compatible station/line/time
 ,581,705,705,PCTR,gtfsrt_only,,unmatched,False,bart_live_20260913_201652,no ETD row with compatible station/line/time
 ,582,707,707,ANTC,gtfsrt_only,,unmatched,False,bart_live_20260913_201652,no ETD row with compatible station/line/time
+365,162,1965509,1965509,MLPT,station+line+platform/direction+destination+absolute_time,0,high,False,bart_live_20260917_123018,
+366,3,1965510,1965510,MLPT,station+line+platform/direction+destination+absolute_time,0,high,False,bart_live_20260917_123018,
+503,824,1965642,1965642,SBRN,station+line+platform/direction+destination+absolute_time,0,high,False,bart_live_20260917_123018,
+123,128,1965507,1965507,BAYF,station+line+platform/direction+destination+absolute_time,1,high,False,bart_live_20260917_123018,
+493,1129,1965782,1965782,SANL,station+line+platform/direction+destination+absolute_time,1,high,False,bart_live_20260917_123018,
+66,1057,1965778,1965778,24TH,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+219,548,1965139,1965139,DALY,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+334,1115,1965781,1965781,LAKE,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+471,577,1965182,1965182,POWL,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+476,903,1965646,1965646,RICH,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+477,926,1965647,1965647,RICH,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+491,1112,1965781,1965781,SANL,station+line+platform/direction+destination+absolute_time,2,high,False,bart_live_20260917_123018,
+4,234,1965444,1965444,12TH,station+line+platform/direction+destination+absolute_time,3,high,False,bart_live_20260917_123018,
+5,254,1965448,1965448,12TH,station+line+platform/direction+destination+absolute_time,3,high,False,bart_live_20260917_123018,
+81,545,1965139,1965139,24TH,station+line+platform/direction+destination+absolute_time,3,high,False,bart_live_20260917_123018,
+171,880,1965644,1965644,COLM,station+line+platform/direction+destination+absolute_time,3,high,False,bart_live_20260917_123018,
+314,127,1965507,1965507,HAYW,station+line+platform/direction+destination+absolute_time,3,high,False,bart_live_20260917_123018,
+46,233,1965444,1965444,19TH,station+line+platform/direction+destination+absolute_time,4,high,False,bart_live_20260917_123018,
+47,253,1965448,1965448,19TH,station+line+platform/direction+destination+absolute_time,4,high,False,bart_live_20260917_123018,
+332,1085,1965780,1965780,LAKE,station+line+platform/direction+destination+absolute_time,4,high,False,bart_live_20260917_123018,
+505,882,1965644,1965644,SBRN,station+line+platform/direction+destination+absolute_time,4,high,False,bart_live_20260917_123018,
+24,1056,1965778,1965778,16TH,station+line+platform/direction+destination+absolute_time,5,high,False,bart_live_20260917_123018,
+233,904,1965646,1965646,DELN,station+line+platform/direction+destination+absolute_time,5,high,False,bart_live_20260917_123018,
+234,927,1965647,1965647,DELN,station+line+platform/direction+destination+absolute_time,5,high,False,bart_live_20260917_123018,
+299,816,1965642,1965642,GLEN,station+line+platform/direction+destination+absolute_time,5,high,False,bart_live_20260917_123018,
+345,232,1965444,1965444,MCAR,station+line+platform/direction+destination+absolute_time,5,high,False,bart_live_20260917_123018,
+346,252,1965448,1965448,MCAR,station+line+platform/direction+destination+absolute_time,5,high,False,bart_live_20260917_123018,
+6,869,1965644,1965644,12TH,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+15,682,1965141,1965141,12TH,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+132,161,1965509,1965509,BERY,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+133,2,1965510,1965510,BERY,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+180,219,1965447,1965447,COLS,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+300,1162,1965643,1965643,GLEN,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+330,217,1965447,1965447,LAKE,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+331,235,1965444,1965444,LAKE,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+552,144,1965508,1965508,UCTY,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+553,165,1965509,1965509,UCTY,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+603,683,1965141,1965141,WOAK,station+line+platform/direction+destination+absolute_time,6,high,False,bart_live_20260917_123018,
+7,740,1965142,1965142,12TH,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+270,164,1965509,1965509,FRMT,station+line+platform/direction+destination+absolute_time,7,high,False,bart_live_20260917_123018,
+271,5,1965510,1965510,FRMT,station+line+platform/direction+destination+absolute_time,7,high,False,bart_live_20260917_123018,
+327,775,1965143,1965143,LAFY,station+line+platform/direction+destination+absolute_time,7,high,False,bart_live_20260917_123018,
+357,738,1965142,1965142,MCAR,station+line+platform/direction+destination+absolute_time,7,high,False,bart_live_20260917_123018,
+48,739,1965142,1965142,19TH,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+154,1159,1965643,1965643,CIVC,station+line+platform/direction+destination+absolute_time,8,high,False,bart_live_20260917_123018,
+169,821,1965642,1965642,COLM,station+line+platform/direction+destination+absolute_time,8,high,False,bart_live_20260917_123018,
+199,376,1965144,1965144,CONC,station+line+platform/direction+destination+absolute_time,8,high,False,bart_live_20260917_123018,
+266,182,1965445,1965445,FRMT,station+line+platform/direction+destination+absolute_time,8,high,False,bart_live_20260917_123018,
+408,351,1965186,1965186,NCON,station+line+platform/direction+destination+absolute_time,8,high,False,bart_live_20260917_123018,
+45,215,1965447,1965447,19TH,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+120,207,1965446,1965446,BAYF,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+301,877,1965644,1965644,GLEN,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+348,909,1965646,1965646,MCAR,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+349,932,1965647,1965647,MCAR,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+393,229,1965444,1965444,NBRK,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+394,249,1965448,1965448,NBRK,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+395,271,1965449,1965449,NBRK,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+441,228,1965444,1965444,PLZA,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+526,209,1965446,1965446,SHAY,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+539,881,1965644,1965644,SSAN,station+line+platform/direction+destination+absolute_time,9,high,False,bart_live_20260917_123018,
+49,910,1965646,1965646,19TH,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+50,933,1965647,1965647,19TH,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+102,1059,1965778,1965778,BALB,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+310,651,1965183,1965183,GLEN,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+518,827,1965642,1965642,SFIA,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+529,145,1965508,1965508,SHAY,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+530,166,1965509,1965509,SHAY,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+588,1086,1965780,1965780,WOAK,station+line+platform/direction+destination+absolute_time,10,high,False,bart_live_20260917_123018,
+59,888,1965645,1965645,19TH,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+87,231,1965444,1965444,ASHB,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+88,251,1965448,1965448,ASHB,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+89,273,1965449,1965449,ASHB,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+91,908,1965646,1965646,ASHB,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+92,931,1965647,1965647,ASHB,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+226,907,1965646,1965646,DBRK,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+227,930,1965647,1965647,DBRK,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+308,546,1965139,1965139,GLEN,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+312,208,1965446,1965446,HAYW,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+315,146,1965508,1965508,HAYW,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+316,167,1965509,1965509,HAYW,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+432,773,1965143,1965143,PHIL,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+504,1167,1965643,1965643,SBRN,station+line+platform/direction+destination+absolute_time,11,high,False,bart_live_20260917_123018,
+124,1128,1965782,1965782,BAYF,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+125,147,1965508,1965508,BAYF,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+275,218,1965447,1965447,FTVL,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+418,776,1965143,1965143,ORIN,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+547,585,1965182,1965182,SSAN,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+572,774,1965143,1965143,WCRK,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+574,378,1965144,1965144,WCRK,station+line+platform/direction+destination+absolute_time,12,high,False,bart_live_20260917_123018,
+155,874,1965644,1965644,CIVC,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+198,352,1965186,1965186,CONC,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+210,819,1965642,1965642,DALY,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+256,117,1965506,1965506,EMBR,station+line+platform/direction+destination+absolute_time,13,medium,False,bart_live_20260917_123018,
+382,872,1965644,1965644,MONT,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+398,966,1965648,1965648,NBRK,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+409,375,1965144,1965144,NCON,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+444,905,1965646,1965646,PLZA,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+445,928,1965647,1965647,PLZA,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+446,965,1965648,1965648,PLZA,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+528,126,1965507,1965507,SHAY,station+line+platform/direction+destination+absolute_time,13,high,False,bart_live_20260917_123018,
+164,648,1965183,1965183,CIVC,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+184,1113,1965781,1965781,COLS,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+390,646,1965183,1965183,MONT,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+434,377,1965144,1965144,PHIL,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+462,1158,1965643,1965643,POWL,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+519,884,1965644,1965644,SFIA,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+537,823,1965642,1965642,SSAN,station+line+platform/direction+destination+absolute_time,14,high,False,bart_live_20260917_123018,
+117,547,1965139,1965139,BALB,station+line+platform/direction+destination+absolute_time,15,high,False,bart_live_20260917_123018,
+240,1004,1965783,1965783,DUBL,station+line+platform/direction+destination+absolute_time,15,high,False,bart_live_20260917_123018,
+241,1021,1965784,1965784,DUBL,station+line+platform/direction+destination+absolute_time,15,high,False,bart_live_20260917_123018,
+410,400,1965187,1965187,NCON,station+line+platform/direction+destination+absolute_time,15,high,False,bart_live_20260917_123018,
+25,88,1965505,1965505,16TH,station+line+platform/direction+destination+absolute_time,16,high,False,bart_live_20260917_123018,
+119,652,1965183,1965183,BALB,station+line+platform/direction+destination+absolute_time,16,high,False,bart_live_20260917_123018,
+163,578,1965182,1965182,CIVC,station+line+platform/direction+destination+absolute_time,16,high,False,bart_live_20260917_123018,
+573,354,1965186,1965186,WCRK,station+line+platform/direction+destination+absolute_time,16,high,False,bart_live_20260917_123018,
+587,83,1965505,1965505,WOAK,station+line+platform/direction+destination+absolute_time,16,high,False,bart_live_20260917_123018,
+8,911,1965646,1965646,12TH,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+40,579,1965182,1965182,16TH,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+118,582,1965182,1965182,BALB,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+235,964,1965648,1965648,DELN,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+268,211,1965446,1965446,FRMT,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+309,581,1965182,1965182,GLEN,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+489,220,1965447,1965447,SANL,station+line+platform/direction+destination+absolute_time,17,high,False,bart_live_20260917_123018,
+73,1161,1965643,1965643,24TH,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+165,687,1965141,1965141,CIVC,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+170,1165,1965643,1965643,COLM,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+179,584,1965182,1965182,COLM,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+212,879,1965644,1965644,DALY,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+263,645,1965183,1965183,EMBR,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+381,1157,1965643,1965643,MONT,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+383,118,1965506,1965506,MONT,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+433,353,1965186,1965186,PHIL,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+478,963,1965648,1965648,RICH,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+575,1126,1965782,1965782,WDUB,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+576,1005,1965783,1965783,WDUB,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+577,1022,1965784,1965784,WDUB,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+593,870,1965644,1965644,WOAK,station+line+platform/direction+destination+absolute_time,18,high,False,bart_live_20260917_123018,
+58,722,1965184,1965184,19TH,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+90,886,1965645,1965645,ASHB,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+221,653,1965183,1965183,DALY,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+255,871,1965644,1965644,EMBR,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+396,906,1965646,1965646,NBRK,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+397,929,1965647,1965647,NBRK,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+442,248,1965448,1965448,PLZA,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+443,270,1965449,1965449,PLZA,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+463,873,1965644,1965644,POWL,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+486,756,1965185,1965185,ROCK,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+517,845,1965643,1965643,SFIA,station+line+platform/direction+destination+absolute_time,19,high,False,bart_live_20260917_123018,
+31,875,1965644,1965644,16TH,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+39,544,1965139,1965139,16TH,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+121,221,1965447,1965447,BAYF,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+200,401,1965187,1965187,CONC,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+419,356,1965186,1965186,ORIN,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+485,737,1965142,1965142,ROCK,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+527,223,1965447,1965447,SHAY,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+558,183,1965445,1965445,WARM,station+line+platform/direction+destination+absolute_time,20,high,False,bart_live_20260917_123018,
+103,91,1965505,1965505,BALB,station+line+platform/direction+destination+absolute_time,21,high,False,bart_live_20260917_123018,
+220,583,1965182,1965182,DALY,station+line+platform/direction+destination+absolute_time,21,high,False,bart_live_20260917_123018,
+222,230,1965444,1965444,DBRK,station+line+platform/direction+destination+absolute_time,21,high,False,bart_live_20260917_123018,
+223,250,1965448,1965448,DBRK,station+line+platform/direction+destination+absolute_time,21,high,False,bart_live_20260917_123018,
+224,272,1965449,1965449,DBRK,station+line+platform/direction+destination+absolute_time,21,high,False,bart_live_20260917_123018,
+313,222,1965447,1965447,HAYW,station+line+platform/direction+destination+absolute_time,22,high,False,bart_live_20260917_123018,
+439,399,1965187,1965187,PITT,station+line+platform/direction+destination+absolute_time,22,high,False,bart_live_20260917_123018,
+513,551,1965139,1965139,SBRN,station+line+platform/direction+destination+absolute_time,22,high,False,bart_live_20260917_123018,
+549,210,1965446,1965446,UCTY,station+line+platform/direction+destination+absolute_time,22,high,False,bart_live_20260917_123018,
+74,876,1965644,1965644,24TH,station+line+platform/direction+destination+absolute_time,23,high,False,bart_live_20260917_123018,
+178,549,1965139,1965139,COLM,station+line+platform/direction+destination+absolute_time,23,high,False,bart_live_20260917_123018,
+265,1087,1965780,1965780,EMBR,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+391,685,1965141,1965141,MONT,station+line+platform/direction+destination+absolute_time,23,high,False,bart_live_20260917_123018,
+561,163,1965509,1965509,WARM,station+line+platform/direction+destination+absolute_time,23,high,False,bart_live_20260917_123018,
+562,4,1965510,1965510,WARM,station+line+platform/direction+destination+absolute_time,23,high,False,bart_live_20260917_123018,
+83,650,1965183,1965183,24TH,station+line+platform/direction+destination+absolute_time,24,high,False,bart_live_20260917_123018,
+104,1094,1965780,1965780,BALB,station+line+platform/direction+destination+absolute_time,24,high,False,bart_live_20260917_123018,
+269,143,1965508,1965508,FRMT,station+line+platform/direction+destination+absolute_time,24,high,False,bart_live_20260917_123018,
+358,757,1965185,1965185,MCAR,station+line+platform/direction+destination+absolute_time,24,high,False,bart_live_20260917_123018,
+538,1166,1965643,1965643,SSAN,station+line+platform/direction+destination+absolute_time,24,high,False,bart_live_20260917_123018,
+30,1160,1965643,1965643,16TH,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+110,878,1965644,1965644,BALB,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+136,1127,1965782,1965782,CAST,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+137,1006,1965783,1965783,CAST,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+138,1023,1965784,1965784,CAST,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+328,355,1965186,1965186,LAFY,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+344,214,1965447,1965447,MCAR,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+347,887,1965645,1965645,MCAR,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+492,129,1965507,1965507,SANL,station+line+platform/direction+destination+absolute_time,25,high,False,bart_live_20260917_123018,
+185,130,1965507,1965507,COLS,station+line+platform/direction+destination+absolute_time,26,high,False,bart_live_20260917_123018,
+363,184,1965445,1965445,MLPT,station+line+platform/direction+destination+absolute_time,26,high,False,bart_live_20260917_123018,
+417,755,1965185,1965185,ORIN,station+line+platform/direction+destination+absolute_time,26,high,False,bart_live_20260917_123018,
+474,246,1965448,1965448,RICH,station+line+platform/direction+destination+absolute_time,26,high,False,bart_live_20260917_123018,
+475,268,1965449,1965449,RICH,station+line+platform/direction+destination+absolute_time,26,high,False,bart_live_20260917_123018,
+57,681,1965141,1965141,19TH,station+line+platform/direction+destination+absolute_time,27,high,False,bart_live_20260917_123018,
+231,247,1965448,1965448,DELN,station+line+platform/direction+destination+absolute_time,27,high,False,bart_live_20260917_123018,
+232,269,1965449,1965449,DELN,station+line+platform/direction+destination+absolute_time,27,high,False,bart_live_20260917_123018,
+280,1114,1965781,1965781,FTVL,station+line+platform/direction+destination+absolute_time,27,high,False,bart_live_20260917_123018,
+487,777,1965143,1965143,ROCK,station+line+platform/direction+destination+absolute_time,27,high,False,bart_live_20260917_123018,
+550,224,1965447,1965447,UCTY,station+line+platform/direction+destination+absolute_time,27,high,False,bart_live_20260917_123018,
+488,206,1965446,1965446,SANL,station+line+platform/direction+destination+absolute_time,28,high,False,bart_live_20260917_123018,
+595,912,1965646,1965646,WOAK,station+line+platform/direction+destination+absolute_time,28,high,False,bart_live_20260917_123018,
+82,580,1965182,1965182,24TH,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+108,817,1965642,1965642,BALB,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+278,114,1965506,1965506,FTVL,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+293,1058,1965778,1965778,GLEN,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+438,374,1965144,1965144,PITT,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+440,426,1965145,1965145,PITT,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+546,550,1965139,1965139,SSAN,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+560,142,1965508,1965508,WARM,station+line+platform/direction+destination+absolute_time,29,high,False,bart_live_20260917_123018,
+61,504,1965262,1965262,24TH,station+line+platform/direction+destination+absolute_time,0,medium,False,bart_live_20260917_123018,
+84,1145,657,657,ANTC,station+line+platform/direction+destination+absolute_time,0,medium,False,bart_live_20260917_123018,
+85,1148,659,659,ANTC,station+line+platform/direction+destination+absolute_time,0,medium,False,bart_live_20260917_123018,
+86,1151,661,661,ANTC,station+line+platform/direction+destination+absolute_time,0,medium,False,bart_live_20260917_123018,
+109,1163,1965643,1965643,BALB,station+line+platform/direction+destination+absolute_time,30,high,False,bart_live_20260917_123018,
+457,1089,1965780,1965780,POWL,station+line+platform/direction+destination+absolute_time,30,high,False,bart_live_20260917_123018,
+284,289,1965387,1965387,FTVL,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+311,23,1965551,1965551,HAYW,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+362,1,1965550,1965550,MLPT,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+413,570,1965263,1965263,ORIN,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+480,514,1965262,1965262,ROCK,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+566,451,1965260,1965260,WCRK,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+591,1069,1965838,1965838,WOAK,station+line+platform/direction+destination+absolute_time,1,medium,False,bart_live_20260917_123018,
+107,1096,1965840,1965840,BALB,station+line+platform/direction+destination+absolute_time,2,medium,False,bart_live_20260917_123018,
+324,539,1965328,1965328,LAFY,station+line+platform/direction+destination+absolute_time,2,medium,False,bart_live_20260917_123018,
+51,535,1965328,1965328,19TH,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+172,523,1965328,1965328,COLM,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+187,1072,1965838,1965838,COLS,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+267,26,1965551,1965551,FRMT,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+283,1071,1965838,1965838,FTVL,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+285,303,1965388,1965388,FTVL,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+286,321,1965389,1965389,FTVL,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+322,516,1965262,1965262,LAFY,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+429,423,1965325,1965325,PHIL,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+437,500,1965261,1965261,PITT,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+453,35,1965553,1965553,POWL,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+523,818,1965688,1965688,SFIA,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+524,847,1965689,1965689,SFIA,station+line+platform/direction+destination+absolute_time,3,medium,False,bart_live_20260917_123018,
+64,53,1965554,1965554,24TH,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+75,527,1965328,1965328,24TH,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+148,1055,1965778,1965778,CIVC,station+line+platform/direction+destination+absolute_time,34,high,False,bart_live_20260917_123018,
+153,1100,1965840,1965840,CIVC,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+217,826,1965688,1965688,DALY,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+218,851,1965689,1965689,DALY,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+306,829,1965688,1965688,GLEN,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+307,853,1965689,1965689,GLEN,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+352,603,1965329,1965329,MCAR,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+403,499,1965261,1965261,NCON,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+2,566,1965263,1965263,12TH,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+42,491,1965261,1965261,19TH,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+60,483,1965261,1965261,24TH,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+209,1095,1965840,1965840,DALY,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+230,309,1965388,1965388,DBRK,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+260,953,1965685,1965685,EMBR,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+447,266,1965386,1965386,PLZA,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+583,565,1965263,1965263,WOAK,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+585,38,1965553,1965553,WOAK,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+598,670,1965330,1965330,WOAK,station+line+platform/direction+destination+absolute_time,5,medium,False,bart_live_20260917_123018,
+11,671,1965330,1965330,12TH,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+33,528,1965328,1965328,16TH,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+56,306,1965388,1965388,19TH,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+76,594,1965329,1965329,24TH,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+192,453,1965260,1965260,CONC,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+214,591,1965329,1965329,DALY,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+341,492,1965261,1965261,MCAR,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+515,619,1965264,1965264,SFIA,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+582,510,1965262,1965262,WOAK,station+line+platform/direction+destination+absolute_time,6,medium,False,bart_live_20260917_123018,
+52,602,1965329,1965329,19TH,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+351,536,1965328,1965328,MCAR,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+428,518,1965262,1965262,PHIL,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+452,562,1965263,1965263,POWL,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+467,667,1965330,1965330,POWL,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+506,588,1965329,1965329,SBRN,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+543,822,1965688,1965688,SSAN,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+544,849,1965689,1965689,SSAN,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+564,333,1965390,1965390,WARM,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+565,187,1965391,1965391,WARM,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+16,216,1965447,1965447,12TH,station+line+platform/direction+destination+absolute_time,38,medium,False,bart_live_20260917_123018,
+72,814,1965642,1965642,24TH,station+line+platform/direction+destination+absolute_time,38,high,False,bart_live_20260917_123018,
+116,828,1965688,1965688,BALB,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+157,529,1965328,1965328,CIVC,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+162,832,1965688,1965688,CIVC,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+229,959,1965685,1965685,DBRK,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+243,509,1965262,1965262,EMBR,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+258,599,1965329,1965329,EMBR,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+262,835,1965688,1965688,EMBR,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+317,299,1965388,1965388,HAYW,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+370,508,1965262,1965262,MONT,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+426,452,1965260,1965260,PHIL,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+472,647,1965183,1965183,POWL,station+line+platform/direction+destination+absolute_time,38,high,False,bart_live_20260917_123018,
+495,1073,1965838,1965838,SANL,station+line+platform/direction+destination+absolute_time,8,medium,False,bart_live_20260917_123018,
+19,505,1965262,1965262,16TH,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+54,292,1965387,1965387,19TH,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+141,1082,1965839,1965839,CAST,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+242,488,1965261,1965261,EMBR,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+415,538,1965328,1965328,ORIN,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+470,833,1965688,1965688,POWL,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+481,569,1965263,1965263,ROCK,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+571,607,1965329,1965329,WCRK,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+41,649,1965183,1965183,16TH,station+line+platform/direction+destination+absolute_time,41,high,False,bart_live_20260917_123018,
+134,331,1965390,1965390,BERY,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+135,185,1965391,1965391,BERY,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+167,622,1965264,1965264,COLM,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+181,41,1965553,1965553,COLS,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+194,519,1965262,1965262,CONC,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+244,564,1965263,1965263,EMBR,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+259,669,1965330,1965330,EMBR,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+297,1062,1965838,1965838,GLEN,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+460,1066,1965838,1965838,POWL,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+483,537,1965328,1965328,ROCK,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+521,657,1965330,1965330,SFIA,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+541,589,1965329,1965329,SSAN,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+599,954,1965685,1965685,WOAK,station+line+platform/direction+destination+absolute_time,11,medium,False,bart_live_20260917_123018,
+106,1061,1965838,1965838,BALB,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+127,1081,1965839,1965839,BAYF,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+143,506,1965262,1965262,CIVC,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+384,531,1965328,1965328,MONT,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+402,454,1965260,1965260,NCON,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+412,515,1965262,1965262,ORIN,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+435,398,1965259,1965259,PITT,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+466,597,1965329,1965329,POWL,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+514,552,1965263,1965263,SFIA,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+535,621,1965264,1965264,SSAN,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+567,496,1965261,1965261,WCRK,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+14,305,1965388,1965388,12TH,station+line+platform/direction+destination+absolute_time,13,medium,False,bart_live_20260917_123018,
+173,590,1965329,1965329,COLM,station+line+platform/direction+destination+absolute_time,13,medium,False,bart_live_20260917_123018,
+203,556,1965263,1965263,DALY,station+line+platform/direction+destination+absolute_time,13,medium,False,bart_live_20260917_123018,
+326,754,1965185,1965185,LAFY,station+line+platform/direction+destination+absolute_time,43,high,False,bart_live_20260917_123018,
+401,310,1965388,1965388,NBRK,station+line+platform/direction+destination+absolute_time,13,medium,False,bart_live_20260917_123018,
+525,24,1965551,1965551,SHAY,station+line+platform/direction+destination+absolute_time,13,medium,False,bart_live_20260917_123018,
+10,601,1965329,1965329,12TH,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+111,525,1965328,1965328,BALB,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+215,661,1965330,1965330,DALY,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+379,1067,1965838,1965838,MONT,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+450,486,1965261,1965261,POWL,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+601,836,1965688,1965688,WOAK,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+0,490,1965261,1965261,12TH,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+18,484,1965261,1965261,16TH,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+95,308,1965388,1965388,ASHB,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+239,1125,1965782,1965782,DUBL,station+line+platform/direction+destination+absolute_time,45,high,False,bart_live_20260917_123018,
+246,58,1965554,1965554,EMBR,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+252,1068,1965838,1965838,EMBR,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+302,526,1965328,1965328,GLEN,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+304,663,1965330,1965330,GLEN,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+336,1070,1965838,1965838,LAKE,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+343,568,1965263,1965263,MCAR,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+400,960,1965685,1965685,NBRK,station+line+platform/direction+destination+absolute_time,15,medium,False,bart_live_20260917_123018,
+1,511,1965262,1965262,12TH,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+12,291,1965387,1965387,12TH,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+21,33,1965553,1965553,16TH,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+34,595,1965329,1965329,16TH,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+71,1098,1965840,1965840,24TH,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+113,662,1965330,1965330,BALB,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+142,485,1965261,1965261,CIVC,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+190,302,1965388,1965388,COLS,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+191,320,1965389,1965389,COLS,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+202,501,1965262,1965262,DALY,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+213,524,1965328,1965328,DALY,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+289,558,1965263,1965263,GLEN,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+454,56,1965554,1965554,POWL,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+496,1080,1965839,1965839,SANL,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+501,620,1965264,1965264,SBRN,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+540,522,1965328,1965328,SSAN,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+559,27,1965551,1965551,WARM,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+98,557,1965263,1965263,BALB,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+175,825,1965688,1965688,COLM,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+176,850,1965689,1965689,COLM,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+276,40,1965553,1965553,FTVL,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+338,290,1965387,1965387,LAKE,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+451,507,1965262,1965262,POWL,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+468,951,1965685,1965685,POWL,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+551,125,1965507,1965507,UCTY,station+line+platform/direction+destination+absolute_time,47,high,False,bart_live_20260917_123018,
+557,0,1965550,1965550,WARM,station+line+platform/direction+destination+absolute_time,17,medium,False,bart_live_20260917_123018,
+68,1092,1965780,1965780,24TH,station+line+platform/direction+destination+absolute_time,48,high,False,bart_live_20260917_123018,
+100,51,1965554,1965554,BALB,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+101,93,1965555,1965555,BALB,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+129,300,1965388,1965388,BAYF,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+130,318,1965389,1965389,BAYF,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+131,338,1965390,1965390,BAYF,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+158,596,1965329,1965329,CIVC,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+197,542,1965328,1965328,CONC,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+371,563,1965263,1965263,MONT,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+386,668,1965330,1965330,MONT,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+387,952,1965685,1965685,MONT,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+416,605,1965329,1965329,ORIN,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+548,25,1965551,1965551,UCTY,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+578,1003,1965835,1965835,WDUB,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+94,958,1965685,1965685,ASHB,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+152,1065,1965838,1965838,CIVC,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+195,424,1965325,1965325,CONC,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+208,1060,1965838,1965838,DALY,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+257,532,1965328,1965328,EMBR,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+288,503,1965262,1965262,GLEN,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+318,317,1965389,1965389,HAYW,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+319,337,1965390,1965390,HAYW,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+355,307,1965388,1965388,MCAR,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+359,815,1965688,1965688,MLBR,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+360,846,1965689,1965689,MLBR,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+361,883,1965690,1965690,MLBR,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+373,57,1965554,1965554,MONT,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+411,494,1965261,1965261,ORIN,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+509,820,1965688,1965688,SBRN,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+510,848,1965689,1965689,SBRN,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+580,1076,1965838,1965838,WDUB,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+78,948,1965685,1965685,24TH,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+140,1075,1965838,1965838,CAST,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+193,498,1965261,1965261,CONC,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+424,1146,657,657,PCTR,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+425,1149,659,659,PCTR,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+473,686,1965141,1965141,POWL,station+line+platform/direction+destination+absolute_time,50,high,False,bart_live_20260917_123018,
+531,316,1965389,1965389,SHAY,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+532,336,1965390,1965390,SHAY,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+533,190,1965391,1965391,SHAY,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+568,517,1965262,1965262,WCRK,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+586,59,1965554,1965554,WOAK,station+line+platform/direction+destination+absolute_time,20,medium,False,bart_live_20260917_123018,
+28,1064,1965838,1965838,16TH,station+line+platform/direction+destination+absolute_time,21,medium,False,bart_live_20260917_123018,
+182,62,1965554,1965554,COLS,station+line+platform/direction+destination+absolute_time,21,medium,False,bart_live_20260917_123018,
+188,1079,1965839,1965839,COLS,station+line+platform/direction+destination+absolute_time,21,medium,False,bart_live_20260917_123018,
+228,295,1965387,1965387,DBRK,station+line+platform/direction+destination+absolute_time,21,medium,False,bart_live_20260917_123018,
+369,487,1965261,1965261,MONT,station+line+platform/direction+destination+absolute_time,21,medium,False,bart_live_20260917_123018,
+80,830,1965688,1965688,24TH,station+line+platform/direction+destination+absolute_time,22,medium,False,bart_live_20260917_123018,
+96,481,1965261,1965261,BALB,station+line+platform/direction+destination+absolute_time,22,medium,False,bart_live_20260917_123018,
+159,666,1965330,1965330,CIVC,station+line+platform/direction+destination+absolute_time,22,medium,False,bart_live_20260917_123018,
+272,314,1965389,1965389,FRMT,station+line+platform/direction+destination+absolute_time,22,medium,False,bart_live_20260917_123018,
+291,52,1965554,1965554,GLEN,station+line+platform/direction+destination+absolute_time,22,medium,False,bart_live_20260917_123018,
+490,42,1965553,1965553,SANL,station+line+platform/direction+destination+absolute_time,22,medium,False,bart_live_20260917_123018,
+43,512,1965262,1965262,19TH,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+55,956,1965685,1965685,19TH,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+144,561,1965263,1965263,CIVC,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+273,334,1965390,1965390,FRMT,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+274,188,1965391,1965391,FRMT,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+385,598,1965329,1965329,MONT,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+405,425,1965325,1965325,NCON,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+449,961,1965685,1965685,PLZA,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+465,530,1965328,1965328,POWL,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+516,696,1965265,1965265,SFIA,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+570,540,1965328,1965328,WCRK,station+line+platform/direction+destination+absolute_time,23,medium,False,bart_live_20260917_123018,
+9,534,1965328,1965328,12TH,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+35,665,1965330,1965330,16TH,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+112,592,1965329,1965329,BALB,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+404,520,1965262,1965262,NCON,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+407,543,1965328,1965328,NCON,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+554,315,1965389,1965389,UCTY,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+555,335,1965390,1965390,UCTY,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+556,189,1965391,1965391,UCTY,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+597,600,1965329,1965329,WOAK,station+line+platform/direction+destination+absolute_time,24,medium,False,bart_live_20260917_123018,
+20,560,1965263,1965263,16TH,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+22,54,1965554,1965554,16TH,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+62,559,1965263,1965263,24TH,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+290,31,1965553,1965553,GLEN,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+303,593,1965329,1965329,GLEN,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+364,28,1965551,1965551,MLPT,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+427,497,1965261,1965261,PHIL,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+596,533,1965328,1965328,WOAK,station+line+platform/direction+destination+absolute_time,25,medium,False,bart_live_20260917_123018,
+44,567,1965263,1965263,19TH,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+53,672,1965330,1965330,19TH,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+77,664,1965330,1965330,24TH,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+99,30,1965553,1965553,BALB,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+122,43,1965553,1965553,BAYF,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+146,55,1965554,1965554,CIVC,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+321,495,1965261,1965261,LAFY,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+342,513,1965262,1965262,MCAR,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+389,834,1965688,1965688,MONT,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+436,455,1965260,1965260,PITT,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+500,553,1965263,1965263,SBRN,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+581,489,1965261,1965261,WOAK,station+line+platform/direction+destination+absolute_time,26,medium,False,bart_live_20260917_123018,
+174,660,1965330,1965330,COLM,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+205,50,1965554,1965554,DALY,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+211,1164,1965643,1965643,DALY,station+line+platform/direction+destination+absolute_time,57,high,False,bart_live_20260917_123018,
+277,61,1965554,1965554,FTVL,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+282,1078,1965839,1965839,FTVL,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+325,606,1965329,1965329,LAFY,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+354,957,1965685,1965685,MCAR,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+392,1088,1965780,1965780,MONT,station+line+platform/direction+destination+absolute_time,57,medium,False,bart_live_20260917_123018,
+423,1143,655,655,PCTR,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+93,294,1965387,1965387,ASHB,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+97,502,1965262,1965262,BALB,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+150,1090,1965780,1965780,CIVC,station+line+platform/direction+destination+absolute_time,58,high,False,bart_live_20260917_123018,
+166,555,1965263,1965263,COLM,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+189,288,1965387,1965387,COLS,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+320,450,1965260,1965260,LAFY,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+337,1077,1965839,1965839,LAKE,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+339,304,1965388,1965388,LAKE,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+340,322,1965389,1965389,LAKE,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+372,36,1965553,1965553,MONT,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+431,541,1965328,1965328,PHIL,station+line+platform/direction+destination+absolute_time,28,medium,False,bart_live_20260917_123018,
+36,949,1965685,1965685,16TH,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+160,950,1965685,1965685,CIVC,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+484,604,1965329,1965329,ROCK,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+497,301,1965388,1965388,SANL,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+498,319,1965389,1965389,SANL,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+499,339,1965390,1965390,SANL,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+520,587,1965329,1965329,SFIA,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+542,659,1965330,1965330,SSAN,station+line+platform/direction+destination+absolute_time,29,medium,False,bart_live_20260917_123018,
+70,1063,1965838,1965838,24TH,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+128,1074,1965838,1965838,BAYF,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+237,267,1965386,1965386,DELN,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+367,332,1965390,1965390,MLPT,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+368,186,1965391,1965391,MLPT,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+448,297,1965387,1965387,PLZA,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+479,493,1965261,1965261,ROCK,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+534,554,1965263,1965263,SSAN,station+line+platform/direction+destination+absolute_time,30,medium,False,bart_live_20260917_123018,
+236,925,1965684,1965684,DELN,station+line+platform/direction+destination+absolute_time,31,medium,False,bart_live_20260917_123018,
+253,1103,1965840,1965840,EMBR,station+line+platform/direction+destination+absolute_time,31,medium,False,bart_live_20260917_123018,
+295,1093,1965780,1965780,GLEN,station+line+platform/direction+destination+absolute_time,62,high,False,bart_live_20260917_123018,
+145,34,1965553,1965553,CIVC,station+line+platform/direction+destination+absolute_time,33,medium,False,bart_live_20260917_123018,
+204,29,1965553,1965553,DALY,station+line+platform/direction+destination+absolute_time,33,medium,False,bart_live_20260917_123018,
+238,298,1965387,1965387,DELN,station+line+platform/direction+destination+absolute_time,33,medium,False,bart_live_20260917_123018,
+507,658,1965330,1965330,SBRN,station+line+platform/direction+destination+absolute_time,33,medium,False,bart_live_20260917_123018,
+563,313,1965389,1965389,WARM,station+line+platform/direction+destination+absolute_time,33,medium,False,bart_live_20260917_123018,
+3,723,1965184,1965184,12TH,station+line+platform/direction+destination+absolute_time,4,medium,False,bart_live_20260917_123018,
+264,993,1965686,1965686,EMBR,station+line+platform/direction+destination+absolute_time,19,medium,False,bart_live_20260917_123018,
+461,1101,1965840,1965840,POWL,station+line+platform/direction+destination+absolute_time,35,medium,False,bart_live_20260917_123018,
+250,742,1965142,1965142,EMBR,station+line+platform/direction+destination+absolute_time,7,medium,False,bart_live_20260917_123018,
+168,699,1965265,1965265,COLM,station+line+platform/direction+destination+absolute_time,41,medium,False,bart_live_20260917_123018,
+287,482,1965261,1965261,GLEN,station+line+platform/direction+destination+absolute_time,41,medium,False,bart_live_20260917_123018,
+536,698,1965265,1965265,SSAN,station+line+platform/direction+destination+absolute_time,41,medium,False,bart_live_20260917_123018,
+254,1156,1965643,1965643,EMBR,station+line+platform/direction+destination+absolute_time,72,high,False,bart_live_20260917_123018,
+63,32,1965553,1965553,24TH,station+line+platform/direction+destination+absolute_time,44,medium,False,bart_live_20260917_123018,
+249,725,1965184,1965184,EMBR,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+376,726,1965184,1965184,MONT,station+line+platform/direction+destination+absolute_time,14,medium,False,bart_live_20260917_123018,
+456,86,1965505,1965505,POWL,station+line+platform/direction+destination+absolute_time,75,high,False,bart_live_20260917_123018,
+502,697,1965265,1965265,SBRN,station+line+platform/direction+destination+absolute_time,45,medium,False,bart_live_20260917_123018,
+201,480,1965261,1965261,DALY,station+line+platform/direction+destination+absolute_time,47,medium,False,bart_live_20260917_123018,
+353,293,1965387,1965387,MCAR,station+line+platform/direction+destination+absolute_time,47,medium,False,bart_live_20260917_123018,
+592,1104,1965840,1965840,WOAK,station+line+platform/direction+destination+absolute_time,47,medium,False,bart_live_20260917_123018,
+377,892,1965645,1965645,MONT,station+line+platform/direction+destination+absolute_time,18,medium,False,bart_live_20260917_123018,
+147,97,1965555,1965555,CIVC,station+line+platform/direction+destination+absolute_time,49,medium,False,bart_live_20260917_123018,
+206,92,1965555,1965555,DALY,station+line+platform/direction+destination+absolute_time,49,medium,False,bart_live_20260917_123018,
+23,96,1965555,1965555,16TH,station+line+platform/direction+destination+absolute_time,50,medium,False,bart_live_20260917_123018,
+594,116,1965506,1965506,WOAK,station+line+platform/direction+destination+absolute_time,81,medium,False,bart_live_20260917_123018,
+17,889,1965645,1965645,12TH,station+line+platform/direction+destination+absolute_time,82,medium,False,bart_live_20260917_123018,
+156,120,1965506,1965506,CIVC,station+line+platform/direction+destination+absolute_time,82,medium,False,bart_live_20260917_123018,
+248,84,1965505,1965505,EMBR,station+line+platform/direction+destination+absolute_time,84,high,False,bart_live_20260917_123018,
+13,955,1965685,1965685,12TH,station+line+platform/direction+destination+absolute_time,57,medium,False,bart_live_20260917_123018,
+298,1097,1965840,1965840,GLEN,station+line+platform/direction+destination+absolute_time,57,medium,False,bart_live_20260917_123018,
+245,37,1965553,1965553,EMBR,station+line+platform/direction+destination+absolute_time,59,medium,False,bart_live_20260917_123018,
+399,296,1965387,1965387,NBRK,station+line+platform/direction+destination+absolute_time,59,medium,False,bart_live_20260917_123018,
+65,95,1965555,1965555,24TH,station+line+platform/direction+destination+absolute_time,60,medium,False,bart_live_20260917_123018,
+380,1102,1965840,1965840,MONT,station+line+platform/direction+destination+absolute_time,60,medium,False,bart_live_20260917_123018,
+356,611,385121610,385121610,MCAR,station+line+platform/direction+destination+absolute_time,16,medium,False,bart_live_20260917_123018,
+67,89,1965505,1965505,24TH,station+line+platform/direction+destination+absolute_time,93,medium,False,bart_live_20260917_123018,
+294,690,1965141,1965141,GLEN,station+line+platform/direction+destination+absolute_time,38,medium,False,bart_live_20260917_123018,
+375,85,1965505,1965505,MONT,station+line+platform/direction+destination+absolute_time,102,medium,False,bart_live_20260917_123018,
+420,1142,654,654,PCTR,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+421,1144,656,656,PCTR,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+422,1147,658,658,PCTR,station+line+platform/direction+destination+absolute_time,12,medium,False,bart_live_20260917_123018,
+149,87,1965505,1965505,CIVC,station+line+platform/direction+destination+absolute_time,103,medium,False,bart_live_20260917_123018,
+247,100,1965555,1965555,EMBR,station+line+platform/direction+destination+absolute_time,75,medium,False,bart_live_20260917_123018,
+32,121,1965506,1965506,16TH,station+line+platform/direction+destination+absolute_time,109,medium,False,bart_live_20260917_123018,
+455,98,1965555,1965555,POWL,station+line+platform/direction+destination+absolute_time,79,medium,False,bart_live_20260917_123018,
+464,119,1965506,1965506,POWL,station+line+platform/direction+destination+absolute_time,110,medium,False,bart_live_20260917_123018,
+26,688,1965141,1965141,16TH,station+line+platform/direction+destination+absolute_time,51,medium,False,bart_live_20260917_123018,
+292,94,1965555,1965555,GLEN,station+line+platform/direction+destination+absolute_time,101,medium,False,bart_live_20260917_123018,
+374,99,1965555,1965555,MONT,station+line+platform/direction+destination+absolute_time,104,medium,False,bart_live_20260917_123018,
+335,1132,1965782,1965782,LAKE,station+line+platform/direction+destination+absolute_time,2,ambiguous,True,bart_live_20260917_123018,
+27,800,1965687,1965687,16TH,station+line+platform/direction+destination+absolute_time,49,medium,False,bart_live_20260917_123018,
+151,801,1965687,1965687,CIVC,station+line+platform/direction+destination+absolute_time,51,medium,False,bart_live_20260917_123018,
+589,890,1965645,1965645,WOAK,station+line+platform/direction+destination+absolute_time,83,ambiguous,True,bart_live_20260917_123018,
+29,1099,1965840,1965840,16TH,station+line+platform/direction+destination+absolute_time,114,medium,False,bart_live_20260917_123018,
+251,891,1965645,1965645,EMBR,station+line+platform/direction+destination+absolute_time,10,medium,False,bart_live_20260917_123018,
+378,803,1965687,1965687,MONT,station+line+platform/direction+destination+absolute_time,55,medium,False,bart_live_20260917_123018,
+604,724,1965184,1965184,WOAK,station+line+platform/direction+destination+absolute_time,147,medium,False,bart_live_20260917_123018,
+590,805,1965687,1965687,WOAK,station+line+platform/direction+destination+absolute_time,66,medium,False,bart_live_20260917_123018,
+225,885,1965645,1965645,DBRK,station+line+platform/direction+destination+absolute_time,159,medium,False,bart_live_20260917_123018,
+281,150,1965508,1965508,FTVL,station+line+platform/direction+destination+absolute_time,27,medium,False,bart_live_20260917_123018,
+333,115,1965506,1965506,LAKE,station+line+platform/direction+destination+absolute_time,170,medium,False,bart_live_20260917_123018,
+458,893,1965645,1965645,POWL,station+line+platform/direction+destination+absolute_time,110,ambiguous,True,bart_live_20260917_123018,
+459,802,1965687,1965687,POWL,station+line+platform/direction+destination+absolute_time,80,medium,False,bart_live_20260917_123018,
+602,71,110121810,110121810,WOAK,station+line+platform/direction+destination+absolute_time,108,low,False,bart_live_20260917_123018,
+69,799,1965687,1965687,24TH,station+line+platform/direction+destination+absolute_time,99,low,False,bart_live_20260917_123018,
+114,1039,1965837,1965837,BALB,station+line+platform/direction+destination+absolute_time,114,low,False,bart_live_20260917_123018,
+37,1042,1965837,1965837,16TH,station+line+platform/direction+destination+absolute_time,125,low,False,bart_live_20260917_123018,
+183,205,1965446,1965446,COLS,station+line+platform/direction+destination+absolute_time,135,low,False,bart_live_20260917_123018,
+126,168,1965509,1965509,BAYF,station+line+platform/direction+destination+absolute_time,108,low,False,bart_live_20260917_123018,
+296,798,1965687,1965687,GLEN,station+line+platform/direction+destination+absolute_time,178,low,False,bart_live_20260917_123018,
+494,1008,1965783,1965783,SANL,station+line+platform/direction+destination+absolute_time,179,low,False,bart_live_20260917_123018,
+38,,,,16TH,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+79,,,,24TH,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+105,,,,BALB,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+115,,,,BALB,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+139,,,,CAST,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+161,,,,CIVC,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+177,,,,COLM,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+186,,,,COLS,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+196,,,,CONC,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+207,,,,DALY,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+216,,,,DALY,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+261,,,,EMBR,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+279,,,,FTVL,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+305,,,,GLEN,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+323,,,,LAFY,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+329,,,,LAKE,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+350,,,,MCAR,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+388,,,,MONT,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+406,,,,NCON,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+414,,,,ORIN,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+430,,,,PHIL,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+469,,,,POWL,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+482,,,,ROCK,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+508,,,,SBRN,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+511,,,,SBRN,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+512,,,,SBRN,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+522,,,,SFIA,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+545,,,,SSAN,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+569,,,,WCRK,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+579,,,,WDUB,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+584,,,,WOAK,unmatched,,unmatched,False,bart_live_20260917_123018,no unique GTFS-RT stop within 180 seconds
+600,,,,WOAK,unmatched,,unmatched,False,bart_live_20260917_123018,canceled
+,6,1965510,1965510,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,7,1965510,1965510,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,8,1965510,1965510,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,9,1965510,1965510,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,10,1965510,1965510,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,11,1965510,1965510,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,12,1965510,1965510,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,13,1965510,1965510,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,14,1965510,1965510,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,15,1965510,1965510,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,16,1965510,1965510,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,17,1965510,1965510,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,18,1965510,1965510,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,19,1965510,1965510,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,20,1965510,1965510,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,21,1965510,1965510,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,22,1965510,1965510,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,39,1965553,1965553,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,44,1965553,1965553,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,45,1965553,1965553,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,46,1965553,1965553,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,47,1965553,1965553,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,48,1965553,1965553,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,49,1965553,1965553,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,60,1965554,1965554,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,63,1965554,1965554,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,64,1965554,1965554,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,65,1965554,1965554,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,66,1965554,1965554,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,67,1965554,1965554,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,68,1965554,1965554,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,69,1965554,1965554,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,70,1965554,1965554,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,72,110121810,110121810,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,73,110121810,110121810,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,74,110121810,110121810,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,75,110121810,110121810,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,76,110121810,110121810,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,77,110121810,110121810,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,78,110121810,110121810,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,79,110121810,110121810,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,80,110121810,110121810,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,81,110121810,110121810,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,82,110121810,110121810,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,90,1965505,1965505,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,101,1965555,1965555,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,102,1965555,1965555,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,103,1965555,1965555,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,104,1965555,1965555,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,105,1965555,1965555,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,106,1965555,1965555,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,107,1965555,1965555,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,108,1965555,1965555,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,109,1965555,1965555,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,110,1965555,1965555,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,111,1965555,1965555,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,112,1965555,1965555,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,113,1965506,1965506,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,122,1965506,1965506,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,123,1965506,1965506,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,124,1965506,1965506,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,131,1965507,1965507,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,132,1965507,1965507,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,133,1965507,1965507,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,134,1965507,1965507,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,135,1965507,1965507,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,136,1965507,1965507,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,137,1965507,1965507,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,138,1965507,1965507,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,139,1965507,1965507,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,140,1965507,1965507,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,141,1965507,1965507,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,148,1965508,1965508,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,149,1965508,1965508,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,151,1965508,1965508,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,152,1965508,1965508,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,153,1965508,1965508,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,154,1965508,1965508,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,155,1965508,1965508,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,156,1965508,1965508,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,157,1965508,1965508,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,158,1965508,1965508,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,159,1965508,1965508,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,160,1965508,1965508,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,169,1965509,1965509,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,170,1965509,1965509,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,171,1965509,1965509,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,172,1965509,1965509,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,173,1965509,1965509,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,174,1965509,1965509,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,175,1965509,1965509,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,176,1965509,1965509,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,177,1965509,1965509,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,178,1965509,1965509,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,179,1965509,1965509,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,180,1965509,1965509,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,181,1965509,1965509,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,191,1965391,1965391,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,192,1965391,1965391,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,193,1965391,1965391,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,194,1965391,1965391,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,195,1965391,1965391,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,196,1965391,1965391,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,197,1965391,1965391,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,198,1965391,1965391,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,199,1965391,1965391,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,200,1965391,1965391,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,201,1965391,1965391,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,202,1965391,1965391,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,203,1965391,1965391,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,204,1965391,1965391,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,212,1965446,1965446,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,213,1965446,1965446,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,225,1965447,1965447,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,226,1965447,1965447,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,227,1965447,1965447,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,236,1965444,1965444,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,237,1965444,1965444,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,238,1965444,1965444,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,239,1965444,1965444,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,240,1965444,1965444,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,241,1965444,1965444,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,242,1965444,1965444,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,243,1965444,1965444,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,244,1965444,1965444,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,245,1965444,1965444,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,255,1965448,1965448,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,256,1965448,1965448,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,257,1965448,1965448,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,258,1965448,1965448,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,259,1965448,1965448,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,260,1965448,1965448,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,261,1965448,1965448,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,262,1965448,1965448,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,263,1965448,1965448,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,264,1965448,1965448,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,265,1965448,1965448,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,274,1965449,1965449,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,275,1965449,1965449,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,276,1965449,1965449,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,277,1965449,1965449,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,278,1965449,1965449,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,279,1965449,1965449,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,280,1965449,1965449,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,281,1965449,1965449,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,282,1965449,1965449,HAYW,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,283,1965449,1965449,SHAY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,284,1965449,1965449,UCTY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,285,1965449,1965449,FRMT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,286,1965449,1965449,WARM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,287,1965449,1965449,MLPT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,311,1965388,1965388,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,312,1965388,1965388,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,323,1965389,1965389,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,324,1965389,1965389,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,325,1965389,1965389,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,326,1965389,1965389,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,327,1965389,1965389,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,328,1965389,1965389,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,329,1965389,1965389,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,330,1965389,1965389,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,340,1965390,1965390,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,341,1965390,1965390,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,342,1965390,1965390,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,343,1965390,1965390,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,344,1965390,1965390,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,345,1965390,1965390,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,346,1965390,1965390,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,347,1965390,1965390,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,348,1965390,1965390,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,349,1965390,1965390,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,350,1965390,1965390,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,357,1965186,1965186,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,358,1965186,1965186,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,359,1965186,1965186,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,360,1965186,1965186,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,361,1965186,1965186,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,362,1965186,1965186,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,363,1965186,1965186,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,364,1965186,1965186,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,365,1965186,1965186,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,366,1965186,1965186,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,367,1965186,1965186,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,368,1965186,1965186,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,369,1965186,1965186,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,370,1965186,1965186,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,371,1965186,1965186,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,372,1965186,1965186,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,373,1965186,1965186,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,379,1965144,1965144,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,380,1965144,1965144,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,381,1965144,1965144,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,382,1965144,1965144,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,383,1965144,1965144,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,384,1965144,1965144,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,385,1965144,1965144,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,386,1965144,1965144,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,387,1965144,1965144,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,388,1965144,1965144,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,389,1965144,1965144,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,390,1965144,1965144,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,391,1965144,1965144,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,392,1965144,1965144,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,393,1965144,1965144,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,394,1965144,1965144,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,395,1965144,1965144,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,396,1965144,1965144,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,397,1965144,1965144,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,402,1965187,1965187,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,403,1965187,1965187,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,404,1965187,1965187,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,405,1965187,1965187,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,406,1965187,1965187,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,407,1965187,1965187,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,408,1965187,1965187,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,409,1965187,1965187,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,410,1965187,1965187,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,411,1965187,1965187,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,412,1965187,1965187,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,413,1965187,1965187,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,414,1965187,1965187,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,415,1965187,1965187,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,416,1965187,1965187,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,417,1965187,1965187,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,418,1965187,1965187,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,419,1965187,1965187,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,420,1965187,1965187,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,421,1965187,1965187,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,422,1965187,1965187,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,427,1965145,1965145,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,428,1965145,1965145,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,429,1965145,1965145,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,430,1965145,1965145,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,431,1965145,1965145,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,432,1965145,1965145,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,433,1965145,1965145,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,434,1965145,1965145,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,435,1965145,1965145,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,436,1965145,1965145,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,437,1965145,1965145,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,438,1965145,1965145,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,439,1965145,1965145,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,440,1965145,1965145,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,441,1965145,1965145,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,442,1965145,1965145,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,443,1965145,1965145,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,444,1965145,1965145,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,445,1965145,1965145,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,446,1965145,1965145,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,447,1965145,1965145,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,448,1965145,1965145,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,449,1965145,1965145,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,456,1965188,1965188,PITT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,457,1965188,1965188,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,458,1965188,1965188,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,459,1965188,1965188,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,460,1965188,1965188,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,461,1965188,1965188,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,462,1965188,1965188,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,463,1965188,1965188,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,464,1965188,1965188,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,465,1965188,1965188,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,466,1965188,1965188,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,467,1965188,1965188,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,468,1965188,1965188,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,469,1965188,1965188,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,470,1965188,1965188,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,471,1965188,1965188,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,472,1965188,1965188,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,473,1965188,1965188,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,474,1965188,1965188,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,475,1965188,1965188,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,476,1965188,1965188,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,477,1965188,1965188,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,478,1965188,1965188,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,479,1965188,1965188,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,521,1965262,1965262,PITT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,571,1965263,1965263,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,572,1965263,1965263,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,573,1965263,1965263,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,574,1965263,1965263,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,575,1965263,1965263,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,576,1965263,1965263,PITT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,586,1965182,1965182,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,608,1965329,1965329,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,609,1965329,1965329,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,610,1965329,1965329,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,612,385121610,385121610,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,613,385121610,385121610,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,614,385121610,385121610,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,615,385121610,385121610,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,616,385121610,385121610,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,617,385121610,385121610,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,618,385121610,385121610,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,623,1965264,1965264,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,624,1965264,1965264,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,625,1965264,1965264,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,626,1965264,1965264,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,627,1965264,1965264,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,628,1965264,1965264,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,629,1965264,1965264,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,630,1965264,1965264,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,631,1965264,1965264,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,632,1965264,1965264,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,633,1965264,1965264,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,634,1965264,1965264,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,635,1965264,1965264,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,636,1965264,1965264,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,637,1965264,1965264,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,638,1965264,1965264,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,639,1965264,1965264,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,640,1965264,1965264,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,641,1965264,1965264,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,642,1965264,1965264,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,643,1965264,1965264,PITT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,644,1965183,1965183,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,654,1965183,1965183,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,655,1965183,1965183,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,656,1965183,1965183,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,673,1965330,1965330,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,674,1965330,1965330,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,675,1965330,1965330,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,676,1965330,1965330,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,677,1965330,1965330,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,678,1965330,1965330,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,679,1965330,1965330,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,680,1965330,1965330,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,684,1965141,1965141,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,689,1965141,1965141,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,691,1965141,1965141,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,692,1965141,1965141,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,693,1965141,1965141,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,694,1965141,1965141,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,695,1965141,1965141,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,700,1965265,1965265,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,701,1965265,1965265,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,702,1965265,1965265,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,703,1965265,1965265,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,704,1965265,1965265,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,705,1965265,1965265,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,706,1965265,1965265,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,707,1965265,1965265,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,708,1965265,1965265,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,709,1965265,1965265,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,710,1965265,1965265,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,711,1965265,1965265,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,712,1965265,1965265,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,713,1965265,1965265,ROCK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,714,1965265,1965265,ORIN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,715,1965265,1965265,LAFY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,716,1965265,1965265,WCRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,717,1965265,1965265,PHIL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,718,1965265,1965265,CONC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,719,1965265,1965265,NCON,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,720,1965265,1965265,PITT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,721,1965184,1965184,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,727,1965184,1965184,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,728,1965184,1965184,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,729,1965184,1965184,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,730,1965184,1965184,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,731,1965184,1965184,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,732,1965184,1965184,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,733,1965184,1965184,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,734,1965184,1965184,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,735,1965184,1965184,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,736,1965184,1965184,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,741,1965142,1965142,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,743,1965142,1965142,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,744,1965142,1965142,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,745,1965142,1965142,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,746,1965142,1965142,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,747,1965142,1965142,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,748,1965142,1965142,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,749,1965142,1965142,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,750,1965142,1965142,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,751,1965142,1965142,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,752,1965142,1965142,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,753,1965142,1965142,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,758,1965185,1965185,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,759,1965185,1965185,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,760,1965185,1965185,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,761,1965185,1965185,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,762,1965185,1965185,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,763,1965185,1965185,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,764,1965185,1965185,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,765,1965185,1965185,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,766,1965185,1965185,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,767,1965185,1965185,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,768,1965185,1965185,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,769,1965185,1965185,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,770,1965185,1965185,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,771,1965185,1965185,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,772,1965185,1965185,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,778,1965143,1965143,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,779,1965143,1965143,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,780,1965143,1965143,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,781,1965143,1965143,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,782,1965143,1965143,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,783,1965143,1965143,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,784,1965143,1965143,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,785,1965143,1965143,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,786,1965143,1965143,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,787,1965143,1965143,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,788,1965143,1965143,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,789,1965143,1965143,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,790,1965143,1965143,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,791,1965143,1965143,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,792,1965143,1965143,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,793,1965143,1965143,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,794,1965687,1965687,SFIA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,795,1965687,1965687,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,796,1965687,1965687,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,797,1965687,1965687,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,804,1965687,1965687,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,806,1965687,1965687,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,807,1965687,1965687,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,808,1965687,1965687,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,809,1965687,1965687,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,810,1965687,1965687,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,811,1965687,1965687,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,812,1965687,1965687,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,813,1965687,1965687,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,831,1965688,1965688,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,837,1965688,1965688,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,838,1965688,1965688,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,839,1965688,1965688,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,840,1965688,1965688,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,841,1965688,1965688,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,842,1965688,1965688,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,843,1965688,1965688,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,844,1965688,1965688,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,852,1965689,1965689,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,854,1965689,1965689,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,855,1965689,1965689,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,856,1965689,1965689,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,857,1965689,1965689,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,858,1965689,1965689,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,859,1965689,1965689,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,860,1965689,1965689,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,861,1965689,1965689,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,862,1965689,1965689,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,863,1965689,1965689,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,864,1965689,1965689,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,865,1965689,1965689,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,866,1965689,1965689,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,867,1965689,1965689,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,868,1965689,1965689,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,894,1965645,1965645,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,895,1965645,1965645,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,896,1965645,1965645,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,897,1965645,1965645,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,898,1965645,1965645,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,899,1965645,1965645,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,900,1965645,1965645,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,901,1965645,1965645,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,902,1965645,1965645,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,913,1965646,1965646,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,914,1965646,1965646,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,915,1965646,1965646,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,916,1965646,1965646,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,917,1965646,1965646,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,918,1965646,1965646,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,919,1965646,1965646,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,920,1965646,1965646,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,921,1965646,1965646,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,922,1965646,1965646,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,923,1965646,1965646,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,924,1965646,1965646,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,934,1965647,1965647,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,935,1965647,1965647,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,936,1965647,1965647,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,937,1965647,1965647,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,938,1965647,1965647,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,939,1965647,1965647,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,940,1965647,1965647,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,941,1965647,1965647,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,942,1965647,1965647,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,943,1965647,1965647,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,944,1965647,1965647,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,945,1965647,1965647,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,946,1965647,1965647,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,947,1965647,1965647,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,962,1965685,1965685,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,967,1965648,1965648,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,968,1965648,1965648,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,969,1965648,1965648,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,970,1965648,1965648,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,971,1965648,1965648,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,972,1965648,1965648,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,973,1965648,1965648,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,974,1965648,1965648,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,975,1965648,1965648,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,976,1965648,1965648,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,977,1965648,1965648,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,978,1965648,1965648,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,979,1965648,1965648,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,980,1965648,1965648,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,981,1965648,1965648,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,982,1965648,1965648,COLM,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,983,1965648,1965648,SSAN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,984,1965648,1965648,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,985,1965686,1965686,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,986,1965686,1965686,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,987,1965686,1965686,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,988,1965686,1965686,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,989,1965686,1965686,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,990,1965686,1965686,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,991,1965686,1965686,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,992,1965686,1965686,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,994,1965686,1965686,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,995,1965686,1965686,12TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,996,1965686,1965686,19TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,997,1965686,1965686,MCAR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,998,1965686,1965686,ASHB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,999,1965686,1965686,DBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1000,1965686,1965686,NBRK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1001,1965686,1965686,PLZA,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1002,1965686,1965686,DELN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1007,1965783,1965783,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1009,1965783,1965783,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1010,1965783,1965783,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1011,1965783,1965783,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1012,1965783,1965783,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1013,1965783,1965783,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1014,1965783,1965783,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1015,1965783,1965783,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1016,1965783,1965783,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1017,1965783,1965783,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1018,1965783,1965783,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1019,1965783,1965783,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1020,1965783,1965783,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1024,1965784,1965784,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1025,1965784,1965784,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1026,1965784,1965784,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1027,1965784,1965784,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1028,1965784,1965784,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1029,1965784,1965784,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1030,1965784,1965784,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1031,1965784,1965784,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1032,1965784,1965784,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1033,1965784,1965784,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1034,1965784,1965784,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1035,1965784,1965784,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1036,1965784,1965784,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1037,1965784,1965784,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1038,1965837,1965837,DALY,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1040,1965837,1965837,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1041,1965837,1965837,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1043,1965837,1965837,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1044,1965837,1965837,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1045,1965837,1965837,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1046,1965837,1965837,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1047,1965837,1965837,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1048,1965837,1965837,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1049,1965837,1965837,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1050,1965837,1965837,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1051,1965837,1965837,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1052,1965837,1965837,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1053,1965837,1965837,CAST,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1054,1965837,1965837,WDUB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1083,1965839,1965839,WDUB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1084,1965780,1965780,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1091,1965780,1965780,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1105,1965840,1965840,LAKE,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1106,1965840,1965840,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1107,1965840,1965840,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1108,1965840,1965840,SANL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1109,1965840,1965840,BAYF,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1110,1965840,1965840,CAST,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1111,1965840,1965840,WDUB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1116,1965781,1965781,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1117,1965781,1965781,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1118,1965781,1965781,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1119,1965781,1965781,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1120,1965781,1965781,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1121,1965781,1965781,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1122,1965781,1965781,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1123,1965781,1965781,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1124,1965781,1965781,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1130,1965782,1965782,COLS,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1131,1965782,1965782,FTVL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1133,1965782,1965782,WOAK,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1134,1965782,1965782,EMBR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1135,1965782,1965782,MONT,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1136,1965782,1965782,POWL,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1137,1965782,1965782,CIVC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1138,1965782,1965782,16TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1139,1965782,1965782,24TH,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1140,1965782,1965782,GLEN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1141,1965782,1965782,BALB,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1150,660,660,PCTR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1152,661,661,PCTR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1153,663,663,ANTC,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1154,663,663,PCTR,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
+,1155,775121810,775121810,SBRN,gtfsrt_only,,unmatched,False,bart_live_20260917_123018,no ETD row with compatible station/line/time
 ,0,1965570,1965570,FTVL,gtfsrt_only,,unmatched,False,bart_live_terminals_20260911_183436,no ETD row with compatible station/line/time
 ,1,1965570,1965570,COLS,gtfsrt_only,,unmatched,False,bart_live_terminals_20260911_183436,no ETD row with compatible station/line/time
 ,2,1965570,1965570,SANL,gtfsrt_only,,unmatched,False,bart_live_terminals_20260911_183436,no ETD row with compatible station/line/time

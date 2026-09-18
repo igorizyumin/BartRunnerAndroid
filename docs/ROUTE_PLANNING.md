@@ -159,19 +159,15 @@ The main schedule update can describe the train to or from Pittsburg, while a
 separate terminal-vehicle update describes the movement between Pittsburg,
 Pittsburg Center, and Antioch. Their trip IDs are not necessarily joinable.
 
-In the current implementation, `Schedule` preserves the static terminal
-pattern and applies only exact-trip realtime corrections. It does not extend a
-Pittsburg short-turn or consume a 600–799 terminal-vehicle update. The
-`GtfsRealtimeContentHandler` has a separate best-effort join: it can copy
-terminal points from a DMU snapshot onto one matching electric **realtime**
-snapshot when direction/platform and terminal-time checks pass (within 20
-minutes). It drops a DMU-only snapshot from passenger output. A schedule-only
-electric trip cannot receive this handler join because there is no electric
-realtime snapshot to claim.
+Historically, `Schedule` preserved the static terminal pattern while
+`GtfsRealtimeContentHandler` performed a separate best-effort join onto an
+electric realtime snapshot. That compatibility path has been removed. The
+current implementation performs DMU/electric association and terminal
+enrichment in `CanonicalTransitSnapshot`; a DMU-only observation remains
+provenance and cannot create a passenger trip.
 
-This split is an intentional audit finding, not a claim that either source is
-the correct operational model. All consumers must be reviewed together before
-changing terminal semantics.
+This section is retained as historical audit context; current consumers use
+the canonical snapshot and do not have a handler-specific terminal path.
 
 ### The late-night SFO/Millbrae change is a transfer
 

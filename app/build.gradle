@@ -95,8 +95,6 @@ android {
 
     buildTypes {
         release {
-            // Include native debug symbols
-            ndk.debugSymbolLevel = 'FULL'
             minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),

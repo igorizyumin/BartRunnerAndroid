@@ -11,7 +11,8 @@
   "service_dates": [
     "2026-09-11",
     "2026-09-12",
-    "2026-09-13"
+    "2026-09-13",
+    "2026-09-17"
   ],
   "route_mapping": [
     {
@@ -146,28 +147,28 @@
   "impossible_stop_sequences": [],
   "non_monotonic_scheduled_times": [],
   "special_station_counts": {
-    "pittsburg": 416,
-    "pittsburg_center": 327,
-    "antioch": 327,
-    "sfo": 732,
-    "millbrae": 347,
-    "sfo_and_millbrae": 344
+    "pittsburg": 620,
+    "pittsburg_center": 444,
+    "antioch": 444,
+    "sfo": 1048,
+    "millbrae": 472,
+    "sfo_and_millbrae": 468
   },
   "terminal_counts": [
     {
       "line": "Blue",
       "terminal_station": "BAYF",
-      "count": 3
+      "count": 4
     },
     {
       "line": "Blue",
       "terminal_station": "DALY",
-      "count": 164
+      "count": 222
     },
     {
       "line": "Blue",
       "terminal_station": "DUBL",
-      "count": 167
+      "count": 226
     },
     {
       "line": "Bridgea",
@@ -192,12 +193,12 @@
     {
       "line": "Green",
       "terminal_station": "BERY",
-      "count": 48
+      "count": 96
     },
     {
       "line": "Green",
       "terminal_station": "DALY",
-      "count": 47
+      "count": 92
     },
     {
       "line": "Green",
@@ -207,22 +208,22 @@
     {
       "line": "Grey",
       "terminal_station": "COLS",
-      "count": 516
+      "count": 701
     },
     {
       "line": "Grey",
       "terminal_station": "OAKL",
-      "count": 516
+      "count": 701
     },
     {
       "line": "Orange",
       "terminal_station": "BERY",
-      "count": 176
+      "count": 236
     },
     {
       "line": "Orange",
       "terminal_station": "RICH",
-      "count": 168
+      "count": 228
     },
     {
       "line": "Orange",
@@ -237,32 +238,32 @@
     {
       "line": "Red",
       "terminal_station": "MLBR",
-      "count": 123
+      "count": 168
     },
     {
       "line": "Red",
       "terminal_station": "RICH",
-      "count": 123
+      "count": 168
     },
     {
       "line": "Yellow",
       "terminal_station": "ANTC",
-      "count": 165
+      "count": 224
     },
     {
       "line": "Yellow",
       "terminal_station": "MLBR",
-      "count": 51
+      "count": 68
     },
     {
       "line": "Yellow",
       "terminal_station": "PITT",
-      "count": 46
+      "count": 90
     },
     {
       "line": "Yellow",
       "terminal_station": "SFIA",
-      "count": 232
+      "count": 342
     }
   ],
   "bus_bridge_routes": [

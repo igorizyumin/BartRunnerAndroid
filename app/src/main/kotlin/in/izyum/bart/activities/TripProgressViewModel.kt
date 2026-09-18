@@ -8,9 +8,8 @@ import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.backend.TransitRepository
 import `in`.izyum.bart.backend.TripProgressProjection
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.StationPair
-import `in`.izyum.bart.model.TimeSource
-import `in`.izyum.bart.model.TripLeg
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,28 +21,23 @@ import kotlinx.coroutines.launch
 class TripProgressViewModel(application: Application) :
     AndroidViewModel(application) {
 
-    private val _departureState = MutableStateFlow<Departure?>(null)
-    val departureState: StateFlow<Departure?> = _departureState.asStateFlow()
+    private val _itineraryState = MutableStateFlow<Itinerary?>(null)
+    val itineraryState: StateFlow<Itinerary?> = _itineraryState.asStateFlow()
 
     private var routeCollectionJob: Job? = null
     private var tripProgressCollectionJob: Job? = null
-    private var departureTimeSource: TimeSource? = null
-    private var queryStationPair: StationPair? = null
-
     fun setQuery(
         stationPair: StationPair,
-        departureIdentity: String,
-        timeSource: TimeSource,
-        initialDeparture: Departure? = null,
+        selectionIdentity: String,
+        initialItinerary: Itinerary? = null,
     ) {
         cancelCollections()
-        departureTimeSource = timeSource
-        queryStationPair = stationPair
-        _departureState.value = initialDeparture
+        _itineraryState.value = initialItinerary
 
         val application = getApplication<BartRunnerApplication>()
         val repository: TransitRepository = application.transitRepository
 
+        initialItinerary?.let(::startTripProgress)
         routeCollectionJob = viewModelScope.launch {
             val projection = RouteDepartureProjection(
                 stationPair,
@@ -53,58 +47,59 @@ class TripProgressViewModel(application: Application) :
                 .collectLatest { result ->
                     result.getOrNull()?.let { departures ->
                         departures.getDepartures()
-                            .firstOrNull { it.identity == departureIdentity }
-                            ?.let(::updateFromRealtime)
+                            .firstOrNull {
+                                itineraryFromDeparture(it, stationPair)?.selectionIdentity == selectionIdentity
+                                    || it.identity == selectionIdentity
+                            }
+                            ?.let { incoming ->
+                                if (_itineraryState.value == null) {
+                                    itineraryFromDeparture(incoming, stationPair)?.let { itinerary ->
+                                        publish(itinerary)
+                                        startTripProgress(itinerary)
+                                    }
+                                }
+                            }
                     }
                 }
         }
     }
 
-    fun getDeparture(): Departure? = departureState.value
+    fun getItinerary(): Itinerary? = itineraryState.value
 
-    private fun updateFromRealtime(incoming: Departure) {
-        val timeSource = departureTimeSource ?: return
-        val normalizedIncoming = queryStationPair?.destination?.let {
-            incoming.withPassengerDestination(it)
-        } ?: incoming
-        val current = departureState.value
-        val updated = current?.let {
-            Departure.merge(it, normalizedIncoming, true, timeSource)
-        } ?: normalizedIncoming
-        publish(updated)
-        startTripProgress(updated)
-    }
-
-    private fun startTripProgress(departure: Departure) {
+    private fun startTripProgress(itinerary: Itinerary) {
         if (tripProgressCollectionJob?.isActive == true
-            || departure.tripLegs.isEmpty()
+            || itinerary.legs.isEmpty()
         ) {
             return
         }
-        val stationPair = departure.getStationPair() ?: return
-        val origin = stationPair.origin
-        val destination = stationPair.destination ?: return
         val application = getApplication<BartRunnerApplication>()
         tripProgressCollectionJob = viewModelScope.launch {
             val projection = TripProgressProjection(
-                origin,
-                destination,
-                departure.tripLegs,
+                itinerary.origin,
+                itinerary.destination,
+                itinerary.legs,
                 application.bartGtfsNetworkSupplier,
             )
             application.transitRepository
-                .projectedState(projection::project)
-                .collectLatest { result -> result.getOrNull()?.let(::updateTripLegs) }
+                .projectedState(projection::projectItinerary)
+                .collectLatest { result -> result.getOrNull()?.let(::publish) }
         }
     }
 
-    private fun updateTripLegs(updatedLegs: List<TripLeg>) {
-        departureState.value?.let { publish(it.replaceTripLegs(updatedLegs)) }
+    private fun publish(replacement: Itinerary) {
+        _itineraryState.value = replacement
     }
 
-    private fun publish(replacement: Departure) {
-        _departureState.value = replacement
-    }
+    private fun itineraryFromDeparture(
+        departure: Departure,
+        stationPair: StationPair,
+    ): Itinerary? = Itinerary.fromDeparture(
+        if (stationPair.destination != null) {
+            departure.withPassengerDestination(stationPair.destination)
+        } else {
+            departure
+        },
+    )
 
     private fun cancelCollections() {
         routeCollectionJob?.cancel()

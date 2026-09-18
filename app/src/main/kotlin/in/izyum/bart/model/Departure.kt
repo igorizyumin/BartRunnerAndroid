@@ -9,14 +9,8 @@ data class Departure(
     val trainDestination: Station?,
     val passengerDestination: Station?,
     val line: Line?,
-    val destinationColorHex: String?,
-    val destinationColorText: String?,
     val platform: String?,
-    val direction: String?,
-    val bikeAllowed: Boolean,
     val trainLength: String?,
-    val requiresTransfer: Boolean,
-    val transferScheduled: Boolean,
     val canceled: Boolean,
     val minutes: Int,
     val minEstimate: Long,
@@ -194,7 +188,7 @@ data class Departure(
     override fun toString(): String {
         return buildString {
             append(trainDestination)
-            if (requiresTransfer) append(" (w/ xfer)")
+            if (hasTransfers()) append(" (w/ xfer)")
             append(", ")
             append("estimate=").append(getMeanEstimate())
         }
@@ -294,14 +288,8 @@ data class Departure(
         private var trainDestination: Station? = null
         private var passengerDestination: Station? = null
         private var line: Line? = null
-        private var destinationColorHex: String? = null
-        private var destinationColorText: String? = null
         private var platform: String? = null
-        private var direction: String? = null
-        private var bikeAllowed = false
         private var trainLength: String? = null
-        private var requiresTransfer = false
-        private var transferScheduled = false
         private var canceled = false
         private var minutes = 0
         private var minEstimate = 0L
@@ -315,14 +303,8 @@ data class Departure(
         fun setTrainDestination(value: Station?) = apply { trainDestination = value }
         fun setPassengerDestination(value: Station?) = apply { passengerDestination = value }
         fun setLine(value: Line?) = apply { line = value }
-        fun setTrainDestinationColorHex(value: String?) = apply { destinationColorHex = value }
-        fun setTrainDestinationColorText(value: String?) = apply { destinationColorText = value }
         fun setPlatform(value: String?) = apply { platform = value }
-        fun setDirection(value: String?) = apply { direction = value }
-        fun setBikeAllowed(value: Boolean) = apply { bikeAllowed = value }
         fun setTrainLength(value: String?) = apply { trainLength = value }
-        fun setRequiresTransfer(value: Boolean) = apply { requiresTransfer = value }
-        fun setTransferScheduled(value: Boolean) = apply { transferScheduled = value }
         fun setCanceled(value: Boolean) = apply { canceled = value }
         fun setMinutes(value: Int) = apply {
             minutes = value
@@ -341,14 +323,8 @@ data class Departure(
                 trainDestination,
                 passengerDestination,
                 line,
-                destinationColorHex,
-                destinationColorText,
                 platform,
-                direction,
-                bikeAllowed,
                 trainLength,
-                requiresTransfer,
-                transferScheduled,
                 canceled,
                 minutes,
                 minEstimate,

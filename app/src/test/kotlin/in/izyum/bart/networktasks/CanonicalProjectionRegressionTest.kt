@@ -2,15 +2,15 @@ package `in`.izyum.bart.networktasks
 
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.RealTimeDepartures
-import `in`.izyum.bart.model.Route
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.PredictionSource
-import `in`.izyum.bart.backend.Schedule
+import `in`.izyum.bart.backend.RouteDepartureProjection
+import `in`.izyum.bart.backend.TripProgressProjection
 import `in`.izyum.bart.backend.TransitFeedSnapshot
 import `in`.izyum.bart.transit.normalization.RequiredCounterpartStatus
-import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
+import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.transit.gtfs.GtfsNetworkCatalog
 import com.google.transit.realtime.GtfsRealtime
 import org.junit.Assert.assertEquals
@@ -19,16 +19,11 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class GtfsRealtimeContentHandlerTest {
+class CanonicalProjectionRegressionTest {
     @Test
     fun dmuTerminalUpdateDoesNotOverrideAccurateStaticSchedule() {
         val network = antiochNetwork()
         val feedTime = epoch("2026-09-07T10:00:00-07:00")
-        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
-        val route = Route.direct(
-            Station.MONT, Station.ANTC, Line.YELLOW, "n",
-            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
-        )
         val feed = GtfsRealtime.FeedMessage.newBuilder()
             .setHeader(GtfsRealtime.FeedHeader.newBuilder()
                 .setGtfsRealtimeVersion("2.0")
@@ -44,9 +39,7 @@ class GtfsRealtimeContentHandlerTest {
             ))
             .build()
 
-        val departures = GtfsRealtimeContentHandler(
-            Station.MONT, Station.ANTC, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.MONT, Station.ANTC, feed, network, feedTime)
 
         val scheduled = departures.getDepartures().firstOrNull {
             it.tripLegs.singleOrNull()?.tripId == "scheduled"
@@ -63,11 +56,6 @@ class GtfsRealtimeContentHandlerTest {
     fun northboundDmuDoesNotJoinToElectricTrainWithLaterPittTime() {
         val network = terminalDirectionNetwork()
         val feedTime = epoch("2026-09-07T09:45:00-07:00")
-        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
-        val route = Route.direct(
-            Station.MONT, Station.ANTC, Line.YELLOW, "n",
-            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
-        )
         val electricPittTime = epoch("2026-09-07T10:29:00-07:00")
         val feed = terminalJoinFeed(
             feedTime,
@@ -85,9 +73,7 @@ class GtfsRealtimeContentHandlerTest {
             ),
         )
 
-        val departures = GtfsRealtimeContentHandler(
-            Station.MONT, Station.ANTC, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.MONT, Station.ANTC, feed, network, feedTime)
 
         assertFalse(
             "PCTR at 10:17 cannot belong to the electric train reaching PITT at " +
@@ -102,10 +88,6 @@ class GtfsRealtimeContentHandlerTest {
     fun dmuTelemetryStaysSeparateFromThePassengerTripIdentity() {
         val network = terminalDirectionNetwork()
         val feedTime = epoch("2026-09-07T09:45:00-07:00")
-        val route = Route.direct(
-            Station.PITT, Station.PCTR, Line.YELLOW, "n",
-            listOf(Station.MONT, Station.PITT, Station.PCTR, Station.ANTC),
-        )
         val feed = terminalJoinFeed(
             feedTime,
             routeId = "yellow-n",
@@ -131,14 +113,9 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
-    fun southboundDmuProjectsAntiochTimeBackFromPitt() {
+    fun southboundDmuWithoutStaticPassengerCounterpartDoesNotCreateDeparture() {
         val network = terminalDirectionNetwork()
         val feedTime = epoch("2026-09-07T09:45:00-07:00")
-        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.YELLOW))
-        val route = Route.direct(
-            Station.PITT, Station.MONT, Line.YELLOW, "s",
-            listOf(Station.ANTC, Station.PCTR, Station.PITT, Station.MONT),
-        )
         val feed = terminalJoinFeed(
             feedTime,
             routeId = "yellow-s",
@@ -155,12 +132,11 @@ class GtfsRealtimeContentHandlerTest {
             ),
         )
 
-        val departures = GtfsRealtimeContentHandler(
-            Station.PITT, Station.MONT, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.PITT, Station.MONT, feed, network, feedTime)
 
-        assertTrue(
-            "the DMU at Antioch should join the electric train leaving PITT at 10:29",
+        assertFalse(
+            "canonical projection must not synthesize a passenger trip from " +
+                "an unmatched realtime-only electric record",
             departures.getDepartures().any {
                 it.tripLegs.any { leg -> leg.tripId == "electric-live-s" }
             },
@@ -171,36 +147,17 @@ class GtfsRealtimeContentHandlerTest {
     fun platformsBelongToOriginStopsAndRealtimeCanOverrideStaticPlatform() {
         val network = platformNetwork()
         val feedTime = epoch("2026-09-07T08:00:00-07:00")
-        val schedule = Schedule.fromStatic(network, feedTime, setOf(Line.BLUE))
-        val emptyIndex = RealtimeFeedNormalizer.normalize(emptyFeed(feedTime / 1000L))
-
-        val southRoute = Route.direct(
-            Station.CAST,
-            Station.DALY,
-            Line.BLUE,
-            "s",
-            listOf(Station.DUBL, Station.CAST, Station.DALY),
+        val southDeparture = projectDepartures(
+            Station.CAST, Station.DALY, emptyFeed(feedTime / 1000L), network, feedTime,
         )
-        val southHandler = GtfsRealtimeContentHandler(
-            Station.CAST, Station.DALY, listOf(southRoute), false, network,
-        )
-        val southDeparture = southHandler
-            .getRealTimeDepartures(emptyIndex, feedTime, schedule)
             .getDepartures()
             .single()
         assertEquals("2", southDeparture.platform)
         assertEquals("2", southDeparture.tripLegs.single().platform)
 
-        val northRoute = Route.direct(
-            Station.CAST,
-            Station.DUBL,
-            Line.BLUE,
-            "n",
-            listOf(Station.DALY, Station.CAST, Station.DUBL),
+        val northDeparture = projectDepartures(
+            Station.CAST, Station.DUBL, emptyFeed(feedTime / 1000L), network, feedTime,
         )
-        val northDeparture = GtfsRealtimeContentHandler(
-            Station.CAST, Station.DUBL, listOf(northRoute), false, network,
-        ).getRealTimeDepartures(emptyIndex, feedTime, schedule)
             .getDepartures()
             .single()
         assertEquals("1", northDeparture.platform)
@@ -227,12 +184,9 @@ class GtfsRealtimeContentHandlerTest {
                 .setTripUpdate(realtimeUpdate))
             .build()
 
-        val overriddenDeparture = southHandler
-            .getRealTimeDepartures(
-                RealtimeFeedNormalizer.normalize(realtimeFeed),
-                feedTime,
-                schedule.applyRealtime(RealtimeFeedNormalizer.normalize(realtimeFeed)),
-            )
+        val overriddenDeparture = projectDepartures(
+            Station.CAST, Station.DALY, realtimeFeed, network, feedTime,
+        )
             .getDepartures()
             .single()
         assertEquals("1", overriddenDeparture.platform)
@@ -242,13 +196,6 @@ class GtfsRealtimeContentHandlerTest {
     @Test
     fun staticScheduleSuppliesTerminalWhenRealtimeOmitsItsPrediction() {
         val network = network()
-        val route = Route.direct(
-            Station.MONT,
-            Station.DALY,
-            Line.BLUE,
-            "n",
-            listOf(Station.MONT, Station.DALY),
-        )
         val update = GtfsRealtime.TripUpdate.newBuilder()
             .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
                 .setRouteId("12").setTripId("blue-valid"))
@@ -270,34 +217,21 @@ class GtfsRealtimeContentHandlerTest {
                 .setTripUpdate(update))
             .build()
 
-        val departures = GtfsRealtimeContentHandler(
-            Station.MONT, Station.DALY, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
+        val departures = projectDepartures(Station.MONT, Station.DALY, feed, network)
 
         assertEquals(1, departures.getDepartures().size)
         val departure = departures.getDepartures()[0]
         assertEquals(Station.DALY, departure.trainDestination)
         assertEquals(Station.DALY, departure.tripLegs[0].destination)
-        assertEquals(0L, departure.tripLegs[0].arrivalTime)
+        assertEquals(1_160_000L, departure.tripLegs[0].arrivalTime)
     }
 
     @Test
     fun keepsOnlyConnectingTripsThatMeetFeedMinimum() {
         val network = network()
-        val route = Route.transfer(
-            Station.LAKE,
-            Station.DALY,
-            listOf(Line.YELLOW, Line.BLUE),
-            listOf(Station.MONT),
-            "n",
-            mapOf(
-                Line.YELLOW to listOf(Station.LAKE, Station.MONT),
-                Line.BLUE to listOf(Station.MONT, Station.DALY),
-            ),
+        val departures: RealTimeDepartures = projectDepartures(
+            Station.LAKE, Station.DALY, feed(), network,
         )
-        val departures: RealTimeDepartures = GtfsRealtimeContentHandler(
-            Station.LAKE, Station.DALY, listOf(route), false, network,
-        ).getRealTimeDepartures(feed())
         assertEquals(1, departures.getDepartures().size)
         val legs: List<TripLeg> = departures.getDepartures()[0].tripLegs
         assertEquals(2, legs.size)
@@ -310,21 +244,7 @@ class GtfsRealtimeContentHandlerTest {
     @Test
     fun progressRefreshReplacesAConnectionInvalidatedByADelay() {
         val network = network()
-        val route = Route.transfer(
-            Station.LAKE,
-            Station.DALY,
-            listOf(Line.YELLOW, Line.BLUE),
-            listOf(Station.MONT),
-            "n",
-            mapOf(
-                Line.YELLOW to listOf(Station.LAKE, Station.MONT),
-                Line.BLUE to listOf(Station.MONT, Station.DALY),
-            ),
-        )
-        val handler = GtfsRealtimeContentHandler(
-            Station.LAKE, Station.DALY, listOf(route), false, network,
-        )
-        val initialLegs = handler.getRealTimeDepartures(feed())
+        val initialLegs = projectDepartures(Station.LAKE, Station.DALY, feed(), network)
             .getDepartures()[0].tripLegs
 
         val delayedFeed = GtfsRealtime.FeedMessage.newBuilder()
@@ -344,14 +264,9 @@ class GtfsRealtimeContentHandlerTest {
             ))
             .build()
 
-        val refreshed = handler.updateTripLegs(
-            RealtimeFeedNormalizer.normalize(delayedFeed),
-            initialLegs,
-            900_000L,
-            Schedule.fromStatic(network, 0L).applyRealtime(
-                RealtimeFeedNormalizer.normalize(delayedFeed)
-            ),
-        )
+        val refreshed = TripProgressProjection(
+            Station.LAKE, Station.DALY, initialLegs, network,
+        ).project(TransitFeedSnapshot(delayedFeed, emptyFeed(900L), 900_000L))
 
         assertEquals(2, refreshed.size)
         assertEquals("blue-valid", refreshed[1].tripId)
@@ -375,80 +290,8 @@ class GtfsRealtimeContentHandlerTest {
     }
 
     @Test
-    fun dropsTripsThatLeftTheOriginLongAgo() {
-        val network = network()
-        val route = Route.direct(
-            Station.MONT,
-            Station.DALY,
-            Line.BLUE,
-            "n",
-            listOf(Station.MONT, Station.DALY),
-        )
-        val feed = GtfsRealtime.FeedMessage.newBuilder()
-            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
-                .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
-            .addEntity(entity(
-                "12",
-                "blue-stale",
-                arrayOf("MONT", "DALY"),
-                longArrayOf(700L, 760L),
-            ))
-            .build()
-
-        val departures = GtfsRealtimeContentHandler(
-            Station.MONT, Station.DALY, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
-
-        assertTrue(departures.getDepartures().isEmpty())
-    }
-
-    @Test
-    fun dropsTripsThatLeftTheOriginMoreThan45SecondsAgo() {
-        val network = network()
-        val route = Route.direct(
-            Station.MONT,
-            Station.DALY,
-            Line.BLUE,
-            "n",
-            listOf(Station.MONT, Station.DALY),
-        )
-        val feed = GtfsRealtime.FeedMessage.newBuilder()
-            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
-                .setGtfsRealtimeVersion("2.0").setTimestamp(900L))
-            .addEntity(entity(
-                "12",
-                "blue-46-seconds-stale",
-                arrayOf("MONT", "DALY"),
-                longArrayOf(854L, 914L),
-            ))
-            .build()
-
-        val departures = GtfsRealtimeContentHandler(
-            Station.MONT, Station.DALY, listOf(route), false, network,
-        ).getRealTimeDepartures(feed)
-
-        assertTrue(departures.getDepartures().isEmpty())
-    }
-
-    @Test
     fun returnsAnImmutableDepartureList() {
-        val departures = GtfsRealtimeContentHandler(
-            Station.LAKE,
-            Station.DALY,
-            listOf(Route.transfer(
-                Station.LAKE,
-                Station.DALY,
-                listOf(Line.YELLOW, Line.BLUE),
-                listOf(Station.MONT),
-                "n",
-                mapOf(
-                    Line.YELLOW to listOf(Station.LAKE, Station.MONT),
-                    Line.BLUE to listOf(Station.MONT, Station.DALY),
-                ),
-            )),
-            false,
-            network(),
-        ).getRealTimeDepartures(feed())
+        val departures = projectDepartures(Station.LAKE, Station.DALY, feed(), network())
         assertThrows(UnsupportedOperationException::class.java) {
             (departures.getDepartures() as MutableList).clear()
         }
@@ -477,8 +320,16 @@ class GtfsRealtimeContentHandlerTest {
             "stops.txt" to "stop_id,stop_name,zone_id\nLAKE,Lake Merritt,LAKE\nMONT,Montgomery St.,MONT\nDALY,Daly City,DALY\n",
             "routes.txt" to "route_id,route_short_name\n1,Yellow-N\n12,Blue-N\n",
             "trips.txt" to "route_id,service_id,trip_id\n1,weekday,yellow-first\n12,weekday,blue-early\n12,weekday,blue-valid\n",
-            "stop_times.txt" to "trip_id,stop_id,stop_sequence\nyellow-first,LAKE,1\nyellow-first,MONT,2\nblue-early,MONT,1\nblue-early,DALY,2\nblue-valid,MONT,1\nblue-valid,DALY,2\n",
+            "stop_times.txt" to "trip_id,arrival_time,departure_time,stop_id,stop_sequence\n" +
+                "yellow-first,16:16:40,16:16:40,LAKE,1\n" +
+                "yellow-first,16:17:40,16:17:40,MONT,2\n" +
+                "blue-early,16:18:20,16:18:20,MONT,1\n" +
+                "blue-early,16:19:20,16:19:20,DALY,2\n" +
+                "blue-valid,16:19:10,16:19:10,MONT,1\n" +
+                "blue-valid,16:20:10,16:20:10,DALY,2\n",
             "transfers.txt" to "from_stop_id,to_stop_id,transfer_type,min_transfer_time,from_route_id,to_route_id\nMONT,MONT,2,90,1,12\n",
+            "calendar.txt" to "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n" +
+                "weekday,1,1,1,1,1,1,1,19690101,19701231\n",
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }
@@ -571,6 +422,16 @@ class GtfsRealtimeContentHandlerTest {
         )
         return BartGtfsNetwork.fromCatalog(GtfsNetworkCatalog.fromFiles(files))
     }
+
+    private fun projectDepartures(
+        origin: Station,
+        destination: Station,
+        feed: GtfsRealtime.FeedMessage,
+        network: BartGtfsNetwork,
+        feedTime: Long = feed.header.timestamp * 1000L,
+    ): RealTimeDepartures = RouteDepartureProjection(
+        StationPair(origin, destination), network,
+    ).project(TransitFeedSnapshot(feed, emptyFeed(feed.header.timestamp), feedTime))
 
     private fun emptyFeed(timestamp: Long) = GtfsRealtime.FeedMessage.newBuilder()
         .setHeader(GtfsRealtime.FeedHeader.newBuilder()

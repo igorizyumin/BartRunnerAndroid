@@ -133,6 +133,7 @@ import `in`.izyum.bart.activities.DeparturesViewModel
 import `in`.izyum.bart.activities.RoutesUiState
 import `in`.izyum.bart.model.Alert
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.Station
@@ -275,14 +276,14 @@ private fun OfflineBanner(modifier: Modifier = Modifier) {
 fun HomeScreen(
     state: RoutesUiState,
     isOffline: Boolean = false,
-    followedTrip: Departure?,
+    followedTrip: Itinerary?,
     timeSource: TimeSource,
     onRouteSelected: (StationPair) -> Unit,
     onAddFavorite: (StationPair) -> Unit,
     onRemoveFavorite: (StationPair) -> Unit,
     onMoveFavorite: (Int, Int) -> Unit,
     onInsertFavorite: (StationPair, Int) -> Unit,
-    onViewTrip: (Departure) -> Unit,
+    onViewTrip: (Itinerary) -> Unit,
     onViewMap: () -> Unit,
     onViewElevators: () -> Unit = {},
     onViewAbout: () -> Unit = {},
@@ -404,7 +405,7 @@ fun HomeScreen(
                                     )
                                 }
                                 Text(
-                                    stringResource(R.string.route_arrow, followedTrip.origin?.getName().orEmpty(), (followedTrip.passengerDestination ?: followedTrip.trainDestination)?.getName().orEmpty()),
+                                    stringResource(R.string.route_arrow, followedTrip.origin.getName(), followedTrip.destination.getName()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     maxLines = 1,
@@ -1288,7 +1289,7 @@ private fun EmptyState(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripScreen(
-    departure: Departure?,
+    departure: Itinerary?,
     route: StationPair?,
     alerts: Alert.AlertList? = null,
     isOffline: Boolean = false,
@@ -1299,11 +1300,11 @@ fun TripScreen(
     alarmPending: Boolean,
     alarmLeadTimeMinutes: Int,
     onBack: () -> Unit,
-    onFollow: (Departure) -> Unit,
+    onFollow: (Itinerary) -> Unit,
     onSetAlarm: (Int) -> Unit,
     onCancelAlarm: () -> Unit,
     onClear: () -> Unit,
-    onShare: (Departure) -> Unit,
+    onShare: (Itinerary) -> Unit,
     onSilenceAlarm: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1370,10 +1371,10 @@ fun TripScreen(
 }
 
 @Composable
-private fun TripHero(departure: Departure, pair: StationPair?, fare: String?, timeSource: TimeSource, tick: Long) {
+private fun TripHero(departure: Itinerary, pair: StationPair?, fare: String?, timeSource: TimeSource, tick: Long) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val origin = pair?.origin?.getName() ?: departure.origin?.getName().orEmpty()
-    val destination = pair?.destination?.getName() ?: departure.trainDestination?.getName().orEmpty()
+    val origin = pair?.origin?.getName() ?: departure.origin.getName()
+    val destination = pair?.destination?.getName() ?: departure.destination.getName()
     val status = tripStatus(context, departure, timeSource, tick)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(20.dp)) {
@@ -1544,8 +1545,8 @@ private fun TrainDestinationLabel(
 }
 
 @Composable
-private fun TripTimeline(departure: Departure, tick: Long) {
-    val legs = departure.tripLegs
+private fun TripTimeline(departure: Itinerary, tick: Long) {
+    val legs = departure.legs
     if (legs.isEmpty()) {
         OutlinedCard { Text(stringResource(R.string.detailed_stop_times_unavailable), modifier = Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
@@ -1750,7 +1751,7 @@ private fun LineBadge(line: Line?) {
 }
 
 @Composable
-private fun AlarmPickerDialog(departure: Departure, timeSource: TimeSource, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
+private fun AlarmPickerDialog(departure: Itinerary, timeSource: TimeSource, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     val max = (((departure.getInitialDepartureTime(pessimistic = true) - timeSource.nowMillis()) / 60_000L).toInt())
         .coerceAtLeast(1)
     var value by remember { mutableIntStateOf(5.coerceAtMost(max)) }
@@ -1884,12 +1885,12 @@ private fun lineColor(line: Line?): Color = when (line) {
 
 private data class TripStatusPresentation(val title: String, val subtitle: String? = null)
 
-private fun tripStatus(context: Context, departure: Departure, timeSource: TimeSource, now: Long): TripStatusPresentation {
-    if (departure.isCanceled()) return TripStatusPresentation(context.getString(R.string.trip_canceled))
+private fun tripStatus(context: Context, departure: Itinerary, timeSource: TimeSource, now: Long): TripStatusPresentation {
+    if (departure.canceled) return TripStatusPresentation(context.getString(R.string.trip_canceled))
 
     val initialArrival = departure.getInitialArrivalTime(pessimistic = true)
     val initialDeparture = departure.getInitialDepartureTime(pessimistic = true)
-    val initialStation = departure.origin?.getName().orEmpty()
+    val initialStation = departure.origin.getName()
     if (now < initialArrival - STATION_ARRIVAL_NOTICE_MILLIS) {
         return TripStatusPresentation(
             context.getString(R.string.trip_arrives_in, countdownText(initialArrival, now)),
@@ -1902,8 +1903,8 @@ private fun tripStatus(context: Context, departure: Departure, timeSource: TimeS
         return TripStatusPresentation(context.getString(R.string.trip_leaving_station, initialStation))
     }
 
-    departure.tripLegs.forEachIndexed { index, leg ->
-        val nextLeg = departure.tripLegs.getOrNull(index + 1)
+    departure.legs.forEachIndexed { index, leg ->
+        val nextLeg = departure.legs.getOrNull(index + 1)
         val transferStation = nextLeg?.origin ?: leg.destination
         val stops = if (leg.stops.isNotEmpty()) leg.stops.drop(1) else emptyList()
         stops.forEach { stop ->
