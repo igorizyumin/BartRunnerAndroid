@@ -34,8 +34,10 @@ data class Itinerary(
 
     fun getStationPair(): StationPair = StationPair(origin, destination)
 
-    fun getInitialDepartureTime(pessimistic: Boolean = false): Long =
-        legs.firstOrNull()?.departureTime ?: 0L
+    fun getInitialDepartureTime(pessimistic: Boolean = false): Long {
+        val first = legs.firstOrNull() ?: return 0L
+        return if (pessimistic) pessimisticDepartureTime(first) else first.departureTime
+    }
 
     fun getInitialArrivalTime(pessimistic: Boolean = false): Long {
         val first = legs.firstOrNull() ?: return 0L

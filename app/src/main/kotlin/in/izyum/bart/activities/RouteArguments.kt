@@ -9,7 +9,7 @@ import `in`.izyum.bart.model.StationPair
 object RouteArguments {
     const val ORIGIN = "routeOrigin"
     const val DESTINATION = "routeDestination"
-    const val DEPARTURE_IDENTITY = "departureIdentity"
+    const val SELECTION_IDENTITY = "selectionIdentity"
     const val SCREEN_MODE = "screenMode"
 
     const val MODE_SCHEDULE = "schedule"
@@ -30,10 +30,10 @@ object RouteArguments {
     }
 
     @JvmStatic
-    fun putTrip(intent: Intent?, route: StationPair?, identity: String?, mode: String?) {
+    fun putTrip(intent: Intent?, route: StationPair?, selectionIdentity: String?, mode: String?) {
         if (intent == null) return
         putRoute(intent, route)
-        intent.putExtra(DEPARTURE_IDENTITY, identity)
+        intent.putExtra(SELECTION_IDENTITY, selectionIdentity)
         intent.putExtra(SCREEN_MODE, mode)
     }
 
@@ -48,8 +48,8 @@ object RouteArguments {
     }
 
     @JvmStatic
-    fun readDepartureIdentity(intent: Intent?): String? =
-        intent?.getStringExtra(DEPARTURE_IDENTITY)
+    fun readSelectionIdentity(intent: Intent?): String? =
+        intent?.getStringExtra(SELECTION_IDENTITY)
 
     @JvmStatic
     fun readScreenMode(intent: Intent?): String? = intent?.getStringExtra(SCREEN_MODE)

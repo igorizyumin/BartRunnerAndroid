@@ -375,6 +375,34 @@ class TransitRepositoryTest {
         assertEquals(1, result.getOrNull())
     }
 
+    @Test
+    fun projectedFlowDoesNotReprojectAnUnchangedSnapshot() = runBlocking {
+        val client = FakeFeedClient()
+        val expected = snapshot(5, 50_000L)
+        client.enqueue(expected)
+        client.enqueue(expected)
+        repository = newRepository(client, 60_000L)
+        val projectionCount = AtomicInteger()
+        val collection = launch {
+            repository!!.projectedState(project = { snapshot ->
+                projectionCount.incrementAndGet()
+                snapshot.tripUpdates.entityCount
+            }).collect()
+        }
+
+        withTimeout(TIMEOUT_MILLIS) {
+            while (projectionCount.get() < 1) {
+                delay(5L)
+            }
+        }
+
+        repository!!.refreshNowBlockingForTests()
+        delay(100L)
+
+        assertEquals(1, projectionCount.get())
+        collection.cancelAndJoin()
+    }
+
     private fun newRepository(client: TransitFeedClient, intervalMillis: Long) =
         newInactiveRepository(client, intervalMillis).also {
             it.setAppInForeground(true)

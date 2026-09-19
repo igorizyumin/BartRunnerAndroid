@@ -82,7 +82,7 @@ class DeparturesViewModel @JvmOverloads constructor(
     }
 
     @Synchronized
-    fun replace(incoming: List<Departure>): List<Departure> {
+    internal fun replace(incoming: List<Departure>): List<Departure> {
         departures = immutableCopy(Departure.replaceFeed(departures, incoming, timeSource))
         _uiState.value = if (departures.isEmpty()) {
             State.empty()
@@ -91,18 +91,6 @@ class DeparturesViewModel @JvmOverloads constructor(
         }
         return departures
     }
-
-    @Synchronized
-    fun clear(): List<Departure> {
-        departures = emptyList()
-        _uiState.value = State.empty()
-        return departures
-    }
-
-    fun getState(): State = uiState.value
-
-    @Synchronized
-    fun getDepartures(): List<Departure> = departures
 
     @Synchronized
     private fun updateFromFeed(incoming: List<Departure>) {

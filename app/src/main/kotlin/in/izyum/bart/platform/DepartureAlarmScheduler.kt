@@ -60,7 +60,9 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         if (DepartureAlarmPolicy.shouldRestore(isPending,
                 itinerary.hasInitialDeparturePassed(nowMillis, pessimistic = true),
                 itinerary.hasExpired(nowMillis))) {
-            schedule()
+            if (!schedule()) {
+                updateState(leadTimeMinutes, false)
+            }
         } else if (isPending) {
             cancel()
         }
@@ -83,9 +85,13 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
         require(leadTimeMinutes >= 0) {
             "leadTimeMinutes must be non-negative"
         }
-        updateState(leadTimeMinutes, true)
+        // Keep the requested lead time, but do not expose the alarm as pending
+        // until Android accepts the alarm.
+        updateState(leadTimeMinutes, false)
         startTracking()
-        schedule()
+        if (schedule()) {
+            updateState(leadTimeMinutes, true)
+        }
     }
 
     fun startTracking() {
@@ -115,7 +121,9 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     fun rescheduleIfPending() {
-        if (isPending) schedule()
+        if (isPending && !schedule()) {
+            updateState(leadTimeMinutes, false)
+        }
     }
 
     /**
@@ -151,19 +159,20 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     private fun alarmClockTime(): Long = DepartureAlarmPolicy.alarmTime(
         itinerary, leadTimeMinutes)
 
-    private fun schedule() {
+    private fun schedule(): Boolean {
         val manager = alarmManager
         if (manager == null) {
             Log.w(TAG,
                 "No alarm manager available, so alarm will not be scheduled")
-            return
+            return false
         }
 
         val alarmTime = alarmClockTime()
         val intent = alarmIntent()
         if (!ExactAlarmPermission.isGranted(applicationContext)) {
             Log.w(TAG, "Exact alarm permission is unavailable")
-            return
+            manager.cancel(intent)
+            return false
         }
         try {
             manager.setAlarmClock(
@@ -172,6 +181,8 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             )
         } catch (exception: SecurityException) {
             Log.w(TAG, "Could not schedule departure alarm", exception)
+            manager.cancel(intent)
+            return false
         }
 
         val alarmText = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)
@@ -179,6 +190,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             .withZone(ZoneId.systemDefault())
             .format(Instant.ofEpochMilli(alarmTime))
         Log.v(TAG, "Scheduling alarm for $alarmText")
+        return true
     }
 
     private fun updateState(leadTimeMinutes: Int, pending: Boolean) {

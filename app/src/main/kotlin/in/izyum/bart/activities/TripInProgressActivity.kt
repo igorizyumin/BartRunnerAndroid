@@ -76,7 +76,7 @@ class TripInProgressActivity : ComponentActivity() {
             alarmVisible = true
             showAlarmWindow()
         }
-        if (intent.getStringExtra(RouteArguments.DEPARTURE_IDENTITY) != null) {
+        if (intent.getStringExtra(RouteArguments.SELECTION_IDENTITY) != null) {
             setIntent(intent)
             recreate()
         }
@@ -87,21 +87,18 @@ class TripInProgressActivity : ComponentActivity() {
         val app = application as BartRunnerApplication
         val followed = tripActionsViewModel.getFollowedItinerary()
         var route = RouteArguments.readRoute(intent)
-        var identity = RouteArguments.readDepartureIdentity(intent)
+        var selectionIdentity = RouteArguments.readSelectionIdentity(intent)
         val screenMode = RouteArguments.readScreenMode(intent)
         if (shouldReturnToRoutes(screenMode, followed?.toDeparture())) {
-            startActivity(Intent(this, RoutesListActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            })
-            finish()
+            returnToRoutes()
             return
         }
         if (route == null && followed != null && (screenMode == null || screenMode == RouteArguments.MODE_FOLLOWED)) {
-            identity = followed.selectionIdentity
+            selectionIdentity = followed.selectionIdentity
             route = followed.getStationPair()
         }
-        if (route == null || identity == null) {
-            finish()
+        if (route == null || selectionIdentity == null) {
+            returnToRoutes()
             return
         }
         tripRoute = route
@@ -115,19 +112,28 @@ class TripInProgressActivity : ComponentActivity() {
         if (alarmVisible) {
             showAlarmWindow()
         }
-        isFollowing = followed != null && identity == followed.selectionIdentity
+        isFollowing = followed != null && selectionIdentity == followed.selectionIdentity
         tripProgressViewModel.setQuery(
             route,
-            identity,
+            selectionIdentity,
             initialItinerary = if (isFollowing) followed else null,
         )
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                tripProgressViewModel.itineraryState.collect { updated ->
-                    if (updated != null) {
-                        if (isFollowing) tripActionsViewModel.updateFollowedTrip(updated)
-                        resolveFare(app, updated.getStationPair())
+                launch {
+                    tripProgressViewModel.itineraryState.collect { updated ->
+                        if (updated != null) {
+                            if (isFollowing) tripActionsViewModel.updateFollowedTrip(updated)
+                            resolveFare(app, updated.getStationPair())
+                        }
+                    }
+                }
+                launch {
+                    tripProgressViewModel.resolutionState.collect { state ->
+                        if (state == TripResolutionState.NOT_FOUND && !isFinishing) {
+                            returnToRoutes()
+                        }
                     }
                 }
             }
@@ -166,6 +172,13 @@ class TripInProgressActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun returnToRoutes() {
+        startActivity(Intent(this, RoutesListActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        })
+        finish()
     }
 
     private fun silenceAlarm() {

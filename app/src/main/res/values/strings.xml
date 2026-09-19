@@ -152,6 +152,7 @@
     <string name="trip_current_train">Current train</string>
     <string name="trip_arrives_in">Train arrives in %1$s</string>
     <string name="trip_arriving_at">Arriving at %1$s</string>
+    <string name="trip_departs_in">Train departs in %1$s</string>
     <string name="trip_leaving_station">Leaving %1$s</string>
     <string name="trip_transfer_to">Transfer to %1$s train</string>
     <string name="trip_next_stop">Next stop: %1$s (%2$s)</string>

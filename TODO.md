@@ -92,7 +92,7 @@ UI-owned so themes can customize them; they should not be derived from GTFS.
 
 ### Priority 3 — maintainability and policy ownership
 
-- [ ] Split `ui/BartRunnerUi.kt` by screen and shared UI concerns while
+- [x] Split `ui/BartRunnerUi.kt` by screen and shared UI concerns while
   preserving public composable entry points.
 - [x] Centralize BART routing/data policy constants, including route-ranking
   weights, station sets, the DMU range, OAKL filtering, and Pacific time zone;

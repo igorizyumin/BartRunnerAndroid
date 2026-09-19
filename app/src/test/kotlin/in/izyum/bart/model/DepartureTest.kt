@@ -70,26 +70,28 @@ class DepartureTest {
     }
 
     @Test
-    fun initialArrivalRemovesStationDwellAndCanUseTheLatestEstimate() {
+    fun pessimisticInitialArrivalUsesRealtimeDepartureMinusUncertaintyAndRemovesDwell() {
         val departure = Departure.builder()
             .setOrigin(Station.CAST)
-            .setMinEstimate(1_000_000L)
-            .setMaxEstimate(1_060_000L)
+            .setMinEstimate(2_170_000L)
+            .setMaxEstimate(2_230_000L)
             .setTripLegs(listOf(TripLeg(
                 Line.ORANGE,
                 Station.CAST,
                 Station.MLPT,
                 Station.MLPT,
                 "trip-1",
-                1_000_000L,
-                2_000_000L,
-                listOf(TripStop(Station.CAST, 940_000L, 1_000_000L)),
+                2_200_000L,
+                3_200_000L,
+                listOf(TripStop(Station.CAST, 2_140_000L, 2_200_000L)),
+                scheduledDepartureTime = 1_000_000L,
+                departureSource = PredictionSource.REALTIME,
             )))
             .build()
 
-        assertEquals(970_000L, departure.getInitialArrivalTime())
-        assertEquals(1_000_000L, departure.getInitialArrivalTime(pessimistic = true))
-        assertEquals(1_060_000L, departure.getInitialDepartureTime(pessimistic = true))
+        assertEquals(2_140_000L, departure.getInitialArrivalTime())
+        assertEquals(2_110_000L, departure.getInitialArrivalTime(pessimistic = true))
+        assertEquals(2_170_000L, departure.getInitialDepartureTime(pessimistic = true))
     }
 
     private fun departure(minEstimate: Long, maxEstimate: Long, tripId: String?): Departure =

@@ -152,6 +152,13 @@ class TransitRepository(
                     feedState
                 }
             }
+            // buildStateLocked reuses the previous snapshot when a refresh
+            // contains identical feed data. Deduplicate that stable snapshot
+            // before invoking the potentially expensive projection. Keep
+            // null-snapshot states distinct so errors and recovery still flow.
+            .distinctUntilChanged { previous, current ->
+                previous.snapshot != null && previous.snapshot === current.snapshot
+            }
             .mapLatest { feedState ->
                 val snapshot = feedState.snapshot
                 if (snapshot == null) {

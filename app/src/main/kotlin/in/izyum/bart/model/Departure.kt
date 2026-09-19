@@ -81,9 +81,14 @@ data class Departure(
 
     fun getMeanEstimate(min: Long, max: Long): Long = (min + max) / 2L
 
-    /** Latest safe estimate for the train's arrival at the initial station. */
+    /** Lower-bound estimate for the train's arrival at the initial station. */
     fun getInitialArrivalTime(pessimistic: Boolean = false): Long {
-        val departureEstimate = if (pessimistic) maxEstimate else getMeanEstimate()
+        val firstLeg = tripLegs.firstOrNull()
+        val departureEstimate = when {
+            pessimistic && firstLeg != null -> pessimisticDepartureTime(firstLeg)
+            pessimistic -> minEstimate
+            else -> getMeanEstimate()
+        }
         val firstStop = tripLegs.firstOrNull()?.stops?.firstOrNull { it.station == origin }
         val actualDwell = if (firstStop != null && firstStop.arrivalTime > 0L && firstStop.departureTime > 0L) {
             (firstStop.departureTime - firstStop.arrivalTime).coerceAtLeast(0L)
@@ -96,7 +101,11 @@ data class Departure(
     }
 
     fun getInitialDepartureTime(pessimistic: Boolean = false): Long =
-        if (pessimistic) maxEstimate else getMeanEstimate()
+        if (pessimistic) {
+            tripLegs.firstOrNull()?.let(::pessimisticDepartureTime) ?: minEstimate
+        } else {
+            getMeanEstimate()
+        }
 
     fun hasInitialDeparturePassed(nowMillis: Long, pessimistic: Boolean = false): Boolean =
         getInitialDepartureTime(pessimistic) <= nowMillis

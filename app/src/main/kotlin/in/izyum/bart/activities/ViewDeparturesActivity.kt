@@ -80,12 +80,12 @@ class ViewDeparturesActivity : ComponentActivity() {
 
     private fun openTripSchedule(departure: Departure) {
         val prepared = prepareDepartureForTrip(departure)
-        val itinerary = Itinerary.fromDeparture(prepared)
+        val itinerary = Itinerary.fromDeparture(prepared) ?: return
         startActivity(Intent(this, TripInProgressActivity::class.java).apply {
             RouteArguments.putTrip(
                 this,
                 stationPair,
-                itinerary?.selectionIdentity ?: prepared.identity,
+                itinerary.selectionIdentity,
                 RouteArguments.MODE_SCHEDULE,
             )
         })

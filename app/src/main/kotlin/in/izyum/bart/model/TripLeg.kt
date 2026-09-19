@@ -36,5 +36,15 @@ class TripLeg @JvmOverloads constructor(
     fun hasArrivalTime(): Boolean = arrivalTime > 0
 }
 
+/** BART's ETD range is generally +/- 30 seconds around the effective time. */
+internal const val DEPARTURE_UNCERTAINTY_MILLIS = 30_000L
+
+/** Lower-bound boarding time used by safety-sensitive countdowns. */
+internal fun pessimisticDepartureTime(leg: TripLeg): Long {
+    val effectiveDeparture = leg.departureTime.takeIf { it > 0L }
+        ?: leg.scheduledDepartureTime
+    return (effectiveDeparture - DEPARTURE_UNCERTAINTY_MILLIS).coerceAtLeast(0L)
+}
+
 private fun <T> immutableTripLegList(values: Collection<T>): List<T> =
     Collections.unmodifiableList(ArrayList(values))

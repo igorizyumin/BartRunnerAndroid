@@ -46,7 +46,7 @@ class DepartureAlarmPolicyTest {
             )))
             .build()
 
-        assertEquals(700_000L, DepartureAlarmPolicy.alarmTime(departure, 5))
+        assertEquals(610_000L, DepartureAlarmPolicy.alarmTime(departure, 5))
     }
 
     @Test
