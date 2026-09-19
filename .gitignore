@@ -15,3 +15,8 @@ gradle/gradle-daemon-jvm.properties
 local.properties
 app/release
 AGENTS.md
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
