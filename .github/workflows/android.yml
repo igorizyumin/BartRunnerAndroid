@@ -20,4 +20,4 @@ jobs:
       - name: Install Android SDK
         run: sdkmanager "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
       - name: Verify, test, lint, and assemble
-        run: ./gradlew verifyCompatibility :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+        run: ./gradlew --no-daemon verifyCompatibility :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
