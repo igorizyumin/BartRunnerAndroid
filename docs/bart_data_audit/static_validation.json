@@ -1,0 +1,290 @@
+{
+  "source": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\app\\src\\test\\resources\\gtfs\\bart_google_transit_night.zip",
+  "feed_info": {
+    "feed_publisher_name": "Bay Area Rapid Transit",
+    "feed_publisher_url": "http://www.bart.gov",
+    "feed_lang": "en",
+    "feed_start_date": "20260112",
+    "feed_end_date": "20260830",
+    "feed_version": "72"
+  },
+  "service_dates": [
+    "2026-09-11",
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-17"
+  ],
+  "route_mapping": [
+    {
+      "route_id": "1",
+      "route_short_name": "Yellow-S",
+      "line": "Yellow",
+      "direction": "S",
+      "route_type": "1",
+      "route_long_name": "Antioch to SF Int'l Airport SFO/Millbrae",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "2",
+      "route_short_name": "Yellow-N",
+      "line": "Yellow",
+      "direction": "N",
+      "route_type": "1",
+      "route_long_name": "Millbrae/SF Int'l SFO to Antioch",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "3",
+      "route_short_name": "Orange-N",
+      "line": "Orange",
+      "direction": "N",
+      "route_type": "1",
+      "route_long_name": "Berryessa/North San Jose to Richmond",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "4",
+      "route_short_name": "Orange-S",
+      "line": "Orange",
+      "direction": "S",
+      "route_type": "1",
+      "route_long_name": "Richmond to Berryessa/North San Jose",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "5",
+      "route_short_name": "Green-S",
+      "line": "Green",
+      "direction": "S",
+      "route_type": "1",
+      "route_long_name": "Berryessa/North San Jose to Daly City",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "6",
+      "route_short_name": "Green-N",
+      "line": "Green",
+      "direction": "N",
+      "route_type": "1",
+      "route_long_name": "Daly City to Berryessa/North San Jose",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "7",
+      "route_short_name": "Red-S",
+      "line": "Red",
+      "direction": "S",
+      "route_type": "1",
+      "route_long_name": "Richmond to SF Int'l Airport SFO/Millbrae",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "8",
+      "route_short_name": "Red-N",
+      "line": "Red",
+      "direction": "N",
+      "route_type": "1",
+      "route_long_name": "Millbrae/SF Int'l Airport SFO to Richmond",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "11",
+      "route_short_name": "Blue-S",
+      "line": "Blue",
+      "direction": "S",
+      "route_type": "1",
+      "route_long_name": "Dublin/Pleasanton to Daly City",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "12",
+      "route_short_name": "Blue-N",
+      "line": "Blue",
+      "direction": "N",
+      "route_type": "1",
+      "route_long_name": "Daly City to Dublin/Pleasanton",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "19",
+      "route_short_name": "Grey-N",
+      "line": "Grey",
+      "direction": "N",
+      "route_type": "1",
+      "route_long_name": "Oakland Int'l Airport OAK to Coliseum",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "20",
+      "route_short_name": "Grey-S",
+      "line": "Grey",
+      "direction": "S",
+      "route_type": "1",
+      "route_long_name": "Coliseum to Oakland Int'l Airport OAK",
+      "is_bus_bridge": false
+    },
+    {
+      "route_id": "BB-A",
+      "route_short_name": "BridgeA",
+      "line": "Bridgea",
+      "direction": "",
+      "route_type": "3",
+      "route_long_name": "Bus Bridge",
+      "is_bus_bridge": true
+    },
+    {
+      "route_id": "BB-B",
+      "route_short_name": "BridgeB",
+      "line": "Bridgeb",
+      "direction": "",
+      "route_type": "3",
+      "route_long_name": "Bus Bridge",
+      "is_bus_bridge": true
+    }
+  ],
+  "duplicate_trip_ids": {},
+  "after_midnight_stop_time_fields": 2005,
+  "impossible_stop_sequences": [],
+  "non_monotonic_scheduled_times": [],
+  "special_station_counts": {
+    "pittsburg": 620,
+    "pittsburg_center": 444,
+    "antioch": 444,
+    "sfo": 1048,
+    "millbrae": 472,
+    "sfo_and_millbrae": 468
+  },
+  "terminal_counts": [
+    {
+      "line": "Blue",
+      "terminal_station": "BAYF",
+      "count": 4
+    },
+    {
+      "line": "Blue",
+      "terminal_station": "DALY",
+      "count": 222
+    },
+    {
+      "line": "Blue",
+      "terminal_station": "DUBL",
+      "count": 226
+    },
+    {
+      "line": "Bridgea",
+      "terminal_station": "FRMT",
+      "count": 102
+    },
+    {
+      "line": "Bridgea",
+      "terminal_station": "UCTY",
+      "count": 208
+    },
+    {
+      "line": "Bridgeb",
+      "terminal_station": "FRMT",
+      "count": 113
+    },
+    {
+      "line": "Bridgeb",
+      "terminal_station": "WARM",
+      "count": 232
+    },
+    {
+      "line": "Green",
+      "terminal_station": "BERY",
+      "count": 96
+    },
+    {
+      "line": "Green",
+      "terminal_station": "DALY",
+      "count": 92
+    },
+    {
+      "line": "Green",
+      "terminal_station": "SHAY",
+      "count": 2
+    },
+    {
+      "line": "Grey",
+      "terminal_station": "COLS",
+      "count": 701
+    },
+    {
+      "line": "Grey",
+      "terminal_station": "OAKL",
+      "count": 701
+    },
+    {
+      "line": "Orange",
+      "terminal_station": "BERY",
+      "count": 236
+    },
+    {
+      "line": "Orange",
+      "terminal_station": "RICH",
+      "count": 228
+    },
+    {
+      "line": "Orange",
+      "terminal_station": "UCTY",
+      "count": 108
+    },
+    {
+      "line": "Orange",
+      "terminal_station": "WARM",
+      "count": 101
+    },
+    {
+      "line": "Red",
+      "terminal_station": "MLBR",
+      "count": 168
+    },
+    {
+      "line": "Red",
+      "terminal_station": "RICH",
+      "count": 168
+    },
+    {
+      "line": "Yellow",
+      "terminal_station": "ANTC",
+      "count": 224
+    },
+    {
+      "line": "Yellow",
+      "terminal_station": "MLBR",
+      "count": 68
+    },
+    {
+      "line": "Yellow",
+      "terminal_station": "PITT",
+      "count": 90
+    },
+    {
+      "line": "Yellow",
+      "terminal_station": "SFIA",
+      "count": 342
+    }
+  ],
+  "bus_bridge_routes": [
+    {
+      "route_id": "BB-A",
+      "route_short_name": "BridgeA",
+      "line": "Bridgea",
+      "direction": "",
+      "route_type": "3",
+      "route_long_name": "Bus Bridge",
+      "is_bus_bridge": true
+    },
+    {
+      "route_id": "BB-B",
+      "route_short_name": "BridgeB",
+      "line": "Bridgeb",
+      "direction": "",
+      "route_type": "3",
+      "route_long_name": "Bus Bridge",
+      "is_bus_bridge": true
+    }
+  ],
+  "conclusion": "Static GTFS contains explicit rail routes plus BridgeA/BridgeB bus routes. SFO/Millbrae occurs in ordinary Red/Yellow route patterns in these files; a separate dedicated shuttle trip is not identified by a unique shuttle route name."
+}

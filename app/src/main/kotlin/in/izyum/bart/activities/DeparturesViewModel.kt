@@ -3,13 +3,11 @@ package `in`.izyum.bart.activities
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.izyum.bart.backend.RouteDepartureProjection
-import `in`.izyum.bart.backend.EtdAwareRouteDepartureProjection
 import `in`.izyum.bart.backend.TransitRepository
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
-import `in`.izyum.bart.networktasks.EtdStationCache
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +56,6 @@ class DeparturesViewModel @JvmOverloads constructor(
         repository: TransitRepository,
         networkSupplier: Supplier<BartGtfsNetwork>,
         stationPair: StationPair?,
-        etdStationCache: EtdStationCache? = null,
     ) {
         collectionJob?.cancel()
         collectionJob = null
@@ -70,33 +67,22 @@ class DeparturesViewModel @JvmOverloads constructor(
 
         collectionJob = viewModelScope.launch {
             val baseProjection = RouteDepartureProjection(stationPair, networkSupplier)
-            val etdProjection = etdStationCache?.let {
-                EtdAwareRouteDepartureProjection(baseProjection, it)
-            }
-            val projectedState = if (etdProjection != null) {
-                repository.projectedStateSuspending(
-                    etdProjection::project,
-                    etdProjection::areEquivalent,
-                )
-            } else {
-                repository.projectedState(
-                    baseProjection::project,
-                    baseProjection::areEquivalent,
-                )
-            }
-            projectedState
+            repository.projectedState(
+                baseProjection::project,
+                baseProjection::areEquivalent,
+            )
                 .collectLatest { result ->
                     result.exceptionOrNull()?.let { exception ->
                         updateError(asException(exception))
                     } ?: result.getOrNull()?.let { departures ->
-                        updateFromFeed(departures.getDepartures())
+                        replace(departures.getDepartures())
                     }
                 }
         }
     }
 
     @Synchronized
-    fun replace(incoming: List<Departure>): List<Departure> {
+    internal fun replace(incoming: List<Departure>): List<Departure> {
         departures = immutableCopy(Departure.replaceFeed(departures, incoming, timeSource))
         _uiState.value = if (departures.isEmpty()) {
             State.empty()
@@ -104,23 +90,6 @@ class DeparturesViewModel @JvmOverloads constructor(
             State.content(departures)
         }
         return departures
-    }
-
-    @Synchronized
-    fun clear(): List<Departure> {
-        departures = emptyList()
-        _uiState.value = State.empty()
-        return departures
-    }
-
-    fun getState(): State = uiState.value
-
-    @Synchronized
-    fun getDepartures(): List<Departure> = departures
-
-    @Synchronized
-    private fun updateFromFeed(incoming: List<Departure>) {
-        replace(incoming)
     }
 
     @Synchronized

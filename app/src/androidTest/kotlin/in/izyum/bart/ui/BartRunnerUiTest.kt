@@ -20,6 +20,7 @@ import `in`.izyum.bart.activities.RoutesUiState
 import `in`.izyum.bart.model.Alert
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Line
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.model.TripLeg
@@ -258,7 +259,7 @@ class BartRunnerUiTest {
             BartRunnerTheme {
                 HomeScreen(
                     state = RoutesUiState(isLoading = false),
-                    followedTrip = departureBeforeBoarding(now),
+                    followedTrip = Itinerary.fromDeparture(departureBeforeBoarding(now)),
                     timeSource = TimeSource { now },
                     onRouteSelected = {},
                     onAddFavorite = {},
@@ -271,7 +272,7 @@ class BartRunnerUiTest {
             }
         }
 
-        composeRule.onNodeWithText("Train arrives in 10:30").assertIsDisplayed()
+        composeRule.onNodeWithText("Train arrives in 10:00").assertIsDisplayed()
         composeRule.onNodeWithText("Trip in progress").assertDoesNotExist()
     }
 
@@ -282,7 +283,9 @@ class BartRunnerUiTest {
             BartRunnerTheme {
                 HomeScreen(
                     state = RoutesUiState(isLoading = false),
-                    followedTrip = transferDeparture(now, connectingArrival = now + 120_000L),
+                    followedTrip = Itinerary.fromDeparture(
+                        transferDeparture(now, connectingArrival = now + 120_000L),
+                    ),
                     timeSource = TimeSource { now },
                     onRouteSelected = {},
                     onAddFavorite = {},
@@ -304,7 +307,7 @@ class BartRunnerUiTest {
         setTestContent {
             BartRunnerTheme {
                 TripScreen(
-                    departure = testDeparture(),
+                    departure = Itinerary.fromDeparture(testDeparture()),
                     route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
                     alerts = Alert.AlertList(
                         listOf(Alert(id = "trip-alert", description = "BART test alert")),
@@ -381,7 +384,7 @@ class BartRunnerUiTest {
         setTestContent {
             BartRunnerTheme {
                 TripScreen(
-                    departure = testDeparture(),
+                    departure = Itinerary.fromDeparture(testDeparture()),
                     route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
                     isFollowingInitially = true,
                     alarmVisible = false,
@@ -409,7 +412,9 @@ class BartRunnerUiTest {
         setTestContent {
             BartRunnerTheme {
                 TripScreen(
-                    departure = transferDeparture(now, connectingArrival = now + 120_000L),
+                    departure = Itinerary.fromDeparture(
+                        transferDeparture(now, connectingArrival = now + 120_000L),
+                    ),
                     route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
                     isFollowingInitially = true,
                     alarmVisible = false,
@@ -437,7 +442,9 @@ class BartRunnerUiTest {
         setTestContent {
             BartRunnerTheme {
                 TripScreen(
-                    departure = transferDeparture(now, connectingArrival = now - 1_000L),
+                    departure = Itinerary.fromDeparture(
+                        transferDeparture(now, connectingArrival = now - 1_000L),
+                    ),
                     route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
                     isFollowingInitially = true,
                     alarmVisible = false,
@@ -481,8 +488,6 @@ class BartRunnerUiTest {
             .setTrainDestination(Station.MLPT)
             .setPassengerDestination(Station.MLPT)
             .setLine(Line.ORANGE)
-            .setTrainDestinationColorHex("#ff8c00")
-            .setDirection("instrumented-test")
             .setMinEstimate(departureTime - 30_000L)
             .setMaxEstimate(departureTime + 30_000L)
             .setTripLegs(listOf(TripLeg(
@@ -499,7 +504,6 @@ class BartRunnerUiTest {
             .setTrainDestination(Station.MLPT)
             .setPassengerDestination(Station.MLPT)
             .setLine(Line.ORANGE)
-            .setDirection("arrival-test")
             .setMinEstimate(departureTime - 30_000L)
             .setMaxEstimate(departureTime + 30_000L)
             .setTripLegs(listOf(
@@ -523,8 +527,6 @@ class BartRunnerUiTest {
             .setTrainDestination(Station.MLPT)
             .setPassengerDestination(Station.MLPT)
             .setLine(Line.BLUE)
-            .setTrainDestinationColorHex("#0099cc")
-            .setDirection("transfer-test")
             .setMinEstimate(now - 600_000L)
             .setMaxEstimate(now - 590_000L)
             .setTripLegs(listOf(

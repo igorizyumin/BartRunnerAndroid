@@ -29,10 +29,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runInterruptible
 
+data class RealtimeFeedState(
+    val lastSuccessReceivedAtMillis: Long? = null,
+    val feedTimestampMillis: Long? = null,
+    val lastError: Exception? = null,
+    val isUsable: Boolean = false,
+)
+
 data class TransitFeedState(
     val snapshot: TransitFeedSnapshot? = null,
     val error: Exception? = null,
     val isOffline: Boolean = false,
+    val tripUpdates: RealtimeFeedState = RealtimeFeedState(),
+    val alerts: RealtimeFeedState = RealtimeFeedState(),
 )
 
 /** Owns feed polling and exposes one replaying flow for all transit consumers. */
@@ -44,7 +53,18 @@ class TransitRepository(
     private val offlineSnapshotProvider: (() -> TransitFeedSnapshot)? = null,
     private val backgroundPollingIntervalMillis: StateFlow<Long> =
         MutableStateFlow(refreshIntervalMillis),
+    private val tripUpdatesStaleAfterMillis: Long = 2 * 60_000L,
+    private val alertsStaleAfterMillis: Long = 10 * 60_000L,
+    private val nowMillisProvider: () -> Long = System::currentTimeMillis,
 ) : AutoCloseable {
+    init {
+        require(tripUpdatesStaleAfterMillis > 0) {
+            "tripUpdatesStaleAfterMillis must be positive"
+        }
+        require(alertsStaleAfterMillis > 0) {
+            "alertsStaleAfterMillis must be positive"
+        }
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private val appInForeground = MutableStateFlow(false)
@@ -55,6 +75,10 @@ class TransitRepository(
     )
 
     private var latestSnapshot: TransitFeedSnapshot? = null
+    private var latestTripUpdates: CachedRealtimeFeed? = null
+    private var latestAlerts: CachedRealtimeFeed? = null
+    private var lastTripUpdatesError: Exception? = null
+    private var lastAlertsError: Exception? = null
     private var refreshInProgress = false
     private var lastRefreshStartedAtMillis: Long? = null
     private var closed = false
@@ -128,6 +152,13 @@ class TransitRepository(
                     feedState
                 }
             }
+            // buildStateLocked reuses the previous snapshot when a refresh
+            // contains identical feed data. Deduplicate that stable snapshot
+            // before invoking the potentially expensive projection. Keep
+            // null-snapshot states distinct so errors and recovery still flow.
+            .distinctUntilChanged { previous, current ->
+                previous.snapshot != null && previous.snapshot === current.snapshot
+            }
             .mapLatest { feedState ->
                 val snapshot = feedState.snapshot
                 if (snapshot == null) {
@@ -149,8 +180,23 @@ class TransitRepository(
             }
             .flowOn(Dispatchers.Default)
 
-    /** Synchronously fetches once. Intended for tests and explicit refresh actions. */
-    fun refreshNow() {
+    /** Refreshes once without blocking the caller's thread. */
+    suspend fun refresh() = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        refreshNowBlockingForTests()
+    }
+
+    /** Refreshes immediately when stale, always off the caller's thread. */
+    suspend fun refreshIfStale() = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        refreshIfStaleBlocking()
+    }
+
+    /** Refreshes only trip updates without blocking the caller's thread. */
+    suspend fun refreshTripUpdates() = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        refreshTripUpdatesNow()
+    }
+
+    /** Synchronous refresh helper reserved for JVM tests and background callers. */
+    fun refreshNowBlockingForTests() {
         if (!beginRefresh(force = true)) {
             return
         }
@@ -168,7 +214,6 @@ class TransitRepository(
             return
         }
 
-        val previousSnapshot = synchronized(lock) { latestSnapshot }
         val result = try {
             Result.success(feedClient.fetchTripUpdates())
         } catch (exception: Exception) {
@@ -179,34 +224,26 @@ class TransitRepository(
         synchronized(lock) {
             refreshInProgress = false
             if (!closed) {
+                val now = nowMillisProvider()
                 result.fold(
                     onSuccess = { tripUpdates ->
-                        val alerts = previousSnapshot?.alerts
-                            ?: TransitFeedSnapshot.empty(System.currentTimeMillis()).alerts
-                        val refreshedSnapshot = TransitFeedSnapshot(
+                        lastTripUpdatesError = null
+                        latestTripUpdates = CachedRealtimeFeed(
                             tripUpdates,
-                            alerts,
-                            System.currentTimeMillis(),
+                            now,
+                            feedTimestampMillis(tripUpdates, now),
+                            null,
                         )
-                        if (latestSnapshot == null ||
-                            !refreshedSnapshot.hasSameFeedData(latestSnapshot)
-                        ) {
-                            latestSnapshot = refreshedSnapshot
-                            stateToPublish = TransitFeedState(snapshot = refreshedSnapshot)
-                        }
                     },
                     onFailure = { exception ->
-                        stateToPublish = TransitFeedState(
-                            snapshot = latestSnapshot,
-                            error = exception as? Exception
-                                ?: RuntimeException(exception),
-                            isOffline = true,
-                        )
+                        val error = exception as? Exception ?: RuntimeException(exception)
+                        lastTripUpdatesError = error
+                        latestTripUpdates = latestTripUpdates?.copy(lastError = error)
                     },
                 )
+                stateToPublish = buildStateLocked(now)
             }
         }
-
         stateToPublish?.let {
             _state.value = it
             feedUpdates.tryEmit(it)
@@ -214,7 +251,7 @@ class TransitRepository(
     }
 
     /** Fetches immediately only when the feed has not been fetched recently. */
-    fun refreshIfStale() {
+    private fun refreshIfStaleBlocking() {
         if (!beginRefresh(force = false)) {
             return
         }
@@ -251,7 +288,7 @@ class TransitRepository(
             if (closed || refreshInProgress) {
                 return false
             }
-            val nowMillis = System.currentTimeMillis()
+            val nowMillis = nowMillisProvider()
             if (!force && lastRefreshStartedAtMillis?.let {
                     nowMillis - it < refreshIntervalMillis
                 } == true
@@ -277,36 +314,38 @@ class TransitRepository(
     }
 
     private fun publishFetchResult(fetchResult: TransitFeedFetchResult) {
-
-        val refreshErrors = mutableListOf<Exception>()
         var stateToPublish: TransitFeedState? = null
         synchronized(lock) {
             refreshInProgress = false
             if (!closed) {
-                fetchResult.tripUpdatesError?.let { addRefreshError(refreshErrors, it) }
-                fetchResult.alertsError?.let { addRefreshError(refreshErrors, it) }
-
-                val mergedSnapshot = if (refreshErrors.isNotEmpty()) {
-                    // The Android application supplies a static-only snapshot here so
-                    // stale realtime corrections are not presented as current data.
-                    offlineSnapshotProvider?.invoke() ?: mergeSnapshot(fetchResult)
-                } else {
-                    mergeSnapshot(fetchResult)
-                }
-                if (mergedSnapshot != null &&
-                    (latestSnapshot == null ||
-                        !mergedSnapshot.hasSameFeedData(latestSnapshot!!))
-                ) {
-                    latestSnapshot = mergedSnapshot
-                    stateToPublish = TransitFeedState(snapshot = mergedSnapshot)
-                }
-                if (refreshErrors.isNotEmpty()) {
-                    stateToPublish = TransitFeedState(
-                        snapshot = latestSnapshot,
-                        error = refreshErrors.first(),
-                        isOffline = true,
+                val now = nowMillisProvider()
+                if (fetchResult.tripUpdates != null) {
+                    lastTripUpdatesError = null
+                    latestTripUpdates = CachedRealtimeFeed(
+                        fetchResult.tripUpdates,
+                        now,
+                        feedTimestampMillis(fetchResult.tripUpdates, now),
+                        null,
+                    )
+                } else if (fetchResult.tripUpdatesError != null) {
+                    lastTripUpdatesError = fetchResult.tripUpdatesError
+                    latestTripUpdates = latestTripUpdates?.copy(
+                        lastError = fetchResult.tripUpdatesError,
                     )
                 }
+                if (fetchResult.alerts != null) {
+                    lastAlertsError = null
+                    latestAlerts = CachedRealtimeFeed(
+                        fetchResult.alerts,
+                        now,
+                        feedTimestampMillis(fetchResult.alerts, now),
+                        null,
+                    )
+                } else if (fetchResult.alertsError != null) {
+                    lastAlertsError = fetchResult.alertsError
+                    latestAlerts = latestAlerts?.copy(lastError = fetchResult.alertsError)
+                }
+                stateToPublish = buildStateLocked(now, fetchResult.getCompleteSnapshot())
             }
         }
 
@@ -318,29 +357,68 @@ class TransitRepository(
 
     fun getLatestSnapshot(): TransitFeedSnapshot? = synchronized(lock) { latestSnapshot }
 
-    private fun mergeSnapshot(result: TransitFeedFetchResult): TransitFeedSnapshot? {
-        result.getCompleteSnapshot()?.let { return it }
-
-        var tripUpdates: GtfsRealtime.FeedMessage? = result.tripUpdates
-        var alerts: GtfsRealtime.FeedMessage? = result.alerts
-        latestSnapshot?.let { snapshot ->
-            if (tripUpdates == null) {
-                tripUpdates = snapshot.tripUpdates
-            }
-            if (alerts == null) {
-                alerts = snapshot.alerts
-            }
+    private fun buildStateLocked(
+        nowMillis: Long,
+        preferredSnapshot: TransitFeedSnapshot? = null,
+    ): TransitFeedState {
+        val trip = latestTripUpdates?.status(nowMillis, tripUpdatesStaleAfterMillis)
+            ?: RealtimeFeedState(lastError = lastTripUpdatesError)
+        val alerts = latestAlerts?.status(nowMillis, alertsStaleAfterMillis)
+            ?: RealtimeFeedState(lastError = lastAlertsError)
+        val usableTrip = latestTripUpdates?.takeIf {
+            it.isUsable(nowMillis, tripUpdatesStaleAfterMillis)
+        }?.message ?: TransitFeedSnapshot.empty(nowMillis).tripUpdates
+        val usableAlerts = latestAlerts?.takeIf {
+            it.isUsable(nowMillis, alertsStaleAfterMillis)
+        }?.message ?: TransitFeedSnapshot.empty(nowMillis).alerts
+        val hasUsableRealtime = trip.isUsable || alerts.isUsable
+        val errors = listOfNotNull(trip.lastError, alerts.lastError)
+        val mergedSnapshot = preferredSnapshot ?: if (hasUsableRealtime) {
+            TransitFeedSnapshot(usableTrip, usableAlerts, nowMillis)
+        } else {
+            // No retained realtime remains usable. The provider supplies the
+            // static-only projection used by the Android application.
+            offlineSnapshotProvider?.invoke() ?: TransitFeedSnapshot.empty(nowMillis)
         }
-        if (tripUpdates == null || alerts == null) {
-            return null
+        if (latestSnapshot == null || !mergedSnapshot.hasSameFeedData(latestSnapshot)) {
+            latestSnapshot = mergedSnapshot
         }
-        return TransitFeedSnapshot(tripUpdates, alerts, System.currentTimeMillis())
+        return TransitFeedState(
+            snapshot = latestSnapshot,
+            error = errors.firstOrNull(),
+            // Departure screens depend on trip updates. Fresh alert data must
+            // not make stale or missing departure predictions appear online.
+            isOffline = errors.isNotEmpty() || !trip.isUsable,
+            tripUpdates = trip,
+            alerts = alerts,
+        )
     }
 
-    private fun addRefreshError(errors: MutableList<Exception>, error: Exception) {
-        if (!errors.contains(error)) {
-            errors.add(error)
-        }
+    private fun feedTimestampMillis(
+        feed: GtfsRealtime.FeedMessage,
+        fallbackMillis: Long,
+    ): Long = if (feed.hasHeader() && feed.header.hasTimestamp() && feed.header.timestamp > 0) {
+        feed.header.timestamp * 1000L
+    } else {
+        fallbackMillis
+    }
+
+    private data class CachedRealtimeFeed(
+        val message: GtfsRealtime.FeedMessage,
+        val receivedAtMillis: Long,
+        val feedTimestampMillis: Long,
+        val lastError: Exception?,
+    ) {
+        fun isUsable(nowMillis: Long, staleAfterMillis: Long): Boolean =
+            nowMillis - receivedAtMillis < staleAfterMillis
+
+        fun status(nowMillis: Long, staleAfterMillis: Long): RealtimeFeedState =
+            RealtimeFeedState(
+                lastSuccessReceivedAtMillis = receivedAtMillis,
+                feedTimestampMillis = feedTimestampMillis,
+                lastError = lastError,
+                isUsable = isUsable(nowMillis, staleAfterMillis),
+            )
     }
 
     override fun close() {

@@ -1,11 +1,26 @@
 # Legacy ETD corroboration
 
+> Retired runtime design. The application no longer fetches, merges, or uses
+> ETD data. This document is retained as historical audit evidence only; the
+> current runtime source of truth is `CanonicalTransitSnapshot` and its
+> canonical GTFS-Realtime merge.
+
 BART's GTFS-Realtime trip-update feed is useful for delays and stop-level
 estimates, but it can omit scheduled trains that BART's operations system still
-knows about. The legacy ETD API is the station-board ground truth for that
-narrow gap. Antioch's terminal vehicle is published under a separate technical
-trip ID; when its terminal stops can be matched to a scheduled Yellow trip,
-those GTFS-RT predictions are joined to that trip directly.
+knows about. It also often omits updates for trips canceled operationally
+without an explicit `CANCELED` entity. The one-hour realtime-coverage rule is
+the app's heuristic for that omission-based cancellation case. The legacy ETD
+API is currently used as a second source of evidence for the narrow gap, though
+it is not yet established that ETD is strictly necessary.
+
+Antioch's terminal vehicle is published under a separate technical trip ID
+that does not map to the valid electric passenger-trip ID. The current handler
+can join its terminal predictions only to a matching electric **realtime**
+Yellow snapshot; a schedule-only electric trip is not eligible for that join.
+The SFO–Millbrae shuttle may have the same missing-identity/GTFS-RT limitation;
+the current implementation synthesizes that late-night leg from static Yellow
+SFO timing, and the presence of a dedicated static shuttle trip remains
+unverified. See [the schedule/realtime merge audit](SCHEDULE_REALTIME_AUDIT.md).
 
 ## Request policy
 

@@ -3,6 +3,9 @@ package `in`.izyum.bart
 import android.app.Application
 import android.app.Activity
 import android.os.Bundle
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import com.hashsequence.coilresvg.ResvgDecoder
 import `in`.izyum.bart.backend.TransitFeedSnapshot
 import `in`.izyum.bart.backend.HttpTransitFeedClient
 import `in`.izyum.bart.backend.TransitRepository
@@ -11,21 +14,18 @@ import `in`.izyum.bart.data.FollowedTripRepository
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.networktasks.GtfsStaticData
-import `in`.izyum.bart.networktasks.EtdStationCache
-import `in`.izyum.bart.networktasks.HttpEtdClient
 import `in`.izyum.bart.platform.OfflineStatusController
 import `in`.izyum.bart.platform.DeparturePollingAlarm
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.io.IOException
 import java.util.function.Supplier
 
-class BartRunnerApplication : Application() {
+class BartRunnerApplication : Application(), SingletonImageLoader.Factory {
     lateinit var favoritesRepository: FavoritesRepository
     lateinit var followedTripRepository: FollowedTripRepository
     lateinit var transitRepository: TransitRepository
     lateinit var gtfsStaticData: GtfsStaticData
     lateinit var offlineStatusController: OfflineStatusController
-    lateinit var etdStationCache: EtdStationCache
 
     val timeSource: TimeSource = SystemTimeSource
 
@@ -42,14 +42,13 @@ class BartRunnerApplication : Application() {
         favoritesRepository = FavoritesRepository(this)
         followedTripRepository = FollowedTripRepository(this)
         gtfsStaticData = GtfsStaticData(this, timeSource)
-        etdStationCache = EtdStationCache(HttpEtdClient(), timeSource)
         transitRepository = TransitRepository(
             HttpTransitFeedClient(),
             15_000L,
             offlineSnapshotProvider = { TransitFeedSnapshot.empty(timeSource.nowMillis()) },
         )
         offlineStatusController = OfflineStatusController(this, transitRepository, followedTripRepository) {
-            transitRepository.refreshNow()
+            transitRepository.refresh()
         }
         DeparturePollingAlarm.refresh(this, followedTripRepository)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
@@ -74,5 +73,12 @@ class BartRunnerApplication : Application() {
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
     }
+
+    override fun newImageLoader(context: coil3.PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .components {
+                add(ResvgDecoder.Factory())
+            }
+            .build()
 
 }

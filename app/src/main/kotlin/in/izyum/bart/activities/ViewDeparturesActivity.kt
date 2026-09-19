@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.data.FareDiscountPreferences
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.ui.BartRunnerTheme
 import `in`.izyum.bart.ui.DeparturesScreen
@@ -51,7 +52,6 @@ class ViewDeparturesActivity : ComponentActivity() {
             app.transitRepository,
             app.bartGtfsNetworkSupplier,
             stationPair,
-            app.etdStationCache,
         )
         setContent {
             val state by departuresViewModel.uiState.collectAsStateWithLifecycle()
@@ -80,8 +80,14 @@ class ViewDeparturesActivity : ComponentActivity() {
 
     private fun openTripSchedule(departure: Departure) {
         val prepared = prepareDepartureForTrip(departure)
+        val itinerary = Itinerary.fromDeparture(prepared) ?: return
         startActivity(Intent(this, TripInProgressActivity::class.java).apply {
-            RouteArguments.putTrip(this, stationPair, prepared.identity, RouteArguments.MODE_SCHEDULE)
+            RouteArguments.putTrip(
+                this,
+                stationPair,
+                itinerary.selectionIdentity,
+                RouteArguments.MODE_SCHEDULE,
+            )
         })
     }
 

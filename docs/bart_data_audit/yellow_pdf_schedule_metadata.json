@@ -1,0 +1,20 @@
+{
+  "source_urls": {
+    "weekday": "https://www.bart.gov/sites/default/files/2026-07/August%2010%2C%20%202026%20%20WDAY%20Service%20for%20Antioch_SFO%20%28Yellow%29%20Line.pdf",
+    "weekend": "https://www.bart.gov/sites/default/files/2026-07/August%2010%2C%20%202026%20%20Sat_Sun%20Service%20for%20Antioch%20to%20SFO%20%28Yellow%29%20Line.pdf"
+  },
+  "pdfs": [
+    {
+      "service_kind": "weekday",
+      "path": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\docs\\bart_data_audit\\schedule_pdfs\\yellow_weekday.pdf",
+      "sha256": "0d109cfefdd96b42042b58d381e4619cb851957a542cc37b218e285902904060",
+      "pages": 2
+    },
+    {
+      "service_kind": "weekend",
+      "path": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\docs\\bart_data_audit\\schedule_pdfs\\yellow_weekend.pdf",
+      "sha256": "54821a7189d6adfe56133e43b4e4d0701725598c80f1ffb1196ab0b83c86ad34",
+      "pages": 2
+    }
+  ]
+}

@@ -25,6 +25,7 @@ import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.data.FareDiscountPreferences
 import `in`.izyum.bart.R
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.StationPair
 import `in`.izyum.bart.presentation.DepartureTextFormatter
@@ -49,7 +50,6 @@ class TripInProgressActivity : ComponentActivity() {
     private val tripActionsViewModel: TripActionsViewModel by viewModels()
     private val serviceAlertsViewModel: ServiceAlertsViewModel by viewModels()
     private var isFollowing = false
-    private var routeDestination: Station? = null
     private var tripRoute: StationPair? = null
     private var tripFare by mutableStateOf<String?>(null)
     private var fareEligible = false
@@ -76,7 +76,7 @@ class TripInProgressActivity : ComponentActivity() {
             alarmVisible = true
             showAlarmWindow()
         }
-        if (intent.getStringExtra(RouteArguments.DEPARTURE_IDENTITY) != null) {
+        if (intent.getStringExtra(RouteArguments.SELECTION_IDENTITY) != null) {
             setIntent(intent)
             recreate()
         }
@@ -85,26 +85,22 @@ class TripInProgressActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val app = application as BartRunnerApplication
-        val followed = tripActionsViewModel.getFollowedDeparture()
+        val followed = tripActionsViewModel.getFollowedItinerary()
         var route = RouteArguments.readRoute(intent)
-        var identity = RouteArguments.readDepartureIdentity(intent)
+        var selectionIdentity = RouteArguments.readSelectionIdentity(intent)
         val screenMode = RouteArguments.readScreenMode(intent)
-        if (shouldReturnToRoutes(screenMode, followed)) {
-            startActivity(Intent(this, RoutesListActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            })
-            finish()
+        if (shouldReturnToRoutes(screenMode, followed?.toDeparture())) {
+            returnToRoutes()
             return
         }
         if (route == null && followed != null && (screenMode == null || screenMode == RouteArguments.MODE_FOLLOWED)) {
-            identity = followed.identity
+            selectionIdentity = followed.selectionIdentity
             route = followed.getStationPair()
         }
-        if (route == null || identity == null) {
-            finish()
+        if (route == null || selectionIdentity == null) {
+            returnToRoutes()
             return
         }
-        routeDestination = route.destination
         tripRoute = route
         fareEligible = route.destination != null
         tripFare = null
@@ -116,33 +112,41 @@ class TripInProgressActivity : ComponentActivity() {
         if (alarmVisible) {
             showAlarmWindow()
         }
-        isFollowing = followed != null && identity == followed.identity
+        isFollowing = followed != null && selectionIdentity == followed.selectionIdentity
         tripProgressViewModel.setQuery(
             route,
-            identity,
-            app.timeSource,
-            initialDeparture = if (isFollowing) followed else null,
+            selectionIdentity,
+            initialItinerary = if (isFollowing) followed else null,
         )
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                tripProgressViewModel.departureState.collect { updated ->
-                    if (updated != null) {
-                        if (isFollowing) tripActionsViewModel.updateFollowedTrip(updated)
-                        resolveFare(app, updated.getStationPair())
+                launch {
+                    tripProgressViewModel.itineraryState.collect { updated ->
+                        if (updated != null) {
+                            if (isFollowing) tripActionsViewModel.updateFollowedTrip(updated)
+                            resolveFare(app, updated.getStationPair())
+                        }
+                    }
+                }
+                launch {
+                    tripProgressViewModel.resolutionState.collect { state ->
+                        if (state == TripResolutionState.NOT_FOUND && !isFinishing) {
+                            returnToRoutes()
+                        }
                     }
                 }
             }
         }
 
         setContent {
-            val departure by tripProgressViewModel.departureState.collectAsStateWithLifecycle()
+            val itinerary by tripProgressViewModel.itineraryState.collectAsStateWithLifecycle()
             val tripActionsState by tripActionsViewModel.uiState.collectAsStateWithLifecycle()
             val alerts by serviceAlertsViewModel.alerts.collectAsStateWithLifecycle()
             val isOffline by app.offlineStatusController.isOffline.collectAsStateWithLifecycle()
             BartRunnerTheme {
                 TripScreen(
-                    departure = departure,
+                    departure = itinerary,
                     route = tripRoute,
                     alerts = alerts,
                     isOffline = isOffline,
@@ -168,6 +172,13 @@ class TripInProgressActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun returnToRoutes() {
+        startActivity(Intent(this, RoutesListActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        })
+        finish()
     }
 
     private fun silenceAlarm() {
@@ -254,9 +265,9 @@ class TripInProgressActivity : ComponentActivity() {
         }
     }
 
-    private fun followTrip(departure: Departure) {
+    private fun followTrip(itinerary: Itinerary) {
         if (isFollowing) return
-        tripActionsViewModel.followTrip(departure, tripRoute?.destination)
+        tripActionsViewModel.followTrip(itinerary)
         requestNotificationPermissionIfNeeded()
         startAlarmTrackingService()
         isFollowing = true
@@ -285,15 +296,12 @@ class TripInProgressActivity : ComponentActivity() {
         }
     }
 
-    private fun shareArrival(departure: Departure) {
-        val destination = departure.getStationPair()?.destination
-            ?: routeDestination
-            ?: departure.trainDestination
-            ?: return
+    private fun shareArrival(itinerary: Itinerary) {
+        val destination = itinerary.destination
         val message = getString(
             R.string.arrival_message,
             destination.getName(),
-            DepartureTextFormatter.estimatedArrivalTime(this, departure, false),
+            DepartureTextFormatter.estimatedArrivalTime(this, itinerary),
         )
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"

@@ -54,7 +54,9 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons)
-    implementation('com.google.android.gms:play-services-oss-licenses:17.5.1')
+    implementation(libs.coil.compose)
+    implementation(libs.coil.resvg)
+    implementation(libs.play.services.oss.licenses)
 }
 
 android {
@@ -95,8 +97,6 @@ android {
 
     buildTypes {
         release {
-            // Include native debug symbols
-            ndk.debugSymbolLevel = 'FULL'
             minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),

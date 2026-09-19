@@ -1,7 +1,8 @@
 package `in`.izyum.bart.backend
 
 import `in`.izyum.bart.model.Line
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
+import `in`.izyum.bart.transit.normalization.NormalizedRealtimeFeed
+import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import com.google.transit.realtime.GtfsRealtime
 import java.util.IdentityHashMap
@@ -13,12 +14,12 @@ class TransitFeedSnapshot(
     val receivedAtMillis: Long
 ) {
     @Volatile
-    private var tripUpdateIndex: GtfsRealtimeFeedIndex? = null
+    private var normalizedTripUpdates: NormalizedRealtimeFeed? = null
 
     @Volatile
-    private var alertIndex: GtfsRealtimeFeedIndex? = null
+    private var normalizedAlerts: NormalizedRealtimeFeed? = null
 
-    private val correctedSchedules = IdentityHashMap<BartGtfsNetwork, Schedule>()
+    private val canonicalSnapshots = IdentityHashMap<BartGtfsNetwork, CanonicalTransitSnapshot>()
 
     init {
         requireNotNull(tripUpdates) { "tripUpdates" }
@@ -28,37 +29,41 @@ class TransitFeedSnapshot(
     fun getTripUpdatesTimestampMillis(): Long =
         feedTimestampMillis(tripUpdates, receivedAtMillis)
 
-    /** Builds the trip-update index once and shares it across all projections. */
-    fun getTripUpdateIndex(): GtfsRealtimeFeedIndex {
-        tripUpdateIndex?.let { return it }
+    /** Builds the lossless trip-update normalization once for all projections. */
+    fun getNormalizedTripUpdates(): NormalizedRealtimeFeed {
+        normalizedTripUpdates?.let { return it }
         synchronized(this) {
-            tripUpdateIndex?.let { return it }
-            return GtfsRealtimeFeedIndex.from(tripUpdates).also {
-                tripUpdateIndex = it
+            normalizedTripUpdates?.let { return it }
+            return RealtimeFeedNormalizer.normalize(tripUpdates, receivedAtMillis, "trip_updates")
+                .also {
+                    normalizedTripUpdates = it
+                }
+        }
+    }
+
+    /** Builds the lossless alert-feed normalization once for all projections. */
+    fun getNormalizedAlerts(): NormalizedRealtimeFeed {
+        normalizedAlerts?.let { return it }
+        synchronized(this) {
+            normalizedAlerts?.let { return it }
+            return RealtimeFeedNormalizer.normalize(alerts, receivedAtMillis, "alerts").also {
+                normalizedAlerts = it
             }
         }
     }
 
-    /** Builds the alert index once and shares it across all projections. */
-    fun getAlertIndex(): GtfsRealtimeFeedIndex {
-        alertIndex?.let { return it }
-        synchronized(this) {
-            alertIndex?.let { return it }
-            return GtfsRealtimeFeedIndex.from(alerts).also {
-                alertIndex = it
-            }
-        }
-    }
-
-    /** Builds the corrected schedule once for each static network consumer. */
-    fun getCorrectedSchedule(network: BartGtfsNetwork): Schedule {
-        synchronized(correctedSchedules) {
-            return correctedSchedules[network] ?: Schedule.fromStatic(
+    /** Builds one canonical snapshot for each static network consumer. */
+    fun getCanonicalSnapshot(network: BartGtfsNetwork): CanonicalTransitSnapshot {
+        synchronized(canonicalSnapshots) {
+            return canonicalSnapshots[network] ?: CanonicalTransitSnapshot.create(
+                Schedule.fromStatic(
                 network,
                 getTripUpdatesTimestampMillis(),
                 Line.values().toSet(),
-            ).applyRealtime(getTripUpdateIndex()).also {
-                correctedSchedules[network] = it
+                ),
+                getNormalizedTripUpdates(),
+            ).also {
+                canonicalSnapshots[network] = it
             }
         }
     }

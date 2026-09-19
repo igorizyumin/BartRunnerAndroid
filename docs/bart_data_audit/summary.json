@@ -1,0 +1,19 @@
+{
+  "capture_count": 11,
+  "supplemental_source_count": 28,
+  "capture_component_count": 359,
+  "static_source_count": 2,
+  "static_sources_identical_table_content": true,
+  "selected_static_source": "C:\\Users\\Igor\\StudioProjects\\BartRunnerAndroid\\app\\src\\test\\resources\\gtfs\\bart_google_transit_night.zip",
+  "static_trip_rows": 4432,
+  "gtfsrt_entities": 579,
+  "gtfsrt_associations": 579,
+  "gtfsrt_projected_entities": 565,
+  "gtfsrt_stop_rows": 6781,
+  "etd_predictions": 3586,
+  "matches": 6872,
+  "dmu_records": 77,
+  "static_only_snapshot_rows": 8386,
+  "timing_rows": 6828,
+  "observation_rows": 9059
+}

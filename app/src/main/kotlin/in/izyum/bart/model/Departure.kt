@@ -9,14 +9,8 @@ data class Departure(
     val trainDestination: Station?,
     val passengerDestination: Station?,
     val line: Line?,
-    val destinationColorHex: String?,
-    val destinationColorText: String?,
     val platform: String?,
-    val direction: String?,
-    val bikeAllowed: Boolean,
     val trainLength: String?,
-    val requiresTransfer: Boolean,
-    val transferScheduled: Boolean,
     val canceled: Boolean,
     val minutes: Int,
     val minEstimate: Long,
@@ -24,22 +18,19 @@ data class Departure(
     val estimatedTripTime: Int,
     val beganAsDeparted: Boolean,
     val arrivalTimeOverride: Long,
-    val listedInETDs: Boolean,
     val tripLegs: List<TripLeg>,
 ) : Comparable<Departure> {
 
     /** Stable identity used to match a departure across feed refreshes. */
     val identity: String
         get() = buildString {
-            append(line).append('|')
-                .append(trainDestination?.abbreviation).append('|')
-                .append(direction).append('|')
-                .append(platform).append('|')
             if (tripLegs.isEmpty()) {
-                append("no-legs")
+                append("observation|")
+                    .append(origin?.abbreviation).append('|')
+                    .append(minEstimate)
             } else {
                 tripLegs.forEach {
-                    append(it.tripId ?: "etd@").append(
+                    append(it.canonicalIdentity ?: "etd@").append(
                         if (it.tripId == null) it.departureTime else ""
                     ).append(';')
                 }
@@ -56,8 +47,6 @@ data class Departure(
         }
 
     fun hasTransfers(): Boolean = tripLegs.size > 1
-
-    fun isListedInETDs(): Boolean = listedInETDs
 
     fun hasAnyArrivalEstimate(): Boolean =
         (tripLegs.isNotEmpty() && hasCompleteTripLegs() && tripLegs.last().hasArrivalTime())
@@ -92,9 +81,14 @@ data class Departure(
 
     fun getMeanEstimate(min: Long, max: Long): Long = (min + max) / 2L
 
-    /** Latest safe estimate for the train's arrival at the initial station. */
+    /** Lower-bound estimate for the train's arrival at the initial station. */
     fun getInitialArrivalTime(pessimistic: Boolean = false): Long {
-        val departureEstimate = if (pessimistic) maxEstimate else getMeanEstimate()
+        val firstLeg = tripLegs.firstOrNull()
+        val departureEstimate = when {
+            pessimistic && firstLeg != null -> pessimisticDepartureTime(firstLeg)
+            pessimistic -> minEstimate
+            else -> getMeanEstimate()
+        }
         val firstStop = tripLegs.firstOrNull()?.stops?.firstOrNull { it.station == origin }
         val actualDwell = if (firstStop != null && firstStop.arrivalTime > 0L && firstStop.departureTime > 0L) {
             (firstStop.departureTime - firstStop.arrivalTime).coerceAtLeast(0L)
@@ -107,7 +101,11 @@ data class Departure(
     }
 
     fun getInitialDepartureTime(pessimistic: Boolean = false): Long =
-        if (pessimistic) maxEstimate else getMeanEstimate()
+        if (pessimistic) {
+            tripLegs.firstOrNull()?.let(::pessimisticDepartureTime) ?: minEstimate
+        } else {
+            getMeanEstimate()
+        }
 
     fun hasInitialDeparturePassed(nowMillis: Long, pessimistic: Boolean = false): Boolean =
         getInitialDepartureTime(pessimistic) <= nowMillis
@@ -199,7 +197,7 @@ data class Departure(
     override fun toString(): String {
         return buildString {
             append(trainDestination)
-            if (requiresTransfer) append(" (w/ xfer)")
+            if (hasTransfers()) append(" (w/ xfer)")
             append(", ")
             append("estimate=").append(getMeanEstimate())
         }
@@ -231,7 +229,10 @@ data class Departure(
                 previous.tripLegs
             }
 
-            var merged = previous.copy(tripLegs = immutableList(tripLegs))
+            // Identity is stable across platform/terminal changes. Refresh all
+            // display metadata from the incoming projection while preserving
+            // only the deliberate estimate-smoothing policy below.
+            var merged = incoming.copy(tripLegs = immutableList(tripLegs))
             if (incoming.hasDeparted(now)
                 && previous.origin?.longStationLinger == true
                 && previous.minEstimate > 0
@@ -296,14 +297,8 @@ data class Departure(
         private var trainDestination: Station? = null
         private var passengerDestination: Station? = null
         private var line: Line? = null
-        private var destinationColorHex: String? = null
-        private var destinationColorText: String? = null
         private var platform: String? = null
-        private var direction: String? = null
-        private var bikeAllowed = false
         private var trainLength: String? = null
-        private var requiresTransfer = false
-        private var transferScheduled = false
         private var canceled = false
         private var minutes = 0
         private var minEstimate = 0L
@@ -311,21 +306,14 @@ data class Departure(
         private var estimatedTripTime = 0
         private var beganAsDeparted = false
         private var arrivalTimeOverride = 0L
-        private var listedInETDs = true
         private var tripLegs: List<TripLeg> = emptyList()
 
         fun setOrigin(value: Station?) = apply { origin = value }
         fun setTrainDestination(value: Station?) = apply { trainDestination = value }
         fun setPassengerDestination(value: Station?) = apply { passengerDestination = value }
         fun setLine(value: Line?) = apply { line = value }
-        fun setTrainDestinationColorHex(value: String?) = apply { destinationColorHex = value }
-        fun setTrainDestinationColorText(value: String?) = apply { destinationColorText = value }
         fun setPlatform(value: String?) = apply { platform = value }
-        fun setDirection(value: String?) = apply { direction = value }
-        fun setBikeAllowed(value: Boolean) = apply { bikeAllowed = value }
         fun setTrainLength(value: String?) = apply { trainLength = value }
-        fun setRequiresTransfer(value: Boolean) = apply { requiresTransfer = value }
-        fun setTransferScheduled(value: Boolean) = apply { transferScheduled = value }
         fun setCanceled(value: Boolean) = apply { canceled = value }
         fun setMinutes(value: Int) = apply {
             minutes = value
@@ -335,7 +323,6 @@ data class Departure(
         fun setMaxEstimate(value: Long) = apply { maxEstimate = value }
         fun setEstimatedTripTime(value: Int) = apply { estimatedTripTime = value }
         fun setArrivalTimeOverride(value: Long) = apply { arrivalTimeOverride = value }
-        fun setListedInETDs(value: Boolean) = apply { listedInETDs = value }
         fun setTripLegs(value: List<TripLeg>?) = apply { tripLegs = value ?: emptyList() }
 
         fun build(): Departure {
@@ -345,14 +332,8 @@ data class Departure(
                 trainDestination,
                 passengerDestination,
                 line,
-                destinationColorHex,
-                destinationColorText,
                 platform,
-                direction,
-                bikeAllowed,
                 trainLength,
-                requiresTransfer,
-                transferScheduled,
                 canceled,
                 minutes,
                 minEstimate,
@@ -360,7 +341,6 @@ data class Departure(
                 estimatedTripTime,
                 beganAsDeparted,
                 arrivalTimeOverride,
-                listedInETDs,
                 immutableLegs,
             )
             return departure.withImmutableTripLegs(immutableLegs)

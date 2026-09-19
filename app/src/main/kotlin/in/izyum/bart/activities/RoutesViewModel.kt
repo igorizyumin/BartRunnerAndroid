@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.backend.AlertProjection
-import `in`.izyum.bart.backend.EtdAwareRouteDepartureProjection
 import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.data.FareDiscountPreferences
 import `in`.izyum.bart.data.FavoritesRepository
@@ -155,13 +154,9 @@ class RoutesViewModel(application: Application) : AndroidViewModel(application) 
                         route,
                         app.bartGtfsNetworkSupplier,
                     )
-                    val projection = EtdAwareRouteDepartureProjection(
-                        baseProjection,
-                        app.etdStationCache,
-                    )
-                    transitRepository.projectedStateSuspending(
-                        projection::project,
-                        projection::areEquivalent,
+                    transitRepository.projectedState(
+                        baseProjection::project,
+                        baseProjection::areEquivalent,
                     ).collectLatest { state ->
                         state.exceptionOrNull()?.let { exception ->
                             publishError(asException(exception))

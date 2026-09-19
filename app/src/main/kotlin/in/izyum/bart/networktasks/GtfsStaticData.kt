@@ -16,6 +16,7 @@ import `in`.izyum.bart.transit.gtfs.GtfsScheduledTrip
 import `in`.izyum.bart.transit.gtfs.GtfsStop
 import `in`.izyum.bart.transit.gtfs.GtfsTransfer
 import `in`.izyum.bart.transit.gtfs.GtfsTrip
+import `in`.izyum.bart.transit.BartDataPolicy
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayOutputStream
@@ -27,7 +28,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.Collections
 import java.util.HashMap
 import java.util.Locale
@@ -378,7 +378,7 @@ class GtfsStaticData @JvmOverloads constructor(
         private const val PREFS_NAME = "gtfs_static_schedule"
         private const val LAST_ATTEMPT = "last_attempt"
         private const val LAST_SUCCESS = "last_success"
-        private val PACIFIC_ZONE = ZoneId.of("America/Los_Angeles")
+        private val PACIFIC_ZONE = BartDataPolicy.PACIFIC_ZONE
         private val CLIENT: OkHttpClient = NetworkUtils.makeHttpClient()
 
         @Throws(IOException::class)

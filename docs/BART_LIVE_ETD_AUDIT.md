@@ -1,5 +1,8 @@
 # BART live ETD audit
 
+> Historical fixture audit only. ETD is not a runtime input; production
+> projections now use `CanonicalTransitSnapshot` and GTFS-Realtime data.
+
 The checked-in captures under `app/src/test/resources/bart_live_*` contain:
 
 - BART trip-update GTFS-Realtime protobuf;
@@ -75,9 +78,26 @@ static schedule now preserves the `196530x` Yellow trips as Pittsburg/Bay Point
 short turns, matching their static GTFS stop sequences. True Antioch trips
 remain represented by the explicit static PITT → PCTR → ANTC patterns. The
 technical DMU GTFS-RT entities are classified and cannot create passenger
-departures on their own. Their terminal times may supplement an already
-confirmed normal Yellow trip with matching direction, platform, and PITT
-realtime evidence.
+departures on their own. This audit predates the canonical snapshot migration;
+the current runtime performs the association and enrichment in
+`CanonicalTransitSnapshot`, and no handler-only correction or
+`getCorrectedSchedule()` convenience API remains. See [the schedule/realtime
+merge audit](SCHEDULE_REALTIME_AUDIT.md) for the historical boundary.
+
+BART also commonly represents an operational cancellation by omitting the
+trip's GTFS-RT data instead of sending an explicit `CANCELED` message. The
+app's one-hour rule therefore treats a currently-in-progress schedule trip
+with no forward realtime evidence as *likely* cancelled; it does not prove
+cancellation or set the schedule trip's `canceled` flag. The legacy ETD API is
+currently used as corroborating evidence for that suppression, but the audit
+has not established that the extra ETD check is strictly necessary.
+
+The same identity limitation may apply to the SFO–Millbrae shuttle leg: it may
+not appear as a separately identifiable GTFS-RT trip even if it is represented
+in static Yellow patterns. The current schedule code handles the observed
+late-night SFO-to-Millbrae gap with a synthetic leg based on static timing and
+nominal runtime; whether a dedicated shuttle exists in static GTFS remains an
+open verification item.
 
 Run the audit with:
 

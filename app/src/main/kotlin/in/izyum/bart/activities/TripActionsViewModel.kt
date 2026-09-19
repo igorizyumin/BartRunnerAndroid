@@ -3,8 +3,7 @@ package `in`.izyum.bart.activities
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import `in`.izyum.bart.BartRunnerApplication
-import `in`.izyum.bart.model.Departure
-import `in`.izyum.bart.model.Station
+import `in`.izyum.bart.model.Itinerary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,10 +21,10 @@ class TripActionsViewModel(application: Application) :
     private val _uiState = MutableStateFlow(readUiState())
     val uiState: StateFlow<TripActionsUiState> = _uiState.asStateFlow()
 
-    fun getFollowedDeparture(): Departure? = followedTripRepository.getFollowedDeparture()
+    fun getFollowedItinerary(): Itinerary? = followedTripRepository.getFollowedItinerary()
 
-    fun isFollowing(departure: Departure): Boolean =
-        followedTripRepository.getFollowedDeparture() == departure
+    fun isFollowing(itinerary: Itinerary): Boolean =
+        followedTripRepository.getFollowedItinerary() == itinerary
 
     fun isAlarmPending(): Boolean = followedTripRepository.getAlarmScheduler()?.isPending == true
 
@@ -36,18 +35,14 @@ class TripActionsViewModel(application: Application) :
         _uiState.value = readUiState()
     }
 
-    fun followTrip(departure: Departure, passengerDestination: Station? = null) {
-        followedTripRepository.setFollowedDeparture(
-            prepareDepartureForFollowing(departure, passengerDestination),
-        )
+    fun followTrip(itinerary: Itinerary) {
+        followedTripRepository.setFollowedItinerary(itinerary)
         followedTripRepository.startTracking()
     }
 
-    fun updateFollowedTrip(departure: Departure) {
-        followedTripRepository.getFollowedDeparture()?.let { current ->
-            followedTripRepository.setFollowedDeparture(
-                prepareDepartureForFollowing(departure, current.passengerDestination),
-            )
+    fun updateFollowedTrip(itinerary: Itinerary) {
+        followedTripRepository.getFollowedItinerary()?.let {
+            followedTripRepository.setFollowedItinerary(itinerary)
         }
     }
 
@@ -70,11 +65,3 @@ class TripActionsViewModel(application: Application) :
         alarmLeadTimeMinutes = getAlarmLeadTimeMinutes(),
     )
 }
-
-/** Ensures a departure followed from trip details has the destination required by notifications. */
-internal fun prepareDepartureForFollowing(
-    departure: Departure,
-    passengerDestination: Station? = null,
-): Departure = departure.withPassengerDestination(
-    passengerDestination ?: departure.passengerDestination ?: departure.trainDestination,
-)

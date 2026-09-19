@@ -22,18 +22,17 @@ class DeparturesViewModelTest {
         assertEquals(1, replacement.size)
         assertEquals("trip-2", replacement[0].tripLegs[0].tripId)
         assertNotSame(initial[1], replacement[0])
-        assertEquals(DeparturesViewModel.Status.CONTENT, viewModel.getState().status)
+        assertEquals(DeparturesViewModel.Status.CONTENT, viewModel.uiState.value.status)
 
-        viewModel.clear()
-        assertEquals(DeparturesViewModel.Status.EMPTY, viewModel.getState().status)
-        assertEquals(0, viewModel.getState().departures.size)
+        viewModel.replace(emptyList())
+        assertEquals(DeparturesViewModel.Status.EMPTY, viewModel.uiState.value.status)
+        assertEquals(0, viewModel.uiState.value.departures.size)
     }
 
     private fun departure(tripId: String, estimate: Long): Departure = Departure.builder()
         .setOrigin(Station.CAST)
         .setTrainDestination(Station.MLPT)
         .setLine(Line.ORANGE)
-        .setDirection("north")
         .setPlatform("1")
         .setMinEstimate(estimate)
         .setMaxEstimate(estimate + 60_000L)

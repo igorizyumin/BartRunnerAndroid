@@ -53,7 +53,7 @@ class TransitRepositoryTest {
         }
 
         client.enqueue(IOException("network unavailable"))
-        repository!!.refreshNow()
+        repository!!.refreshNowBlockingForTests()
 
         val state = repository!!.state.value
         assertSame(expected, state.snapshot)
@@ -71,7 +71,7 @@ class TransitRepositoryTest {
             offlineSnapshotProvider = { fallback },
         )
 
-        repository!!.refreshNow()
+        repository!!.refreshNowBlockingForTests()
 
         val state = repository!!.state.value
         assertSame(fallback, state.snapshot)
@@ -96,8 +96,8 @@ class TransitRepositoryTest {
             offlineSnapshotProvider = { fallback },
         )
 
-        repository!!.refreshNow()
-        repository!!.refreshNow()
+        repository!!.refreshNowBlockingForTests()
+        repository!!.refreshNowBlockingForTests()
 
         assertSame(online, repository!!.state.value.snapshot)
         assertEquals(false, repository!!.state.value.isOffline)
@@ -105,7 +105,7 @@ class TransitRepositoryTest {
     }
 
     @Test
-    fun offlineRefreshReplacesAStaleRealtimeSnapshotWhenFallbackIsConfigured() {
+    fun failedRefreshRetainsUsableRealtimeBeforeExpiry() {
         val client = FakeFeedClient()
         val online = snapshot(11, 110_000L)
         val fallback = snapshot(12, 120_000L)
@@ -117,11 +117,37 @@ class TransitRepositoryTest {
             offlineSnapshotProvider = { fallback },
         )
 
-        repository!!.refreshNow()
-        repository!!.refreshNow()
+        repository!!.refreshNowBlockingForTests()
+        repository!!.refreshNowBlockingForTests()
+
+        assertSame(online, repository!!.state.value.snapshot)
+        assertEquals(true, repository!!.state.value.isOffline)
+    }
+
+    @Test
+    fun expiredFeedsFallBackToScheduleOnlyData() {
+        var nowMillis = 100_000L
+        val client = FakeFeedClient()
+        val online = snapshot(13, nowMillis)
+        val fallback = snapshot(14, nowMillis + 1_000L)
+        client.enqueue(online)
+        client.enqueue(IOException("network unavailable"))
+        repository = TransitRepository(
+            client,
+            60_000L,
+            offlineSnapshotProvider = { fallback },
+            tripUpdatesStaleAfterMillis = 100L,
+            alertsStaleAfterMillis = 100L,
+            nowMillisProvider = { nowMillis },
+        )
+
+        repository!!.refreshNowBlockingForTests()
+        nowMillis += 101L
+        repository!!.refreshNowBlockingForTests()
 
         assertSame(fallback, repository!!.state.value.snapshot)
-        assertEquals(true, repository!!.state.value.isOffline)
+        assertEquals(false, repository!!.state.value.tripUpdates.isUsable)
+        assertEquals(false, repository!!.state.value.alerts.isUsable)
     }
 
     @Test
@@ -143,12 +169,40 @@ class TransitRepositoryTest {
         withTimeout(TIMEOUT_MILLIS) {
             repository!!.feed().first { it.snapshot != null }
         }
-        repository!!.refreshNow()
+        repository!!.refreshNowBlockingForTests()
 
         val state = repository!!.state.value
         assertSame(updated.tripUpdates, state.snapshot?.tripUpdates)
         assertSame(first.alerts, state.snapshot?.alerts)
         assertEquals("alerts unavailable", state.error?.message)
+        assertEquals(true, state.tripUpdates.isUsable)
+        assertEquals("alerts unavailable", state.alerts.lastError?.message)
+    }
+
+    @Test
+    fun partialTripUpdateFailureRetainsAlertsAndReportsTheTripError() = runBlocking {
+        val client = FakeFeedClient()
+        val first = snapshot(15, 150_000L)
+        val updatedAlerts = snapshot(16, 160_000L).alerts
+        client.enqueue(first)
+        client.enqueue(
+            TransitFeedFetchResult(
+                null,
+                IOException("trip updates unavailable"),
+                updatedAlerts,
+                null,
+            ),
+        )
+        repository = newRepository(client, 60_000L)
+
+        repository!!.refreshNowBlockingForTests()
+        repository!!.refreshNowBlockingForTests()
+
+        val state = repository!!.state.value
+        assertSame(first.tripUpdates, state.snapshot?.tripUpdates)
+        assertSame(updatedAlerts, state.snapshot?.alerts)
+        assertEquals("trip updates unavailable", state.tripUpdates.lastError?.message)
+        assertEquals(true, state.alerts.isUsable)
     }
 
     @Test
@@ -158,7 +212,7 @@ class TransitRepositoryTest {
         val client = TripOnlyFeedClient(initial, updatedTripUpdates)
         repository = newRepository(client, 60_000L)
 
-        repository!!.refreshNow()
+        repository!!.refreshNowBlockingForTests()
         repository!!.refreshTripUpdatesNow()
 
         assertEquals(1, client.fullFetchCount)
@@ -319,6 +373,34 @@ class TransitRepositoryTest {
         }
 
         assertEquals(1, result.getOrNull())
+    }
+
+    @Test
+    fun projectedFlowDoesNotReprojectAnUnchangedSnapshot() = runBlocking {
+        val client = FakeFeedClient()
+        val expected = snapshot(5, 50_000L)
+        client.enqueue(expected)
+        client.enqueue(expected)
+        repository = newRepository(client, 60_000L)
+        val projectionCount = AtomicInteger()
+        val collection = launch {
+            repository!!.projectedState(project = { snapshot ->
+                projectionCount.incrementAndGet()
+                snapshot.tripUpdates.entityCount
+            }).collect()
+        }
+
+        withTimeout(TIMEOUT_MILLIS) {
+            while (projectionCount.get() < 1) {
+                delay(5L)
+            }
+        }
+
+        repository!!.refreshNowBlockingForTests()
+        delay(100L)
+
+        assertEquals(1, projectionCount.get())
+        collection.cancelAndJoin()
     }
 
     private fun newRepository(client: TransitFeedClient, intervalMillis: Long) =

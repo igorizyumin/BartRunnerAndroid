@@ -41,14 +41,15 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
             return
         }
         val application = context.applicationContext as BartRunnerApplication
-        val boardedDeparture = application.followedTripRepository.handleAlarmTriggered()
+        val boardedItinerary = application.followedTripRepository.handleAlarmTriggered()
             ?: return
+        val boardedDeparture = boardedItinerary.toDeparture()
 
         val targetIntent = Intent(context, TripInProgressActivity::class.java).apply {
             RouteArguments.putTrip(
                 this,
                 boardedDeparture.getStationPair(),
-                boardedDeparture.identity,
+                boardedItinerary.selectionIdentity,
                 RouteArguments.MODE_FOLLOWED,
             )
             addFlags(
@@ -141,7 +142,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                     .setUsage(VibrationAttributes.USAGE_ALARM)
                     .build(),
             )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        } else {
             vibrateWithAudioAttributes(
                 vibrator,
                 VibrationEffect.createWaveform(pattern, -1),
@@ -149,9 +150,6 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .build(),
             )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(pattern, -1)
         }
     }
 

@@ -1,6 +1,7 @@
 package `in`.izyum.bart.data
 
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
@@ -8,7 +9,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -32,35 +32,36 @@ class FollowedTripStoreTest {
     }
 
     @Test
-    fun saveAndLoadRestoresTheTripAcrossStoreInstances() {
-        store.save(departure())
-        val restored = FollowedTripStore(storageFile).load()!!
-        assertEquals(Station.MONT, restored.origin)
-        assertEquals(Station.RICH, restored.passengerDestination)
-        assertEquals(Line.RED, restored.line)
-        assertEquals("trip-1", restored.tripLegs[0].tripId)
-        assertTrue(storageFile.exists())
+    fun saveAndLoadRestoresAnItineraryAcrossStoreInstances() {
+        val itinerary = Itinerary.fromDeparture(departure())!!
+        store.saveItinerary(itinerary)
+
+        val restored = FollowedTripStore(storageFile).loadItinerary()!!
+
+        assertEquals(itinerary.origin, restored.origin)
+        assertEquals(itinerary.destination, restored.destination)
+        assertEquals("trip-1", restored.legs.single().tripId)
     }
 
     @Test
     fun clearingRemovesTheDurableState() {
-        store.save(departure())
-        store.save(null)
+        store.saveItinerary(Itinerary.fromDeparture(departure()))
+        store.saveItinerary(null)
         assertFalse(storageFile.exists())
-        assertNull(store.load())
+        assertNull(store.loadItinerary())
     }
 
     @Test
     fun malformedStateIsDiscardedInsteadOfRetriedForever() {
         Files.write(storageFile.toPath(), "not-json".toByteArray())
-        assertNull(store.load())
+        assertNull(store.loadItinerary())
         assertFalse(storageFile.exists())
     }
 
     private fun departure(): Departure = Departure.builder()
         .setOrigin(Station.MONT).setTrainDestination(Station.RICH)
         .setPassengerDestination(Station.RICH).setLine(Line.RED)
-        .setDirection("n").setPlatform("2")
+        .setPlatform("2")
         .setMinEstimate(4_000_000_000L).setMaxEstimate(4_000_060_000L)
         .setTripLegs(listOf(TripLeg(
             Line.RED, Station.MONT, Station.RICH, Station.RICH,

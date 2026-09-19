@@ -1,0 +1,9 @@
+capture_id,source_path,feed_timestamp,feed_timestamp_epoch,entity_count,trip_update_count,stop_time_update_count,alerts_in_feed,numeric_600_799_entity_count,numeric_600_799_trip_count,duplicate_trip_id_count,missing_route_id_count,missing_stop_sequence_count,canceled_trip_update_count
+bart_live_20260911_161720,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260911_161720\trip_updates.pb,2026-09-11T23:17:20+00:00,1789168640,82,82,1093,0,10,10,0,82,1093,0
+bart_live_20260911_185819,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260911_185819\trip_updates.pb,2026-09-12T01:58:19+00:00,1789178299,82,82,964,0,10,10,2,82,964,0
+bart_live_20260912_071605,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260912_071605\trip_updates.pb,2026-09-12T14:16:05+00:00,1789222565,59,59,624,0,9,9,0,59,624,0
+bart_live_20260912_192815,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260912_192815\trip_updates.pb,2026-09-13T02:28:14+00:00,1789266494,58,58,632,0,9,9,0,58,632,1
+bart_live_20260913_182435,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260913_182435\trip_updates.pb,2026-09-14T01:24:34+00:00,1789349074,59,59,660,0,10,10,0,59,660,0
+bart_live_20260913_201652,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260913_201652\trip_updates.pb,2026-09-14T03:16:52+00:00,1789355812,59,59,584,0,10,10,0,59,584,0
+bart_live_20260917_123018,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_20260917_123018\trip_updates.pb,2026-09-17T19:30:18+00:00,1789673418,96,96,1168,0,9,9,4,96,1168,1
+bart_live_terminals_20260911_183436,C:\Users\Igor\StudioProjects\BartRunnerAndroid\app\src\test\resources\bart_live_terminals_20260911_183436\trip_updates.pb,2026-09-12T01:34:55+00:00,1789176895,84,84,1056,0,10,10,0,84,1056,0

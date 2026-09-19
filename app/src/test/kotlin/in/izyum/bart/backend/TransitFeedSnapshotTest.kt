@@ -1,93 +1,116 @@
 package `in`.izyum.bart.backend
 
-import `in`.izyum.bart.networktasks.GtfsRealtimeFeedIndex
+import `in`.izyum.bart.transit.normalization.RealtimeFeedNormalizer
 import com.google.transit.realtime.GtfsRealtime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TransitFeedSnapshotTest {
     @Test
-    fun indexesEachFeedOnceAndSeparatesTripAndAlertEntities() {
-        val trip = GtfsRealtime.FeedEntity.newBuilder()
-            .setId("trip-1")
-            .setTripUpdate(GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(GtfsRealtime.TripDescriptor.newBuilder()
-                    .setTripId("trip-1").setRouteId("8").buildPartial())
-                .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopSequence(1).setStopId("M20-1")
-                    .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setTime(1_000L).build())
-                    .setArrival(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setTime(1_000L).build())
-                    .buildPartial())
-                .buildPartial())
-            .buildPartial()
+    fun cachesLosslessTripAndAlertNormalizations() {
+        val trip = entity("trip-1", "trip-1")
         val alert = GtfsRealtime.FeedEntity.newBuilder()
             .setId("alert-1")
             .setAlert(GtfsRealtime.Alert.newBuilder().buildPartial())
             .buildPartial()
         val snapshot = TransitFeedSnapshot(
-            GtfsRealtime.FeedMessage.newBuilder().addEntity(trip).buildPartial(),
-            GtfsRealtime.FeedMessage.newBuilder().addEntity(alert).buildPartial(),
+            feed(trip),
+            feed(alert),
             123L,
         )
-        val tripIndex: GtfsRealtimeFeedIndex = snapshot.getTripUpdateIndex()
-        val alertIndex: GtfsRealtimeFeedIndex = snapshot.getAlertIndex()
-        assertSame(tripIndex, snapshot.getTripUpdateIndex())
-        assertSame(alertIndex, snapshot.getAlertIndex())
-        assertEquals(1, tripIndex.tripUpdateEntities.size)
-        assertEquals(trip, tripIndex.tripUpdatesById["trip-1"])
-        assertEquals(1, alertIndex.alertEntities.size)
-        assertEquals(alert, alertIndex.alertsById["alert-1"])
+
+        val trips = snapshot.getNormalizedTripUpdates()
+        val alerts = snapshot.getNormalizedAlerts()
+
+        assertSame(trips, snapshot.getNormalizedTripUpdates())
+        assertSame(alerts, snapshot.getNormalizedAlerts())
+        assertEquals(listOf(trip), trips.entities)
+        assertEquals(trip, trips.projectedTripUpdatesById["trip-1"]?.rawEntity)
+        assertEquals(listOf(alert), alerts.entities)
     }
 
     @Test
-    fun doesNotUseEntityIdAsTripIdWhenTripDescriptorOmitsTripId() {
-        val sparseTechnicalUpdate = GtfsRealtime.FeedEntity.newBuilder()
+    fun doesNotUseEntityIdAsTripIdWhenDescriptorOmitsTripId() {
+        val sparse = GtfsRealtime.FeedEntity.newBuilder()
             .setId("scheduled-passenger-trip")
             .setTripUpdate(GtfsRealtime.TripUpdate.newBuilder()
                 .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setRouteId("8"))
-                .addStopTimeUpdate(GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder()
-                    .setStopId("ANTC-2")
-                    .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setTime(1_000L)))
-                .buildPartial()
-            )
-            .buildPartial()
-
-        val index = GtfsRealtimeFeedIndex.from(
-            GtfsRealtime.FeedMessage.newBuilder()
-                .addEntity(sparseTechnicalUpdate)
-                .buildPartial()
-        )
-
-        assertEquals(1, index.tripUpdateEntities.size)
-        assertEquals(emptyMap<String, GtfsRealtime.FeedEntity>(), index.tripUpdatesById)
-    }
-
-    @Test
-    fun keepsDmuTelemetryAvailableButDoesNotIndexIts600SeriesTripId() {
-        val dmu = GtfsRealtime.FeedEntity.newBuilder()
-            .setId("682")
-            .setTripUpdate(GtfsRealtime.TripUpdate.newBuilder()
-                .setTrip(GtfsRealtime.TripDescriptor.newBuilder().setTripId("682"))
+                .addStopTimeUpdate(stop("ANTC-2", 1_000L))
                 .buildPartial())
             .buildPartial()
 
-        val index = GtfsRealtimeFeedIndex.from(
-            GtfsRealtime.FeedMessage.newBuilder().addEntity(dmu).buildPartial()
+        val normalized = RealtimeFeedNormalizer.normalize(feed(sparse))
+
+        assertEquals(1, normalized.tripUpdates.size)
+        assertEquals(null, normalized.tripUpdates.single().tripId)
+        assertTrue(normalized.projectedTripUpdatesById.isEmpty())
+    }
+
+    @Test
+    fun keepsDmuTelemetryInTheCanonicalFeedWithoutClaimingStaticIdentity() {
+        val dmu = entity("682", "682")
+
+        val normalized = RealtimeFeedNormalizer.normalize(feed(dmu))
+        val observation = normalized.tripUpdates.single()
+
+        assertTrue(observation.isOperationalTelemetry)
+        assertEquals(dmu, normalized.projectedTripUpdatesById["682"]?.rawEntity)
+    }
+
+    @Test
+    fun duplicateProjectionPrefersExplicitCancellationAndRecordsTheDecision() {
+        val ordinary = entity("same-trip", "ordinary")
+        val canceled = entity(
+            "same-trip",
+            "canceled",
+            GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED,
         )
 
-        assertEquals(listOf(dmu), index.tripUpdateEntities)
-        assertEquals(emptyMap<String, GtfsRealtime.FeedEntity>(), index.tripUpdatesById)
+        val normalized = RealtimeFeedNormalizer.normalize(feed(ordinary, canceled))
+
+        assertEquals("canceled", normalized.projectedTripUpdatesById["same-trip"]?.entityId)
+        assertEquals(1, normalized.duplicateDecisions.size)
+        assertEquals("explicit_cancellation", normalized.duplicateDecisions.single().reason)
+        assertEquals(listOf("ordinary"), normalized.duplicateDecisions.single().discardedEntityIds)
     }
 
-    @Test(expected = UnsupportedOperationException::class)
-    fun tripEntityIndexCannotBeMutatedByAConsumer() {
-        (TransitFeedSnapshot(emptyFeed(), emptyFeed(), 123L)
-            .getTripUpdateIndex().tripUpdateEntities as MutableList<GtfsRealtime.FeedEntity>).clear()
+    @Test
+    fun rawEntityAndStopCollectionsCannotBeMutatedByConsumers() {
+        val normalized = RealtimeFeedNormalizer.normalize(feed(entity("trip-1", "trip-1")))
+
+        assertThrows(UnsupportedOperationException::class.java) {
+            (normalized.entities as MutableList<GtfsRealtime.FeedEntity>).clear()
+        }
+        assertThrows(UnsupportedOperationException::class.java) {
+            (normalized.tripUpdates.single().stops as MutableList<*>).clear()
+        }
     }
 
-    private fun emptyFeed() = GtfsRealtime.FeedMessage.newBuilder()
-        .setHeader(GtfsRealtime.FeedHeader.newBuilder()
-            .setGtfsRealtimeVersion("2.0").setTimestamp(1L).build())
-        .build()
+    private fun feed(vararg entities: GtfsRealtime.FeedEntity): GtfsRealtime.FeedMessage =
+        GtfsRealtime.FeedMessage.newBuilder()
+            .setHeader(GtfsRealtime.FeedHeader.newBuilder()
+                .setGtfsRealtimeVersion("2.0").setTimestamp(1L))
+            .addAllEntity(entities.asList())
+            .buildPartial()
+
+    private fun entity(
+        tripId: String,
+        entityId: String,
+        relationship: GtfsRealtime.TripDescriptor.ScheduleRelationship? = null,
+    ): GtfsRealtime.FeedEntity {
+        val descriptor = GtfsRealtime.TripDescriptor.newBuilder().setTripId(tripId)
+        relationship?.let(descriptor::setScheduleRelationship)
+        return GtfsRealtime.FeedEntity.newBuilder().setId(entityId)
+            .setTripUpdate(GtfsRealtime.TripUpdate.newBuilder().setTrip(descriptor)
+                .addStopTimeUpdate(stop("M20-1", 1_000L)))
+            .buildPartial()
+    }
+
+    private fun stop(stopId: String, timestamp: Long) =
+        GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder().setStopId(stopId)
+            .setDeparture(GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder().setTime(timestamp))
+            .buildPartial()
 }
