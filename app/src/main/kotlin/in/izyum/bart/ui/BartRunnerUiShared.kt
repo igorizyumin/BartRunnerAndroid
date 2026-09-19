@@ -147,10 +147,6 @@ import `in`.izyum.bart.presentation.DepartureTextFormatter
 import `in`.izyum.bart.presentation.DurationTextFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private val Blue = Color(0xFF0B63CE)
 private val BlueDark = Color(0xFF064B9B)
@@ -435,7 +431,8 @@ internal fun countdownText(time: Long, now: Long): String {
     return DurationTextFormatter.clock(seconds)
 }
 
-internal fun formatTime(time: Long): String = if (time <= 0) "—" else DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(time))
+internal fun formatTime(context: Context, time: Long): String =
+    if (time <= 0) "—" else DepartureTextFormatter.formatTime(context, time)
 
 @Composable
 internal fun rememberSecondTick(timeSource: TimeSource): Long {
