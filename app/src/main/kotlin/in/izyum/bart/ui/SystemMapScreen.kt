@@ -7,9 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.rememberTransformableState
-import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -83,10 +81,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -97,11 +93,13 @@ import androidx.core.content.edit
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
@@ -121,12 +119,12 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.widget.ImageView
-import android.view.View
-import android.webkit.WebView
 import android.net.Uri
+import coil3.load
 import java.util.Calendar
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.DeparturesViewModel
@@ -157,7 +155,9 @@ import java.time.format.FormatStyle
 fun SystemMapScreen(onBack: () -> Unit, initialMapStyle: SystemMapStyle? = null) {
     var mapStyle by remember { mutableStateOf(initialMapStyle ?: defaultSystemMapStyle()) }
     var showMapMenu by remember { mutableStateOf(false) }
-    var mapWebView by remember { mutableStateOf<WebView?>(null) }
+    var mapScale by remember { mutableFloatStateOf(1f) }
+    var mapOffset by remember { mutableStateOf(Offset.Zero) }
+    var mapViewportSize by remember { mutableStateOf(IntSize.Zero) }
     val mapAsset = mapStyle.assetName
     Scaffold(topBar = {
         TopAppBar(
@@ -191,28 +191,50 @@ fun SystemMapScreen(onBack: () -> Unit, initialMapStyle: SystemMapStyle? = null)
             },
         )
     }, contentWindowInsets = WindowInsets.safeDrawing) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier.fillMaxSize().padding(padding).clipToBounds()) {
             AndroidView(
                 modifier = Modifier
-                    .fillMaxSize(),
-                factory = { context ->
-                    WebView(context).apply {
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                        settings.apply {
-                            builtInZoomControls = true
-                            displayZoomControls = false
-                            javaScriptEnabled = false
-                            loadWithOverviewMode = true
-                            useWideViewPort = true
+                    .fillMaxSize()
+                    .onSizeChanged {
+                        mapViewportSize = it
+                        mapOffset = constrainMapOffset(mapOffset, mapScale, it)
+                    }
+                    .pointerInput(Unit) {
+                        detectTransformGestures { centroid, panChange, zoomChange, _ ->
+                            val previousScale = mapScale
+                            val nextScale = (previousScale * zoomChange)
+                                .coerceIn(MIN_MAP_SCALE, MAX_MAP_SCALE)
+                            val appliedZoom = nextScale / previousScale
+                            val viewportCenter = Offset(
+                                mapViewportSize.width / 2f,
+                                mapViewportSize.height / 2f,
+                            )
+                            val focalPointCorrection =
+                                (centroid - viewportCenter) * (1f - appliedZoom)
+                            mapScale = nextScale
+                            mapOffset = constrainMapOffset(
+                                mapOffset + panChange + focalPointCorrection,
+                                nextScale,
+                                mapViewportSize,
+                            )
                         }
-                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                        mapWebView = this
+                    }
+                    .graphicsLayer {
+                        scaleX = mapScale
+                        scaleY = mapScale
+                        translationX = mapOffset.x
+                        translationY = mapOffset.y
+                    },
+                factory = { context ->
+                    ImageView(context).apply {
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
                     }
                 },
                 update = { view ->
                     if (view.tag != mapAsset) {
                         view.tag = mapAsset
-                        view.loadUrl("file:///android_asset/${Uri.encode(mapAsset)}")
+                        view.load("file:///android_asset/${Uri.encode(mapAsset)}")
                     }
                 },
             )
@@ -225,18 +247,23 @@ fun SystemMapScreen(onBack: () -> Unit, initialMapStyle: SystemMapStyle? = null)
                         RoundedCornerShape(16.dp),
                     ),
             ) {
-                IconButton(onClick = { mapWebView?.zoomIn() }) {
+                IconButton(onClick = {
+                    val nextScale = (mapScale * MAP_ZOOM_STEP).coerceAtMost(MAX_MAP_SCALE)
+                    mapScale = nextScale
+                    mapOffset = constrainMapOffset(mapOffset, nextScale, mapViewportSize)
+                }) {
                     Icon(Icons.Filled.ZoomIn, stringResource(R.string.zoom_in))
                 }
-                IconButton(onClick = { mapWebView?.zoomOut() }) {
+                IconButton(onClick = {
+                    val nextScale = (mapScale / MAP_ZOOM_STEP).coerceAtLeast(MIN_MAP_SCALE)
+                    mapScale = nextScale
+                    mapOffset = constrainMapOffset(mapOffset, nextScale, mapViewportSize)
+                }) {
                     Icon(Icons.Filled.ZoomOut, stringResource(R.string.zoom_out))
                 }
                 IconButton(onClick = {
-                    mapWebView?.apply {
-                        setInitialScale(DEFAULT_MAP_SCALE_PERCENT)
-                        clearHistory()
-                        scrollTo(0, 0)
-                    }
+                    mapScale = MIN_MAP_SCALE
+                    mapOffset = Offset.Zero
                 }) {
                     Icon(Icons.Filled.Refresh, stringResource(R.string.reset_map_zoom))
                 }
@@ -245,14 +272,30 @@ fun SystemMapScreen(onBack: () -> Unit, initialMapStyle: SystemMapStyle? = null)
     }
 }
 
-private const val DEFAULT_MAP_SCALE_PERCENT = 100
-
 enum class SystemMapStyle(
     val assetName: String,
     val label: Int,
 ) {
     DAY("BART Open Source Map Daytime Service.svg", R.string.map_day),
     NIGHT("BART Open Source Map Evening Service.svg", R.string.map_evening),
+}
+
+private const val MIN_MAP_SCALE = 1f
+private const val MAX_MAP_SCALE = 5f
+private const val MAP_ZOOM_STEP = 1.25f
+
+internal fun constrainMapOffset(offset: Offset, scale: Float, viewportSize: IntSize): Offset {
+    if (viewportSize == IntSize.Zero) return Offset.Zero
+
+    val baseMapSize = minOf(viewportSize.width, viewportSize.height).toFloat()
+    val scaledMapSize = baseMapSize * scale
+    val horizontalLimit = ((scaledMapSize - viewportSize.width) / 2f).coerceAtLeast(0f)
+    val verticalLimit = ((scaledMapSize - viewportSize.height) / 2f).coerceAtLeast(0f)
+
+    return Offset(
+        x = offset.x.coerceIn(-horizontalLimit, horizontalLimit),
+        y = offset.y.coerceIn(-verticalLimit, verticalLimit),
+    )
 }
 
 internal fun defaultSystemMapStyle(calendar: Calendar = Calendar.getInstance()): SystemMapStyle {

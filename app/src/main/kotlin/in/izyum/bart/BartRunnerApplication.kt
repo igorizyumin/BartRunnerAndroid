@@ -3,6 +3,9 @@ package `in`.izyum.bart
 import android.app.Application
 import android.app.Activity
 import android.os.Bundle
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import com.hashsequence.coilresvg.ResvgDecoder
 import `in`.izyum.bart.backend.TransitFeedSnapshot
 import `in`.izyum.bart.backend.HttpTransitFeedClient
 import `in`.izyum.bart.backend.TransitRepository
@@ -17,7 +20,7 @@ import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.io.IOException
 import java.util.function.Supplier
 
-class BartRunnerApplication : Application() {
+class BartRunnerApplication : Application(), SingletonImageLoader.Factory {
     lateinit var favoritesRepository: FavoritesRepository
     lateinit var followedTripRepository: FollowedTripRepository
     lateinit var transitRepository: TransitRepository
@@ -70,5 +73,12 @@ class BartRunnerApplication : Application() {
             override fun onActivityDestroyed(activity: Activity) = Unit
         })
     }
+
+    override fun newImageLoader(context: coil3.PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .components {
+                add(ResvgDecoder.Factory())
+            }
+            .build()
 
 }
