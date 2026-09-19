@@ -1,6 +1,7 @@
 package `in`.izyum.bart.presentation
 
 import android.content.Context
+import android.text.format.DateFormat
 import `in`.izyum.bart.R
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Itinerary
@@ -8,10 +9,7 @@ import `in`.izyum.bart.model.PredictionSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.model.TripLeg
 import `in`.izyum.bart.model.TripStop
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import java.util.Date
 import kotlin.math.abs
 
 /** Android-facing formatting for departure text shown by the UI. */
@@ -232,18 +230,14 @@ object DepartureTextFormatter {
     @JvmStatic
     fun formatTime(context: Context, millis: Long): String = formatTime(timeFormatter(context), millis)
 
-    private fun formatTime(formatter: DateTimeFormatter, millis: Long): String =
-        formatter.format(Instant.ofEpochMilli(millis))
+    private fun formatTime(formatter: java.text.DateFormat, millis: Long): String =
+        formatter.format(Date(millis))
 
     private fun formatSignedMinutes(delaySeconds: Int): String {
         val roundedMinutes = kotlin.math.round(delaySeconds / 60.0).toInt()
         return "${roundedMinutes}m"
     }
 
-    private fun timeFormatter(context: Context): DateTimeFormatter {
-        val locale = context.resources.configuration.locales[0]
-        return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-            .withLocale(locale)
-            .withZone(ZoneId.systemDefault())
-    }
+    private fun timeFormatter(context: Context): java.text.DateFormat =
+        DateFormat.getTimeFormat(context)
 }

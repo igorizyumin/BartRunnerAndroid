@@ -140,10 +140,6 @@ import `in`.izyum.bart.presentation.DepartureTextFormatter
 import `in`.izyum.bart.presentation.DurationTextFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -458,9 +454,9 @@ private fun TimelineLeg(leg: TripLeg, current: Boolean, now: Long) {
                 )
             }
             if (leg.stops.isEmpty()) {
-                val departure = if (leg.departureTime > 0L) formatTime(leg.departureTime)
+                val departure = if (leg.departureTime > 0L) formatTime(context, leg.departureTime)
                 else unavailableTime
-                val arrival = if (leg.arrivalTime > 0L) formatTime(leg.arrivalTime)
+                val arrival = if (leg.arrivalTime > 0L) formatTime(context, leg.arrivalTime)
                 else unavailableTime
                 Text(stringResource(R.string.departure_arrival_times, departure, arrival), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 12.dp))
             } else {
@@ -569,6 +565,7 @@ private fun legHasPartialUpdate(leg: TripLeg): Boolean {
 
 @Composable
 private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val arrival = arriving.stops.lastOrNull()?.arrivalTime ?: arriving.arrivalTime
     val departure = next.stops.firstOrNull()?.departureTime ?: next.departureTime
     val margin = departure - arrival
@@ -577,7 +574,7 @@ private fun ConnectionRow(arriving: TripLeg, next: TripLeg, now: Long) {
     val connectionText = if (departure <= 0) {
         unavailableDeparture
     } else {
-        val arrivalText = stringResource(R.string.arrives_at_time, formatTime(arrival))
+        val arrivalText = stringResource(R.string.arrives_at_time, formatTime(context, arrival))
         val marginText = if (margin < 0) {
             stringResource(R.string.connection_missed)
         } else {
