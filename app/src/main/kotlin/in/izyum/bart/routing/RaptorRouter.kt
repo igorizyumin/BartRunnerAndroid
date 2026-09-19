@@ -37,7 +37,6 @@ class RaptorRouter(
 
     data class Trip(
         val id: String,
-        val routeKey: String,
         val line: Line,
         val direction: String?,
         val trainDestination: Station?,

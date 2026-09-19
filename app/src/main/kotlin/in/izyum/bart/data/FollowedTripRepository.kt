@@ -1,7 +1,7 @@
 package `in`.izyum.bart.data
 
 import android.content.Context
-import `in`.izyum.bart.model.Departure
+import android.util.Log
 import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
@@ -21,6 +21,7 @@ class FollowedTripRepository @JvmOverloads constructor(
     private val timeSource: TimeSource = SystemTimeSource
 ) : AutoCloseable {
     private companion object {
+        const val TAG = "FollowedTripRepository"
         const val STORAGE_FILE_NAME = "followed_trip.json"
     }
 
@@ -59,8 +60,6 @@ class FollowedTripRepository @JvmOverloads constructor(
         return itinerary
     }
 
-    fun getFollowedDeparture(): Departure? = getFollowedItinerary()?.toDeparture()
-
     fun setFollowedItinerary(
         itinerary: Itinerary?,
         refreshBackgroundWork: Boolean = true,
@@ -89,13 +88,6 @@ class FollowedTripRepository @JvmOverloads constructor(
         if (refreshBackgroundWork) {
             DeparturePollingAlarm.refresh(applicationContext, this)
         }
-    }
-
-    fun setFollowedDeparture(departure: Departure?, refreshBackgroundWork: Boolean = true) {
-        setFollowedItinerary(
-            departure?.let { Itinerary.fromDeparture(it) },
-            refreshBackgroundWork,
-        )
     }
 
     fun clearFollowedItinerary() {
@@ -156,9 +148,6 @@ class FollowedTripRepository @JvmOverloads constructor(
     internal fun peekFollowedItinerary(): Itinerary? =
         synchronized(stateLock) { followedItinerary }
 
-    internal fun peekFollowedDeparture(): Departure? =
-        peekFollowedItinerary()?.toDeparture()
-
     private fun refreshBackgroundPollingStateInternal() {
         synchronized(stateLock) { refreshBackgroundPollingStateLocked() }
     }
@@ -208,7 +197,7 @@ class FollowedTripRepository @JvmOverloads constructor(
                 try {
                     store.saveItinerary(nextItinerary)
                 } catch (exception: Exception) {
-                    // Persistence is best effort; the in-memory state remains authoritative.
+                    Log.w(TAG, "Could not persist followed trip state", exception)
                 }
             }
         }
@@ -220,11 +209,24 @@ class FollowedTripRepository @JvmOverloads constructor(
     /**
      * Realtime updates can add trip-leg IDs after a trip has been followed. The
      * alarm belongs to the train, not to that feed detail, so retain it when the
-     * route and nearby departure still identify the same train.
+     * route and nearby departure still identify the same train. A matching
+     * first-leg trip identity is required so adjacent trains cannot inherit
+     * one another's alarm state.
      */
     private fun isSameAlarmItinerary(previous: Itinerary, next: Itinerary): Boolean {
         if (previous.selectionIdentity == next.selectionIdentity) {
             return true
+        }
+        val previousFirstLeg = previous.legs.firstOrNull()
+        val nextFirstLeg = next.legs.firstOrNull()
+        if (previousFirstLeg?.tripId != nextFirstLeg?.tripId) {
+            return false
+        }
+        if (previousFirstLeg?.serviceDate != null
+            && nextFirstLeg?.serviceDate != null
+            && previousFirstLeg.serviceDate != nextFirstLeg.serviceDate
+        ) {
+            return false
         }
         return previous.origin == next.origin
             && previous.destination == next.destination

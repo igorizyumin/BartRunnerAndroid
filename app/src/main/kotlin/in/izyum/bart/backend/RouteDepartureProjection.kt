@@ -7,22 +7,12 @@ import `in`.izyum.bart.transit.gtfs.BartGtfsNetwork
 import java.util.function.Supplier
 
 /** Builds departures for one route from the already-downloaded feed. */
-class RouteDepartureProjection private constructor(
+class RouteDepartureProjection(
     private val query: StationPair,
-    private val ignoreDirection: Boolean,
     private val networkSupplier: Supplier<BartGtfsNetwork>,
 ) {
-    constructor(query: StationPair, networkSupplier: Supplier<BartGtfsNetwork>) :
-        this(query, false, networkSupplier)
-
     constructor(query: StationPair, bartGtfsNetwork: BartGtfsNetwork) :
-        this(query, false, Supplier { bartGtfsNetwork })
-
-    constructor(
-        query: StationPair,
-        ignoreDirection: Boolean,
-        bartGtfsNetwork: BartGtfsNetwork
-    ) : this(query, ignoreDirection, Supplier { bartGtfsNetwork })
+        this(query, Supplier { bartGtfsNetwork })
 
     fun project(snapshot: TransitFeedSnapshot): RealTimeDepartures =
         projectInternal(snapshot)
@@ -38,7 +28,7 @@ class RouteDepartureProjection private constructor(
                 query.origin,
                 query.destination,
                 network,
-            ).project(canonical).finalizeDeparturesList()
+            ).project(canonical).sortDepartures()
         }
     }
 

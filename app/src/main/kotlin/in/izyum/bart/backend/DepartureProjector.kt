@@ -26,8 +26,7 @@ class DepartureProjector(
         val inputs = routing.inputs(trips)
         val byTrip = inputs.associateBy { it.trip }
         val router = routing.router(inputs)
-        val unfiltered = mutableListOf<Departure>()
-        val filtered = mutableListOf<Departure>()
+        val departures = mutableListOf<Departure>()
 
         trips.forEach { trip ->
             val originStop = trip.stopAt(origin) ?: return@forEach
@@ -79,16 +78,14 @@ class DepartureProjector(
                     } ?: builder
                 }
                 .build()
-            unfiltered += departure
-            filtered += departure
+            departures += departure
         }
 
         return RealTimeDepartures(
             origin,
             destination,
             feedTime,
-            unfiltered,
-            filtered,
+            departures,
             transfersIncluded = destination != null,
         )
     }

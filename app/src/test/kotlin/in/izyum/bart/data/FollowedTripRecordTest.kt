@@ -1,6 +1,7 @@
 package `in`.izyum.bart.data
 
 import `in`.izyum.bart.model.Departure
+import `in`.izyum.bart.model.Itinerary
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.TripLeg
@@ -21,7 +22,7 @@ class FollowedTripRecordTest {
             passengerDestination = null
         }
 
-        assertEquals(Station.BALB, record.toDeparture().passengerDestination)
+        assertEquals(Station.BALB, record.toItinerary().destination)
     }
 
     @Test
@@ -41,23 +42,23 @@ class FollowedTripRecordTest {
             .setMinEstimate(1_000_000L).setMaxEstimate(1_060_000L)
             .setArrivalTimeOverride(1_800_000L).setEstimatedTripTime(600)
             .setTripLegs(listOf(leg)).build()
+        val itinerary = Itinerary.fromDeparture(original)!!
         val record = ObjectMapper().readValue(
-            ObjectMapper().writeValueAsBytes(FollowedTripRecord.fromDeparture(original)),
+            ObjectMapper().writeValueAsBytes(FollowedTripRecord.fromItinerary(itinerary)),
             FollowedTripRecord::class.java,
         )
-        val restored = record.toDeparture()
+        val restored = record.toItinerary()
         assertEquals(FollowedTripRecord.CURRENT_VERSION, record.version)
         assertEquals(Station.MONT, restored.origin)
-        assertEquals(Station.DUBL, restored.passengerDestination)
+        assertEquals(Station.DUBL, restored.destination)
         assertEquals(Line.RED, restored.line)
-        assertEquals("2", restored.platform)
-        assertEquals(1_000_000L, restored.minEstimate)
-        assertEquals(1, restored.tripLegs.size)
-        assertEquals("red-1", restored.tripLegs[0].tripId)
-        assertEquals(LocalDate.of(2026, 9, 8), restored.tripLegs[0].serviceDate)
-        assertNotNull(restored.tripLegs[0].stops)
-        assertEquals(1, restored.tripLegs[0].stops.size)
-        assertEquals(Station.EMBR, restored.tripLegs[0].stops[0].station)
+        assertEquals(1_000_000L, restored.getInitialDepartureTime())
+        assertEquals(1, restored.legs.size)
+        assertEquals("red-1", restored.legs[0].tripId)
+        assertEquals(LocalDate.of(2026, 9, 8), restored.legs[0].serviceDate)
+        assertNotNull(restored.legs[0].stops)
+        assertEquals(1, restored.legs[0].stops.size)
+        assertEquals(Station.EMBR, restored.legs[0].stops[0].station)
     }
 
     @Test
@@ -67,6 +68,6 @@ class FollowedTripRecordTest {
             tripLegs += FollowedTripRecord.TripLegRecord().apply { tripId = "legacy" }
         }
 
-        assertThrows(IllegalArgumentException::class.java) { record.toDeparture() }
+        assertThrows(IllegalArgumentException::class.java) { record.toItinerary() }
     }
 }

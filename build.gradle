@@ -25,7 +25,7 @@ tasks.register("verifyCompatibility") {
             throw new GradleException("JDK 17 or newer is required to build this project")
         }
         [
-                agp: [actual: libs.versions.agp.get(), required: "9.4.0"],
+                agp: [actual: libs.versions.agp.get(), required: "9.4.1"],
                 kotlin: [actual: libs.versions.kotlin.get(), required: "2.4.20"],
                 ksp: [actual: libs.versions.ksp.get(), required: "2.3.12"],
                 androidxCore: [actual: libs.versions.androidxCore.get(), required: "1.19.0"],

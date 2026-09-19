@@ -56,7 +56,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.coil.compose)
     implementation(libs.coil.resvg)
-    implementation('com.google.android.gms:play-services-oss-licenses:17.5.1')
+    implementation(libs.play.services.oss.licenses)
 }
 
 android {

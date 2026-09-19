@@ -1,10 +1,13 @@
 package `in`.izyum.bart.data
 
-import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Itinerary
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 /** Pure file-backed persistence for the disposable followed-trip state. */
 class FollowedTripStore @JvmOverloads constructor(
@@ -12,47 +15,6 @@ class FollowedTripStore @JvmOverloads constructor(
     private val objectMapper: ObjectMapper = ObjectMapper()
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false),
 ) {
-    fun load(): Departure? {
-        if (!storageFile.exists()) {
-            return null
-        }
-        return try {
-            storageFile.inputStream().use { input ->
-                objectMapper.readValue(input, FollowedTripRecord::class.java)
-                    .toDeparture()
-            }
-        } catch (exception: Exception) {
-            delete()
-            null
-        }
-    }
-
-    fun save(departure: Departure?) {
-        if (departure == null) {
-            delete()
-            return
-        }
-
-        storageFile.parentFile?.mkdirs()
-        val temporaryFile = File(storageFile.parentFile,
-            storageFile.name + ".tmp")
-        try {
-            temporaryFile.outputStream().use { output ->
-                objectMapper.writeValue(output,
-                    FollowedTripRecord.fromDeparture(departure))
-            }
-            if (storageFile.exists() && !storageFile.delete()) {
-                throw IllegalStateException("Could not replace followed trip state")
-            }
-            if (!temporaryFile.renameTo(storageFile)) {
-                throw IllegalStateException("Could not save followed trip state")
-            }
-        } catch (exception: Exception) {
-            temporaryFile.delete()
-            throw exception
-        }
-    }
-
     fun loadItinerary(): Itinerary? {
         if (!storageFile.exists()) return null
         return try {
@@ -71,21 +33,38 @@ class FollowedTripStore @JvmOverloads constructor(
             return
         }
 
-        storageFile.parentFile?.mkdirs()
-        val temporaryFile = File(storageFile.parentFile, storageFile.name + ".tmp")
+        saveRecord(FollowedTripRecord.fromItinerary(itinerary))
+    }
+
+    private fun saveRecord(record: FollowedTripRecord) {
+        val parent = storageFile.parentFile ?: File(".")
+        parent.mkdirs()
+        val temporaryFile = File(parent, storageFile.name + ".tmp")
         try {
             temporaryFile.outputStream().use { output ->
-                objectMapper.writeValue(output, FollowedTripRecord.fromItinerary(itinerary))
+                objectMapper.writeValue(output, record)
             }
-            if (storageFile.exists() && !storageFile.delete()) {
-                throw IllegalStateException("Could not replace followed trip state")
-            }
-            if (!temporaryFile.renameTo(storageFile)) {
-                throw IllegalStateException("Could not save followed trip state")
-            }
+            replaceStorageFile(temporaryFile)
         } catch (exception: Exception) {
             temporaryFile.delete()
             throw exception
+        }
+    }
+
+    private fun replaceStorageFile(temporaryFile: File) {
+        try {
+            Files.move(
+                temporaryFile.toPath(),
+                storageFile.toPath(),
+                REPLACE_EXISTING,
+                ATOMIC_MOVE,
+            )
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(
+                temporaryFile.toPath(),
+                storageFile.toPath(),
+                REPLACE_EXISTING,
+            )
         }
     }
 

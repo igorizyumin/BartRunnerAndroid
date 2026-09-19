@@ -1,5 +1,6 @@
 package `in`.izyum.bart.ui
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.Image
@@ -166,6 +167,7 @@ internal val LightConnectingTrainTile = Color(0xFFE6E6E6)
 private val LightYellowLine = Color(0xFFE6C400)
 
 private val RobotoGoogleFont = GoogleFont("Roboto")
+@SuppressLint("PrivateResource")
 private val RobotoFontProvider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
     providerPackage = "com.google.android.gms",

@@ -57,19 +57,10 @@ class LiveGtfsRoutingTest {
             for (pattern in patterns) {
                 assertTrue(pattern.stations.size >= 2)
                 assertTrue(!pattern.routeId.isEmpty())
-                assertTrue("pattern has no trips: " + pattern.routeId,
-                        !pattern.tripIds.isEmpty())
                 assertTrue("unexpected direction " + pattern.direction,
                         "n".equals(pattern.direction)
                                 || "s".equals(pattern.direction))
                 assertNoRepeatedStations(pattern.stations)
-                for (tripId in pattern.tripIds) {
-                    assertTrue("pattern references no trip: " + tripId,
-                            CATALOG.tripsById.containsKey(tripId))
-                    assertTrue("trip is on another route: " + tripId,
-                            pattern.routeId.equals(
-                                    CATALOG.routeIdForTrip(tripId)))
-                }
             }
         }
     }

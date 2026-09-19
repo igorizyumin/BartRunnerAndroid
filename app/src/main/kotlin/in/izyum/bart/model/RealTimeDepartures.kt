@@ -8,37 +8,20 @@ class RealTimeDepartures internal constructor(
     private val origin: Station?,
     private val destination: Station?,
     private val time: Long,
-    unfilteredDepartures: List<Departure>,
     departures: List<Departure>,
     private val transfersIncluded: Boolean = false,
 ) {
-    private val unfilteredDepartures = immutableList(unfilteredDepartures)
     private val departures = immutableList(departures)
 
     fun getDepartures(): List<Departure> = departures
 
     fun areTransfersIncluded(): Boolean = transfersIncluded
 
-    fun sortDepartures(): RealTimeDepartures = copy(
-        departures = departures.sortedBy { it.minutes }
-    )
-
-    fun finalizeDeparturesList(): RealTimeDepartures {
-        if (destination == null) {
-            return sortDepartures()
-        }
-        return sortDepartures()
-    }
-
-    private fun copy(
-        departures: List<Departure> = this.departures,
-        transfersIncluded: Boolean = this.transfersIncluded,
-    ): RealTimeDepartures = RealTimeDepartures(
+    fun sortDepartures(): RealTimeDepartures = RealTimeDepartures(
         origin,
         destination,
         time,
-        unfilteredDepartures,
-        departures,
+        departures.sortedBy { it.minutes },
         transfersIncluded,
     )
 

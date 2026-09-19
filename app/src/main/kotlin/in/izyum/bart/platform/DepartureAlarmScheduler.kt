@@ -17,9 +17,6 @@ import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.model.SystemTimeSource
 import `in`.izyum.bart.model.TimeSource
 import `in`.izyum.bart.receivers.AlarmBroadcastReceiver
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /** Owns Android alarm scheduling for one followed departure. */
 class DepartureAlarmScheduler @JvmOverloads constructor(
@@ -45,15 +42,10 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     private val preferences = applicationContext.getSharedPreferences(
         ALARM_PREFS, Context.MODE_PRIVATE)
     private val stateKey = buildStateKey(itinerary)
-    private val _state = MutableStateFlow(
-        DepartureAlarmState(
-            leadTimeMinutes = preferences.getInt(
-                stateKey + LEAD_TIME_SUFFIX, 0),
-            pending = preferences.getBoolean(stateKey + PENDING_SUFFIX, false),
-        )
-    )
-    val state: StateFlow<DepartureAlarmState> = _state.asStateFlow()
-
+    private var storedLeadTimeMinutes = preferences.getInt(
+        stateKey + LEAD_TIME_SUFFIX, 0)
+    private var pendingAlarm = preferences.getBoolean(
+        stateKey + PENDING_SUFFIX, false)
     init {
         prunePersistedStates()
         val nowMillis = timeSource.nowMillis()
@@ -69,17 +61,13 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     val leadTimeMinutes: Int
-        get() = _state.value.leadTimeMinutes
+        get() = storedLeadTimeMinutes
 
     val isPending: Boolean
-        get() = _state.value.pending
+        get() = pendingAlarm
 
     val isTracking: Boolean
         get() = preferences.getBoolean(stateKey + TRACKING_SUFFIX, false)
-
-    val secondsUntilAlarm: Int
-        get() = DepartureAlarmPolicy.secondsUntilAlarm(
-            itinerary, leadTimeMinutes, timeSource.nowMillis())
 
     fun setUp(leadTimeMinutes: Int) {
         require(leadTimeMinutes >= 0) {
@@ -194,7 +182,8 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     }
 
     private fun updateState(leadTimeMinutes: Int, pending: Boolean) {
-        _state.value = DepartureAlarmState(leadTimeMinutes, pending)
+        storedLeadTimeMinutes = leadTimeMinutes
+        pendingAlarm = pending
         preferences.edit {
             putInt(stateKey + LEAD_TIME_SUFFIX, leadTimeMinutes)
             putBoolean(stateKey + PENDING_SUFFIX, pending)
@@ -210,16 +199,16 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
             .distinct()
         val excess = bases.size - (MAX_PERSISTED_ALARM_STATES - 1)
         if (excess <= 0) return
-        val editor = preferences.edit()
         bases.sortedBy { base ->
             preferences.getLong(base + LAST_USED_SUFFIX, Long.MIN_VALUE)
         }.take(excess).forEach { base ->
-            editor.remove(base + LEAD_TIME_SUFFIX)
-            editor.remove(base + PENDING_SUFFIX)
-            editor.remove(base + TRACKING_SUFFIX)
-            editor.remove(base + LAST_USED_SUFFIX)
+            preferences.edit {
+                remove(base + LEAD_TIME_SUFFIX)
+                remove(base + PENDING_SUFFIX)
+                remove(base + TRACKING_SUFFIX)
+                remove(base + LAST_USED_SUFFIX)
+            }
         }
-        editor.apply()
     }
 
     private fun showIntent(): PendingIntent = PendingIntent.getActivity(

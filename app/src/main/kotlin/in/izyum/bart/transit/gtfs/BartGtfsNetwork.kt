@@ -26,11 +26,9 @@ class BartGtfsNetwork private constructor(
     class StationPattern private constructor(
         val routeId: String,
         val direction: String?,
-        stations: List<Station>,
-        tripIds: List<String>
+        stations: List<Station>
     ) {
         val stations: List<Station> = immutableList(stations)
-        val tripIds: List<String> = immutableList(tripIds)
 
         override fun equals(other: Any?): Boolean =
             other is StationPattern
@@ -45,9 +43,8 @@ class BartGtfsNetwork private constructor(
             fun create(
                 routeId: String,
                 direction: String?,
-                stations: List<Station>,
-                tripIds: List<String>
-            ): StationPattern = StationPattern(routeId, direction, stations, tripIds)
+                stations: List<Station>
+            ): StationPattern = StationPattern(routeId, direction, stations)
         }
     }
 
@@ -90,23 +87,6 @@ class BartGtfsNetwork private constructor(
     fun stationForStopId(stopId: String?): Station? =
         stopId?.let { stationsByStopId[it] }
 
-    /** Returns the ordered passenger stations from the static schedule trip. */
-    fun stationsForTrip(tripId: String?): List<Station> {
-        if (tripId == null) {
-            return emptyList()
-        }
-        val stations = mutableListOf<Station>()
-        for (stopId in catalog.stopIdsByTripId[tripId].orEmpty()) {
-            val station = stationForStopId(stopId)
-            if (station != null && station != Station.SPCL
-                && (stations.isEmpty() || stations.last() != station)
-            ) {
-                stations += station
-            }
-        }
-        return immutableList(stations)
-    }
-
     fun lineForRouteId(routeId: String?): Line? =
         routeId?.let { linesByRouteId[it] }
 
@@ -141,8 +121,7 @@ class BartGtfsNetwork private constructor(
                     patterns += StationPattern.create(
                         pattern.routeId,
                         directionForRouteId(pattern.routeId),
-                        stations,
-                        pattern.tripIds.toList()
+                        stations
                     )
                 }
             }
@@ -153,44 +132,6 @@ class BartGtfsNetwork private constructor(
     /** Returns the static GTFS route IDs that implement a BART line. */
     fun routeIdsForLine(line: Line?): Set<String> =
         routePatternsForLine(line).map { it.routeId }.toSet()
-
-    /** Returns the distinct station sequences supplied by GTFS for a line. */
-    fun stationPatternsForLine(line: Line?): List<List<Station>> =
-        immutableList(routePatternsForLine(line).map { it.stations }.distinct())
-
-    fun linesForStation(station: Station?): List<Line> {
-        if (station == null) {
-            return emptyList()
-        }
-        return immutableList(
-            Line.values().filter { line ->
-                routePatternsForLine(line).any { station in it.stations }
-            }
-        )
-    }
-
-    fun isBetween(
-        station: Station?,
-        origin: Station?,
-        destination: Station?,
-        line: Line?
-    ): Boolean {
-        if (station == null || origin == null || destination == null || line == null) {
-            return false
-        }
-        return routePatternsForLine(line).any { pattern ->
-            val stations = pattern.stations
-            val originIndex = stations.indexOf(origin)
-            val destinationIndex = stations.indexOf(destination)
-            val stationIndex = stations.indexOf(station)
-            originIndex >= 0
-                && destinationIndex >= 0
-                && stationIndex >= 0
-                && originIndex < destinationIndex
-                && stationIndex > originIndex
-                && stationIndex < destinationIndex
-        }
-    }
 
     fun routeIdForTrip(tripId: String?): String? = catalog.routeIdForTrip(tripId)
 

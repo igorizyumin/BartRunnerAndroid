@@ -88,7 +88,6 @@ class CanonicalRoutingAdapter(
         }
         return RaptorRouter.Trip(
             id = canonicalTripId(trip),
-            routeKey = "${trip.line}:${stops.joinToString(",") { it.station.abbreviation }}",
             line = trip.line,
             direction = trip.direction,
             trainDestination = trip.trainDestination,

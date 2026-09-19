@@ -75,7 +75,7 @@ class DeparturesViewModel @JvmOverloads constructor(
                     result.exceptionOrNull()?.let { exception ->
                         updateError(asException(exception))
                     } ?: result.getOrNull()?.let { departures ->
-                        updateFromFeed(departures.getDepartures())
+                        replace(departures.getDepartures())
                     }
                 }
         }
@@ -90,11 +90,6 @@ class DeparturesViewModel @JvmOverloads constructor(
             State.content(departures)
         }
         return departures
-    }
-
-    @Synchronized
-    private fun updateFromFeed(incoming: List<Departure>) {
-        replace(incoming)
     }
 
     @Synchronized

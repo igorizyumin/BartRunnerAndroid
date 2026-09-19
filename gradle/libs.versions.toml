@@ -13,11 +13,12 @@ androidxCore = "1.19.0"
 lifecycle = "2.11.0"
 coroutines = "1.11.0"
 commonsCsv = "1.14.1"
-composeBom = "2026.08.00"
+composeBom = "2026.09.00"
 activityCompose = "1.13.0"
 composeCompiler = "2.4.20"
 ksp = "2.3.12"
-room = "2.8.4"
+room = "2.8.5"
+ossLicenses = "17.5.2"
 coil = "3.6.3"
 coilResvg = "1.1.2"
 
@@ -44,6 +45,7 @@ coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-androi
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commonsCsv" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+play-services-oss-licenses = { module = "com.google.android.gms:play-services-oss-licenses", version.ref = "ossLicenses" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }

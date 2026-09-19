@@ -9,7 +9,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -33,17 +32,6 @@ class FollowedTripStoreTest {
     }
 
     @Test
-    fun saveAndLoadRestoresTheTripAcrossStoreInstances() {
-        store.save(departure())
-        val restored = FollowedTripStore(storageFile).load()!!
-        assertEquals(Station.MONT, restored.origin)
-        assertEquals(Station.RICH, restored.passengerDestination)
-        assertEquals(Line.RED, restored.line)
-        assertEquals("trip-1", restored.tripLegs[0].tripId)
-        assertTrue(storageFile.exists())
-    }
-
-    @Test
     fun saveAndLoadRestoresAnItineraryAcrossStoreInstances() {
         val itinerary = Itinerary.fromDeparture(departure())!!
         store.saveItinerary(itinerary)
@@ -57,16 +45,16 @@ class FollowedTripStoreTest {
 
     @Test
     fun clearingRemovesTheDurableState() {
-        store.save(departure())
-        store.save(null)
+        store.saveItinerary(Itinerary.fromDeparture(departure()))
+        store.saveItinerary(null)
         assertFalse(storageFile.exists())
-        assertNull(store.load())
+        assertNull(store.loadItinerary())
     }
 
     @Test
     fun malformedStateIsDiscardedInsteadOfRetriedForever() {
         Files.write(storageFile.toPath(), "not-json".toByteArray())
-        assertNull(store.load())
+        assertNull(store.loadItinerary())
         assertFalse(storageFile.exists())
     }
 

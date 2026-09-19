@@ -3,9 +3,7 @@ package `in`.izyum.bart.activities
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import `in`.izyum.bart.BartRunnerApplication
-import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Itinerary
-import `in`.izyum.bart.model.Station
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +35,7 @@ class TripActionsViewModel(application: Application) :
         _uiState.value = readUiState()
     }
 
-    fun followTrip(itinerary: Itinerary, passengerDestination: Station? = null) {
+    fun followTrip(itinerary: Itinerary) {
         followedTripRepository.setFollowedItinerary(itinerary)
         followedTripRepository.startTracking()
     }
@@ -67,13 +65,3 @@ class TripActionsViewModel(application: Application) :
         alarmLeadTimeMinutes = getAlarmLeadTimeMinutes(),
     )
 }
-
-/** Legacy board adapter retained for callers that still prepare a list item. */
-internal fun prepareDepartureForFollowing(
-    departure: Departure,
-    passengerDestination: Station? = null,
-): Departure = departure.withPassengerDestination(
-    passengerDestination ?: departure.passengerDestination ?: departure.trainDestination,
-)
-
-/** Ensures a departure followed from trip details has the destination required by notifications. */

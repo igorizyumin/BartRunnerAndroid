@@ -103,17 +103,6 @@ class TransferPolicy(
         return departureTime - arrivalTime >= minimumTransferSeconds * 1000L
     }
 
-    /** Returns whether the connection has the additional application safety margin. */
-    fun hasExtraMargin(
-        arrivalTime: Long,
-        departureTime: Long,
-        minimumTransferSeconds: Int,
-    ): Boolean = meetsMinimumTransferTime(
-        arrivalTime,
-        departureTime,
-        minimumTransferSeconds + EXTRA_MARGIN_SECONDS,
-    )
-
     fun isAvoidedStation(station: Station): Boolean = station in avoidedStations
 
     fun isBusyStation(station: Station): Boolean = station in busyStations

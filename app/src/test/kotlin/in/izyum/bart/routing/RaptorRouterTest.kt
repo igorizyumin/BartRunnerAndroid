@@ -114,7 +114,6 @@ class RaptorRouterTest {
         arrivalTime: Long,
     ): RaptorRouter.Trip = RaptorRouter.Trip(
         id = id,
-        routeKey = "$line:${stations.joinToString(",")}",
         line = line,
         direction = null,
         trainDestination = stations.last(),
@@ -135,7 +134,6 @@ class RaptorRouterTest {
         times: List<Pair<Long, Long>>,
     ): RaptorRouter.Trip = RaptorRouter.Trip(
         id = id,
-        routeKey = "$line:${stations.joinToString(",")}",
         line = line,
         direction = null,
         trainDestination = stations.last(),

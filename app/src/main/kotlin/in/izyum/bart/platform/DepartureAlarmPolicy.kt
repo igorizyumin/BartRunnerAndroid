@@ -1,6 +1,5 @@
 package `in`.izyum.bart.platform
 
-import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Itinerary
 
 /** Deterministic alarm decisions shared by Android scheduling and tests. */
@@ -15,28 +14,8 @@ object DepartureAlarmPolicy {
     fun alarmTime(arrivalEstimateMillis: Long, leadTimeMinutes: Int): Long =
         arrivalEstimateMillis - leadTimeMinutes * 60_000L
 
-    /** Uses the same pessimistic initial-station arrival time shown by the UI. */
-    fun alarmTime(departure: Departure, leadTimeMinutes: Int): Long =
-        alarmTime(departure.getInitialArrivalTime(pessimistic = true), leadTimeMinutes)
-
     fun alarmTime(itinerary: Itinerary, leadTimeMinutes: Int): Long =
         alarmTime(itinerary.getInitialArrivalTime(pessimistic = true), leadTimeMinutes)
-
-    fun secondsUntilAlarm(arrivalEstimateMillis: Long,
-                          leadTimeMinutes: Int,
-                          nowMillis: Long): Int =
-        ((alarmTime(arrivalEstimateMillis, leadTimeMinutes) - nowMillis) / 1_000L)
-            .toInt()
-
-    fun secondsUntilAlarm(departure: Departure,
-                          leadTimeMinutes: Int,
-                          nowMillis: Long): Int =
-        ((alarmTime(departure, leadTimeMinutes) - nowMillis) / 1_000L).toInt()
-
-    fun secondsUntilAlarm(itinerary: Itinerary,
-                          leadTimeMinutes: Int,
-                          nowMillis: Long): Int =
-        ((alarmTime(itinerary, leadTimeMinutes) - nowMillis) / 1_000L).toInt()
 
     /**
      * Returns the delay before the next background refresh. Refreshes happen

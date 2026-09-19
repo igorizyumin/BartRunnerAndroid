@@ -142,7 +142,7 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                     .setUsage(VibrationAttributes.USAGE_ALARM)
                     .build(),
             )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        } else {
             vibrateWithAudioAttributes(
                 vibrator,
                 VibrationEffect.createWaveform(pattern, -1),
@@ -150,9 +150,6 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
                     .setUsage(AudioAttributes.USAGE_ALARM)
                     .build(),
             )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(pattern, -1)
         }
     }
 

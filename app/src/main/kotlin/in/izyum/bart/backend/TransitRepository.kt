@@ -288,7 +288,7 @@ class TransitRepository(
             if (closed || refreshInProgress) {
                 return false
             }
-            val nowMillis = System.currentTimeMillis()
+            val nowMillis = nowMillisProvider()
             if (!force && lastRefreshStartedAtMillis?.let {
                     nowMillis - it < refreshIntervalMillis
                 } == true
@@ -386,7 +386,9 @@ class TransitRepository(
         return TransitFeedState(
             snapshot = latestSnapshot,
             error = errors.firstOrNull(),
-            isOffline = errors.isNotEmpty() || !hasUsableRealtime,
+            // Departure screens depend on trip updates. Fresh alert data must
+            // not make stale or missing departure predictions appear online.
+            isOffline = errors.isNotEmpty() || !trip.isUsable,
             tripUpdates = trip,
             alerts = alerts,
         )

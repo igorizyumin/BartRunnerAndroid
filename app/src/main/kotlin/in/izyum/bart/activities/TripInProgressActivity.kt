@@ -267,7 +267,7 @@ class TripInProgressActivity : ComponentActivity() {
 
     private fun followTrip(itinerary: Itinerary) {
         if (isFollowing) return
-        tripActionsViewModel.followTrip(itinerary, tripRoute?.destination)
+        tripActionsViewModel.followTrip(itinerary)
         requestNotificationPermissionIfNeeded()
         startAlarmTrackingService()
         isFollowing = true
