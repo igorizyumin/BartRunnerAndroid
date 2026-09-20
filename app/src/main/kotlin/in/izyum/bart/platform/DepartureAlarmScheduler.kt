@@ -105,7 +105,7 @@ class DepartureAlarmScheduler @JvmOverloads constructor(
     fun notifyAlarmHasBeenHandled() {
         alarmManager?.cancel(alarmIntent())
         updateState(leadTimeMinutes, false)
-        preferences.edit { putBoolean(stateKey + TRACKING_SUFFIX, true) }
+        stopTracking()
     }
 
     fun rescheduleIfPending() {

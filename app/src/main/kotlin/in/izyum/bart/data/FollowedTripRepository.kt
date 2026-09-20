@@ -40,7 +40,7 @@ class FollowedTripRepository @JvmOverloads constructor(
 
     private val _state = MutableStateFlow(toState(followedItinerary))
     private val _backgroundPollingNeeded = MutableStateFlow(
-        alarmScheduler?.isTracking == true,
+        alarmScheduler?.isPending == true,
     )
     val state: StateFlow<FollowedTripState> = _state.asStateFlow()
     val backgroundPollingNeeded: StateFlow<Boolean> = _backgroundPollingNeeded.asStateFlow()
@@ -159,7 +159,7 @@ class FollowedTripRepository @JvmOverloads constructor(
     }
 
     private fun refreshBackgroundPollingStateLocked() {
-        _backgroundPollingNeeded.value = alarmScheduler?.isTracking == true
+        _backgroundPollingNeeded.value = alarmScheduler?.isPending == true
     }
 
     internal fun backgroundPollingDelayMillis(itinerary: Itinerary?): Long {

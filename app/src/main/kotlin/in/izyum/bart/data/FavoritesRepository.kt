@@ -3,7 +3,6 @@ package `in`.izyum.bart.data
 import android.content.Context
 import android.util.Log
 import `in`.izyum.bart.model.StationPair
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +25,10 @@ class FavoritesRepository(context: Context) : AutoCloseable {
     private val applicationContext = context.applicationContext
     private val objectMapper = ObjectMapper()
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    private val favoritesType = objectMapper.typeFactory.constructCollectionType(
+        ArrayList::class.java,
+        StationPair::class.java,
+    )
     private val persistenceExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val stateLock = Any()
     private var currentFavorites: List<StationPair> = emptyList()
@@ -91,11 +94,11 @@ class FavoritesRepository(context: Context) : AutoCloseable {
     }
 
     private fun load() {
-        val restored = try {
+        val restored: List<StationPair> = try {
             applicationContext.openFileInput(FILE_NAME).use { input ->
-                objectMapper.readValue(
+                objectMapper.readValue<ArrayList<StationPair>>(
                     input,
-                    object : TypeReference<ArrayList<StationPair>>() {}
+                    favoritesType,
                 )
             }
         } catch (exception: java.io.FileNotFoundException) {

@@ -10,7 +10,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -183,8 +182,7 @@ class TripInProgressActivity : ComponentActivity() {
 
     private fun silenceAlarm() {
         alarmVisible = false
-        NotificationManagerCompat.from(this)
-            .cancel(AlarmBroadcastReceiver.ALARM_NOTIFICATION_ID)
+        AlarmBroadcastReceiver.cancelNotification(this)
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 

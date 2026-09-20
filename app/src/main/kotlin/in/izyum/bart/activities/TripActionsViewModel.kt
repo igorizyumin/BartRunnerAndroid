@@ -37,7 +37,6 @@ class TripActionsViewModel(application: Application) :
 
     fun followTrip(itinerary: Itinerary) {
         followedTripRepository.setFollowedItinerary(itinerary)
-        followedTripRepository.startTracking()
     }
 
     fun updateFollowedTrip(itinerary: Itinerary) {

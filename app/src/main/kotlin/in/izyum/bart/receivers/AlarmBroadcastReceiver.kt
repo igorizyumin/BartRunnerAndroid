@@ -26,8 +26,17 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
     companion object {
         const val ALARM_NOTIFICATION_ID = 124
         const val EXTRA_ALARM_TRIGGERED = "alarmTriggered"
+        private val vibrationLock = Any()
+        private var activeVibrator: Vibrator? = null
 
         fun cancelNotification(context: Context) {
+            synchronized(vibrationLock) {
+                activeVibrator?.cancel()
+                activeVibrator = null
+                // Keep this fallback for devices that return a shared vibrator
+                // service wrapper for different Context instances.
+                context.getSystemService(Vibrator::class.java)?.cancel()
+            }
             try {
                 NotificationManagerCompat.from(context).cancel(ALARM_NOTIFICATION_ID)
             } catch (_: SecurityException) {
@@ -135,21 +144,25 @@ class AlarmBroadcastReceiver : BroadcastReceiver() {
         val vibrator = context.getSystemService(Vibrator::class.java)
         if (vibrator == null || !vibrator.hasVibrator()) return
         val pattern = longArrayOf(0L, 500L, 500L)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            vibrator.vibrate(
-                VibrationEffect.createWaveform(pattern, -1),
-                VibrationAttributes.Builder()
-                    .setUsage(VibrationAttributes.USAGE_ALARM)
-                    .build(),
-            )
-        } else {
-            vibrateWithAudioAttributes(
-                vibrator,
-                VibrationEffect.createWaveform(pattern, -1),
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .build(),
-            )
+        synchronized(vibrationLock) {
+            activeVibrator?.cancel()
+            activeVibrator = vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                vibrator.vibrate(
+                    VibrationEffect.createWaveform(pattern, 0),
+                    VibrationAttributes.Builder()
+                        .setUsage(VibrationAttributes.USAGE_ALARM)
+                        .build(),
+                )
+            } else {
+                vibrateWithAudioAttributes(
+                    vibrator,
+                    VibrationEffect.createWaveform(pattern, 0),
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .build(),
+                )
+            }
         }
     }
 
