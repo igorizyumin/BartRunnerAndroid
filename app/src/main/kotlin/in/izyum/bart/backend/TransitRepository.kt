@@ -1,5 +1,6 @@
 package `in`.izyum.bart.backend
 
+import android.os.Looper
 import com.google.transit.realtime.GtfsRealtime
 import `in`.izyum.bart.performance.PerformanceTrace
 import kotlinx.coroutines.CoroutineScope
@@ -148,13 +149,21 @@ class TransitRepository(
             }
             .flowOn(Dispatchers.Default)
 
-    /** Synchronously fetches once. Intended for tests and explicit refresh actions. */
+    /** Fetches once. Dispatches to Dispatchers.IO if invoked from the main thread. */
     fun refreshNow() {
-        if (!beginRefresh(force = true)) {
-            return
+        if (runCatching { Looper.myLooper() == Looper.getMainLooper() }.getOrDefault(false)) {
+            scope.launch(Dispatchers.IO) {
+                if (!beginRefresh(force = true)) {
+                    return@launch
+                }
+                fetchAndPublish()
+            }
+        } else {
+            if (!beginRefresh(force = true)) {
+                return
+            }
+            fetchAndPublish()
         }
-
-        fetchAndPublish()
     }
 
     /** Fetches immediately only when the feed has not been fetched recently. */

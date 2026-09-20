@@ -18,24 +18,18 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
-import `in`.izyum.bart.backend.RouteDepartureProjection
 import `in`.izyum.bart.model.Departure
-import `in`.izyum.bart.model.StationPair
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * Screen rendering live train departure countdowns in Android Auto using ListTemplate.
- * Displays "X mins to departure" countdown at the top level of each row in large font.
- * Tapping any train ride follows that ride and opens its full-screen departure page.
- *
- * Updates via invalidate() on a 30-second ticker to adhere to Car App Quality Guidelines
- * and avoid driver distraction lockouts.
+ * Screen rendering full-screen departure & platform info for a followed ride in Android Auto.
+ * Displays "X mins to departure" countdown at the top level of the row in large font.
+ * Automatically shown when a ride is followed on handset or selected in Android Auto.
  */
-class ActiveDepartureScreen(
+class FollowedDepartureScreen(
     carContext: CarContext,
-    private val stationPair: StationPair,
 ) : Screen(carContext), DefaultLifecycleObserver {
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -91,7 +85,7 @@ class ActiveDepartureScreen(
 
     override fun onGetTemplate(): Template {
         return runCatching { buildTemplate() }.getOrElse { error ->
-            Log.e("ActiveDepartureScreen", "Error building template", error)
+            Log.e("FollowedDepartureScreen", "Error building template", error)
             buildFallbackTemplate()
         }
     }
@@ -100,120 +94,75 @@ class ActiveDepartureScreen(
         val app = carContext.applicationContext as? BartRunnerApplication
             ?: return buildFallbackTemplate()
 
-        if (stationPair.origin == null) {
-            return buildErrorTemplate("Invalid Route", "Selected route has no origin station.")
-        }
+        val departure = app.followedTripRepository.getFollowedDeparture()
+            ?: return buildNoFollowedRideTemplate()
 
-        val snapshot = app.transitRepository.getLatestSnapshot()
-        val showTransfers = CarPreferences.getShowTransfersForRoute(carContext, stationPair)
+        val nowMillis = app.timeSource.nowMillis()
+        val minutesLeft = getMinutesLeft(departure, nowMillis)
         val isAudioGuidanceEnabled = CarPreferences.getDefaultAudioGuidance(carContext)
-
-        val allDepartures = if (snapshot != null) {
-            runCatching {
-                val projection = RouteDepartureProjection(stationPair, app.bartGtfsNetworkSupplier)
-                projection.project(snapshot).getDepartures()
-            }.getOrDefault(emptyList())
-        } else {
-            emptyList()
-        }
-
-        val departures = if (showTransfers) {
-            allDepartures
-        } else {
-            allDepartures.filter { !it.requiresTransfer && !it.hasTransfers() }
-        }
 
         val listBuilder = ItemList.Builder()
 
-        if (departures.isEmpty()) {
-            val emptyMessage = if (snapshot == null) {
-                "Fetching live BART realtime feed..."
-            } else if (allDepartures.isNotEmpty()) {
-                "No direct trains found. Open Settings in top right to include transfer routes."
-            } else {
-                "No departures currently scheduled for this route."
-            }
-            listBuilder.addItem(
-                Row.Builder()
-                    .setTitle("No Matching Departures")
-                    .addText(emptyMessage)
-                    .build(),
-            )
-        } else {
-            val primaryDeparture = departures.first()
-            val minutesLeft = getMinutesLeft(primaryDeparture, app.timeSource.nowMillis())
+        // Row 1: Primary Countdown (Top-level Big Font) & Train Destination
+        val lineName = departure.line?.getDisplayName() ?: "BART Train"
+        val destinationName = departure.getTrainDestinationName() ?: "Destination"
+        val countdownText = formatCountdownText(minutesLeft)
+        val routeSubtitle = "${departure.origin?.getName() ?: "Origin"} → ${departure.passengerDestination?.getName() ?: destinationName}"
 
-            val countdownTitle = formatCountdownText(minutesLeft)
-            val lineAndDest = "${primaryDeparture.line?.getDisplayName() ?: "Train"} to ${primaryDeparture.getTrainDestinationName() ?: "Destination"}"
-            val detailsText = buildString {
-                primaryDeparture.platform?.let { append("Platform $it • ") }
-                primaryDeparture.trainLength?.let { append("$it cars • ") }
-                if (primaryDeparture.requiresTransfer || primaryDeparture.hasTransfers()) {
-                    append("Transfer Req • ")
-                }
-                append("Tap to Follow")
-            }
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle(countdownText)
+                .addText("$lineName to $destinationName")
+                .addText(routeSubtitle)
+                .build(),
+        )
 
-            listBuilder.addItem(
-                Row.Builder()
-                    .setTitle(countdownTitle)
-                    .addText(lineAndDest)
-                    .addText(detailsText)
-                    .setOnClickListener {
-                        runCatching {
-                            app.followedTripRepository.setFollowedDeparture(primaryDeparture)
-                            app.followedTripRepository.startTracking()
-                            screenManager.push(FollowedDepartureScreen(carContext))
-                        }
+        // Row 2: Boarding Platform & Train Specs
+        val platformText = departure.platform?.let { "Platform $it" } ?: "Platform Info Pending"
+        val carLengthText = departure.trainLength?.let { "$it Cars" } ?: "Standard Train"
+        val transferText = if (departure.requiresTransfer || departure.hasTransfers()) "Transfer Required" else "Direct Route"
+
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle(platformText)
+                .addText("$carLengthText • $transferText")
+                .build(),
+        )
+
+        // Row 3: Estimated Arrival / Trip Info
+        val arrivalMins = departure.getEstimatedArrivalMinutesLeft(nowMillis)
+        val arrivalText = if (arrivalMins > 0) "Est. Trip Time: $arrivalMins mins" else "Realtime tracking active"
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle("Trip Status")
+                .addText(arrivalText)
+                .build(),
+        )
+
+        // Row 4: Stop Following Action Row
+        listBuilder.addItem(
+            Row.Builder()
+                .setTitle("Stop Following Ride")
+                .addText("Tap to stop tracking this trip and return to main menu")
+                .setOnClickListener {
+                    runCatching {
+                        app.followedTripRepository.clearFollowedDeparture()
+                        navigateBackToMainMenu()
                     }
-                    .build(),
-            )
-
-            if (departures.size > 1) {
-                val nextDeparture = departures[1]
-                val nextMinutes = getMinutesLeft(nextDeparture, app.timeSource.nowMillis())
-                val nextCountdown = formatCountdownText(nextMinutes)
-                val transferSuffix = if (nextDeparture.requiresTransfer || nextDeparture.hasTransfers()) " (Transfer)" else ""
-                val nextLineAndDest = "Next Train: ${nextDeparture.getTrainDestinationName() ?: "Train"}$transferSuffix"
-                val nextDetails = buildString {
-                    nextDeparture.platform?.let { append("Platform $it • ") }
-                    nextDeparture.trainLength?.let { append("$it cars • ") }
-                    append("Tap to Follow")
                 }
+                .build(),
+        )
 
-                listBuilder.addItem(
-                    Row.Builder()
-                        .setTitle("Next: $nextCountdown")
-                        .addText(nextLineAndDest)
-                        .addText(nextDetails)
-                        .setOnClickListener {
-                            runCatching {
-                                app.followedTripRepository.setFollowedDeparture(nextDeparture)
-                                app.followedTripRepository.startTracking()
-                                screenManager.push(FollowedDepartureScreen(carContext))
-                            }
-                        }
-                        .build(),
-                )
-            }
-
-            runCatching {
-                checkMilestoneAlerts(primaryDeparture, minutesLeft, isAudioGuidanceEnabled)
-            }
+        runCatching {
+            checkMilestoneAlerts(departure, minutesLeft, isAudioGuidanceEnabled)
         }
 
         val refreshIcon = CarIcon.Builder(
             IconCompat.createWithResource(carContext, R.drawable.ic_refresh)
         ).build()
 
-        val settingsIcon = CarIcon.Builder(
-            IconCompat.createWithResource(carContext, R.drawable.ic_settings)
-        ).build()
-
-        val routeTitle = "${stationPair.origin.getName()} → ${stationPair.destination?.getName() ?: "All"}"
-
         val header = Header.Builder()
-            .setTitle(routeTitle)
+            .setTitle("Followed Ride")
             .setStartHeaderAction(Action.BACK)
             .addEndHeaderAction(
                 Action.Builder()
@@ -225,15 +174,6 @@ class ActiveDepartureScreen(
                     }
                     .build(),
             )
-            .addEndHeaderAction(
-                Action.Builder()
-                    .setIcon(settingsIcon)
-                    .setTitle("Settings")
-                    .setOnClickListener {
-                        screenManager.push(CarSettingsScreen(carContext))
-                    }
-                    .build(),
-            )
             .build()
 
         return ListTemplate.Builder()
@@ -242,13 +182,42 @@ class ActiveDepartureScreen(
             .build()
     }
 
-    private fun buildErrorTemplate(title: String, message: String): Template {
+    private fun navigateBackToMainMenu() {
+        runCatching {
+            if (screenManager.stackSize > 1) {
+                screenManager.pop()
+            } else {
+                screenManager.push(SavedRoutePickerScreen(carContext))
+            }
+        }
+    }
+
+    private fun buildNoFollowedRideTemplate(): Template {
+        val header = Header.Builder()
+            .setTitle("Followed Ride")
+            .setStartHeaderAction(Action.BACK)
+            .build()
+
+        val listBuilder = ItemList.Builder().addItem(
+            Row.Builder()
+                .setTitle("No Active Ride Followed")
+                .addText("Select a train ride to follow it in Android Auto.")
+                .build(),
+        )
+
+        return ListTemplate.Builder()
+            .setHeader(header)
+            .setSingleList(listBuilder.build())
+            .build()
+    }
+
+    private fun buildFallbackTemplate(): Template {
         val refreshIcon = CarIcon.Builder(
             IconCompat.createWithResource(carContext, R.drawable.ic_refresh)
         ).build()
 
         val header = Header.Builder()
-            .setTitle(title)
+            .setTitle("Followed Ride")
             .setStartHeaderAction(Action.BACK)
             .addEndHeaderAction(
                 Action.Builder()
@@ -265,8 +234,8 @@ class ActiveDepartureScreen(
 
         val listBuilder = ItemList.Builder().addItem(
             Row.Builder()
-                .setTitle(title)
-                .addText(message)
+                .setTitle("Followed Ride Details")
+                .addText("Unable to load ride info.")
                 .build(),
         )
 
@@ -274,10 +243,6 @@ class ActiveDepartureScreen(
             .setHeader(header)
             .setSingleList(listBuilder.build())
             .build()
-    }
-
-    private fun buildFallbackTemplate(): Template {
-        return buildErrorTemplate("Live Departures", "Unable to load departure times.")
     }
 
     private fun checkMilestoneAlerts(departure: Departure, minutesLeft: Int, isAudioGuidanceEnabled: Boolean) {
@@ -298,7 +263,7 @@ class ActiveDepartureScreen(
 
             CarNotificationHelper.postDepartureMilestoneNotification(
                 carContext,
-                "${stationPair.origin?.abbreviation ?: "BART"} Departure Alert",
+                "${departure.origin?.abbreviation ?: "BART"} Departure Alert",
                 announcement,
             )
 
