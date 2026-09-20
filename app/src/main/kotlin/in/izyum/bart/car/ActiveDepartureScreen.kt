@@ -32,11 +32,18 @@ class ActiveDepartureScreen(
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val notifiedMilestones = mutableSetOf<String>()
-    private val audioGuidanceManager by lazy { AudioGuidanceManager(carContext) }
+
+    private var _audioGuidanceManager: AudioGuidanceManager? = null
+    private fun getAudioGuidanceManager(): AudioGuidanceManager {
+        if (_audioGuidanceManager == null) {
+            _audioGuidanceManager = AudioGuidanceManager(carContext)
+        }
+        return _audioGuidanceManager!!
+    }
 
     private val tickerRunnable = object : Runnable {
         override fun run() {
-            invalidate()
+            runCatching { invalidate() }
             mainHandler.postDelayed(this, TICKER_INTERVAL_MILLIS)
         }
     }
@@ -46,9 +53,9 @@ class ActiveDepartureScreen(
     }
 
     override fun onResume(owner: LifecycleOwner) {
-        val app = carContext.applicationContext as BartRunnerApplication
-        if (app.transitRepository.getLatestSnapshot() == null) {
-            app.transitRepository.refreshNow()
+        val app = carContext.applicationContext as? BartRunnerApplication
+        if (app != null && app.transitRepository.getLatestSnapshot() == null) {
+            runCatching { app.transitRepository.refreshNow() }
         }
         mainHandler.removeCallbacks(tickerRunnable)
         mainHandler.postDelayed(tickerRunnable, TICKER_INTERVAL_MILLIS)
@@ -60,22 +67,36 @@ class ActiveDepartureScreen(
 
     override fun onDestroy(owner: LifecycleOwner) {
         mainHandler.removeCallbacks(tickerRunnable)
-        audioGuidanceManager.shutdown()
+        _audioGuidanceManager?.shutdown()
+        _audioGuidanceManager = null
     }
 
     override fun onGetTemplate(): Template {
-        val app = carContext.applicationContext as BartRunnerApplication
+        return runCatching { buildTemplate() }.getOrElse { buildFallbackTemplate() }
+    }
+
+    private fun buildTemplate(): Template {
+        val app = carContext.applicationContext as? BartRunnerApplication
+            ?: return buildFallbackTemplate()
+
+        if (stationPair.origin == null) {
+            return buildErrorTemplate("Invalid Route", "Selected route has no origin station.")
+        }
+
         var snapshot = app.transitRepository.getLatestSnapshot()
         if (snapshot == null) {
-            app.transitRepository.refreshNow()
+            runCatching { app.transitRepository.refreshNow() }
             snapshot = app.transitRepository.getLatestSnapshot()
         }
+
         val showTransfers = CarPreferences.getShowTransfersForRoute(carContext, stationPair)
         val isAudioGuidanceEnabled = CarPreferences.getDefaultAudioGuidance(carContext)
 
         val allDepartures = if (snapshot != null) {
-            val projection = RouteDepartureProjection(stationPair, app.bartGtfsNetworkSupplier)
-            projection.project(snapshot).getDepartures()
+            runCatching {
+                val projection = RouteDepartureProjection(stationPair, app.bartGtfsNetworkSupplier)
+                projection.project(snapshot).getDepartures()
+            }.getOrDefault(emptyList())
         } else {
             emptyList()
         }
@@ -104,7 +125,6 @@ class ActiveDepartureScreen(
             val primaryDeparture = departures.first()
             val minutesLeft = getMinutesLeft(primaryDeparture, app.timeSource.nowMillis())
 
-            // Primary departure row
             val titleText = "${primaryDeparture.line?.name ?: "Train"} to ${primaryDeparture.getTrainDestinationName() ?: "Destination"}"
             val subtitleText = buildString {
                 append(formatCountdownText(minutesLeft))
@@ -122,7 +142,6 @@ class ActiveDepartureScreen(
                     .build(),
             )
 
-            // Following train row
             if (departures.size > 1) {
                 val nextDeparture = departures[1]
                 val nextMinutes = getMinutesLeft(nextDeparture, app.timeSource.nowMillis())
@@ -135,34 +154,33 @@ class ActiveDepartureScreen(
                 )
             }
 
-            // Check milestone notifications & audio ducking announcements
-            checkMilestoneAlerts(primaryDeparture, minutesLeft, isAudioGuidanceEnabled)
+            runCatching {
+                checkMilestoneAlerts(primaryDeparture, minutesLeft, isAudioGuidanceEnabled)
+            }
         }
 
-        // Action button 1: Toggle transfer filtering for this route
         val transferToggleTitle = if (showTransfers) "Direct Only" else "Include Transfers"
         paneBuilder.addAction(
             Action.Builder()
                 .setTitle(transferToggleTitle)
                 .setOnClickListener {
                     CarPreferences.setShowTransfersForRoute(carContext, stationPair, !showTransfers)
-                    invalidate()
+                    runCatching { invalidate() }
                 }
                 .build(),
         )
 
-        // Action button 2: Toggle audio guidance (max 2 actions per Pane in Android Auto)
         paneBuilder.addAction(
             Action.Builder()
                 .setTitle(if (isAudioGuidanceEnabled) "Mute Guidance" else "Unmute Guidance")
                 .setOnClickListener {
                     CarPreferences.setDefaultAudioGuidance(carContext, !isAudioGuidanceEnabled)
-                    invalidate()
+                    runCatching { invalidate() }
                 }
                 .build(),
         )
 
-        val routeTitle = "${stationPair.origin?.getName() ?: "Origin"} → ${stationPair.destination?.getName() ?: "All"}"
+        val routeTitle = "${stationPair.origin.getName()} → ${stationPair.destination?.getName() ?: "All"}"
 
         val header = Header.Builder()
             .setTitle(routeTitle)
@@ -171,8 +189,8 @@ class ActiveDepartureScreen(
                 Action.Builder()
                     .setTitle("Refresh")
                     .setOnClickListener {
-                        app.transitRepository.refreshNow()
-                        invalidate()
+                        runCatching { app.transitRepository.refreshNow() }
+                        runCatching { invalidate() }
                     }
                     .build(),
             )
@@ -181,6 +199,26 @@ class ActiveDepartureScreen(
         return PaneTemplate.Builder(paneBuilder.build())
             .setHeader(header)
             .build()
+    }
+
+    private fun buildErrorTemplate(title: String, message: String): Template {
+        val header = Header.Builder()
+            .setTitle(title)
+            .setStartHeaderAction(Action.BACK)
+            .build()
+
+        val pane = Pane.Builder().addRow(
+            Row.Builder()
+                .setTitle(title)
+                .addText(message)
+                .build(),
+        ).build()
+
+        return PaneTemplate.Builder(pane).setHeader(header).build()
+    }
+
+    private fun buildFallbackTemplate(): Template {
+        return buildErrorTemplate("Live Departures", "Unable to load departure times. Tap Refresh to try again.")
     }
 
     private fun checkMilestoneAlerts(departure: Departure, minutesLeft: Int, isAudioGuidanceEnabled: Boolean) {
@@ -198,15 +236,13 @@ class ActiveDepartureScreen(
                 else -> "Train to $destinationName departs in $minutesLeft minutes"
             }
 
-            // Post Heads-Up Notification for background display
             CarNotificationHelper.postDepartureMilestoneNotification(
                 carContext,
                 "${stationPair.origin?.abbreviation ?: "BART"} Departure Alert",
                 announcement,
             )
 
-            // Audio ducking speech announcement
-            audioGuidanceManager.speakAnnouncement(announcement, isAudioGuidanceEnabled)
+            getAudioGuidanceManager().speakAnnouncement(announcement, isAudioGuidanceEnabled)
         }
     }
 
@@ -224,8 +260,6 @@ class ActiveDepartureScreen(
     }
 
     companion object {
-        // 30 second ticker interval per Car App Quality Guidelines
         private const val TICKER_INTERVAL_MILLIS = 30_000L
     }
 }
-

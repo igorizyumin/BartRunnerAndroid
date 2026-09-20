@@ -47,6 +47,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsSubway
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Elevator
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -107,8 +110,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -118,9 +124,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import android.widget.ImageView
+import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.activities.DeparturesViewModel
 import `in`.izyum.bart.activities.RoutesUiState
+import `in`.izyum.bart.backend.RouteDepartureProjection
+import `in`.izyum.bart.data.HomeStationPreferences
+import `in`.izyum.bart.data.KeepScreenOnPreferences
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
 import `in`.izyum.bart.model.Departure
 import `in`.izyum.bart.model.Line
 import `in`.izyum.bart.model.Station
@@ -234,6 +247,10 @@ fun HomeScreen(
     onBackgroundPollingChanged: (Boolean) -> Unit = {},
     defaultTransferViewEnabled: Boolean = true,
     onDefaultTransferViewChanged: (Boolean) -> Unit = {},
+    homeStation: Station? = null,
+    onHomeStationChanged: (Station?) -> Unit = {},
+    keepScreenActive: Boolean = false,
+    onKeepScreenActiveChanged: (Boolean) -> Unit = {},
 ) {
     var showPicker by remember { mutableStateOf(false) }
     var pickerAddsFavorite by remember { mutableStateOf(false) }
@@ -242,6 +259,7 @@ fun HomeScreen(
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showElevatorDialog by remember { mutableStateOf(false) }
+    var showFullScreenTrip by remember { mutableStateOf(false) }
     var draggedRoute by remember { mutableStateOf<StationPair?>(null) }
     var draggedOffset by remember { mutableFloatStateOf(0f) }
     val favoriteListState = rememberLazyListState()
@@ -326,25 +344,72 @@ fun HomeScreen(
             if (followedTrip != null) {
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth().clickable { onViewTrip(followedTrip) },
+                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         shape = RoundedCornerShape(20.dp),
                     ) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.Train, stringResource(R.string.trip_in_progress), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(25.dp))
-                            }
-                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                                Text(stringResource(R.string.trip_in_progress), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(
-                                    stringResource(R.string.route_arrow, followedTrip.origin?.getName().orEmpty(), (followedTrip.passengerDestination ?: followedTrip.trainDestination)?.getName().orEmpty()),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onViewTrip(followedTrip) }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.primary),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Train,
+                                        stringResource(R.string.trip_in_progress),
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(25.dp),
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 12.dp, end = 36.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.trip_in_progress),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        stringResource(
+                                            R.string.route_arrow,
+                                            followedTrip.origin?.getName().orEmpty(),
+                                            (followedTrip.passengerDestination ?: followedTrip.trainDestination)?.getName().orEmpty(),
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary,
                                 )
                             }
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = MaterialTheme.colorScheme.primary)
+                            IconButton(
+                                onClick = { showFullScreenTrip = true },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.Fullscreen,
+                                    contentDescription = stringResource(R.string.full_screen),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                     }
                 }
@@ -511,6 +576,10 @@ fun HomeScreen(
             onBackgroundPollingChanged = onBackgroundPollingChanged,
             defaultTransferViewEnabled = defaultTransferViewEnabled,
             onDefaultTransferViewChanged = onDefaultTransferViewChanged,
+            homeStation = homeStation,
+            onHomeStationChanged = onHomeStationChanged,
+            keepScreenActive = keepScreenActive,
+            onKeepScreenActiveChanged = onKeepScreenActiveChanged,
             onDismiss = { showSettingsDialog = false },
         )
     }
@@ -521,6 +590,15 @@ fun HomeScreen(
             description = state.elevatorDescription,
             error = state.elevatorError,
             onDismiss = { showElevatorDialog = false },
+        )
+    }
+
+    if (showFullScreenTrip && followedTrip != null) {
+        FullScreenTripDialog(
+            departure = followedTrip,
+            pair = followedTrip.getStationPair(),
+            timeSource = timeSource,
+            onDismiss = { showFullScreenTrip = false },
         )
     }
 }
@@ -578,9 +656,15 @@ private fun SettingsDialog(
     onBackgroundPollingChanged: (Boolean) -> Unit,
     defaultTransferViewEnabled: Boolean,
     onDefaultTransferViewChanged: (Boolean) -> Unit,
+    homeStation: Station? = null,
+    onHomeStationChanged: (Station?) -> Unit = {},
+    keepScreenActive: Boolean = false,
+    onKeepScreenActiveChanged: (Boolean) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var showFareDiscountMenu by remember { mutableStateOf(false) }
+    var showHomeStationMenu by remember { mutableStateOf(false) }
+    val stations = remember { Station.getStationList() }
     val selectedDescription = fareDiscountOptions
         .firstOrNull { it.id == fareDiscountId }
         ?.description
@@ -590,7 +674,52 @@ private fun SettingsDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings)) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(R.string.home_station),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.home_station_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { showHomeStationMenu = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = homeStation?.getName() ?: stringResource(R.string.none),
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                    }
+                    DropdownMenu(
+                        expanded = showHomeStationMenu,
+                        onDismissRequest = { showHomeStationMenu = false },
+                        modifier = Modifier.heightIn(max = 280.dp),
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.none)) },
+                            onClick = {
+                                onHomeStationChanged(null)
+                                showHomeStationMenu = false
+                            },
+                        )
+                        stations.forEach { station ->
+                            DropdownMenuItem(
+                                text = { Text(station.getName()) },
+                                onClick = {
+                                    onHomeStationChanged(station)
+                                    showHomeStationMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.fare_discount),
                     style = MaterialTheme.typography.titleMedium,
@@ -664,6 +793,26 @@ private fun SettingsDialog(
                     Switch(
                         checked = defaultTransferViewEnabled,
                         onCheckedChange = onDefaultTransferViewChanged,
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.keep_screen_active),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.keep_screen_active_description),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(
+                        checked = keepScreenActive,
+                        onCheckedChange = onKeepScreenActiveChanged,
                     )
                 }
             }
@@ -925,9 +1074,10 @@ fun RoutePickerDialog(
         (context as? Activity)?.getPreferences(Context.MODE_PRIVATE)
             ?: context.getSharedPreferences("route_picker_preferences", Context.MODE_PRIVATE)
     }
+    val homeStation = remember(context) { HomeStationPreferences.getHomeStation(context) }
     val lastOriginPosition = preferences.getInt(LAST_SELECTED_ORIGIN, 0)
     var origin by remember(initialRoute) {
-        mutableStateOf(initialRoute?.origin ?: stations.getOrNull(lastOriginPosition) ?: stations.firstOrNull())
+        mutableStateOf(initialRoute?.origin ?: homeStation ?: stations.getOrNull(lastOriginPosition) ?: stations.firstOrNull())
     }
     var destination by remember(initialRoute) {
         mutableStateOf(initialRoute?.destination)
@@ -1229,6 +1379,7 @@ fun TripScreen(
     var following by remember(isFollowingInitially) { mutableStateOf(isFollowingInitially) }
     var showAlarm by remember { mutableStateOf(false) }
     var showClear by remember { mutableStateOf(false) }
+    var showFullScreenTrip by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -1251,7 +1402,14 @@ fun TripScreen(
                     item { OfflineBanner() }
                 }
                 item {
-                    TripHero(departure, route ?: pair, fare, timeSource, tick)
+                    TripHero(
+                        departure = departure,
+                        pair = route ?: pair,
+                        fare = fare,
+                        timeSource = timeSource,
+                        tick = tick,
+                        onFullScreen = if (following) { { showFullScreenTrip = true } } else null,
+                    )
                 }
                 if (!following) {
                     item { Button(onClick = { following = true; onFollow(departure) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Train, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.follow_this_trip)) } }
@@ -1284,23 +1442,389 @@ fun TripScreen(
             confirmButton = { TextButton(onClick = onSilenceAlarm) { Text(stringResource(R.string.silence_alarm)) } },
         )
     }
+    if (showFullScreenTrip && departure != null) {
+        FullScreenTripDialog(
+            departure = departure,
+            pair = route ?: departure.getStationPair(),
+            fare = fare,
+            timeSource = timeSource,
+            onDismiss = { showFullScreenTrip = false },
+        )
+    }
 }
 
 @Composable
-private fun TripHero(departure: Departure, pair: StationPair?, fare: String?, timeSource: TimeSource, tick: Long) {
+private fun TripHero(
+    departure: Departure,
+    pair: StationPair?,
+    fare: String?,
+    timeSource: TimeSource,
+    tick: Long,
+    onFullScreen: (() -> Unit)? = null,
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val origin = pair?.origin?.getName() ?: departure.origin?.getName().orEmpty()
     val destination = pair?.destination?.getName() ?: departure.trainDestination?.getName().orEmpty()
     val status = tripStatus(context, departure, tick)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(20.dp)) {
-            Text(status, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    status,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (onFullScreen != null) {
+                    IconButton(onClick = onFullScreen) {
+                        Icon(
+                            Icons.Filled.Fullscreen,
+                            contentDescription = stringResource(R.string.full_screen),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
             Text(stringResource(R.string.route_arrow, origin, destination), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 6.dp))
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Metric(Icons.Filled.AccessTime, stringResource(R.string.departs), DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
                 Metric(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.arrives), DepartureTextFormatter.estimatedArrivalTime(context, departure).ifBlank { "—" }, Modifier.weight(1f))
                 if (pair?.destination != null) {
                     FareMetric(fare ?: "—", Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FullScreenTripDialog(
+    departure: Departure,
+    pair: StationPair?,
+    fare: String? = null,
+    timeSource: TimeSource,
+    onDismiss: () -> Unit,
+) {
+    val tick = rememberSecondTick(timeSource)
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val originName = pair?.origin?.getName() ?: departure.origin?.getName().orEmpty()
+    val destinationName = pair?.destination?.getName() ?: departure.passengerDestination?.getName() ?: departure.trainDestination?.getName().orEmpty()
+    val countdownText = DepartureTextFormatter.countdown(context, departure, tick)
+    val departsTime = DepartureTextFormatter.estimatedDepartureTime(context, departure).ifBlank { "—" }
+    val arrivesTime = DepartureTextFormatter.estimatedArrivalTime(context, departure).ifBlank { "—" }
+    val platformAndLength = DepartureTextFormatter.trainLengthAndPlatform(context, departure)
+
+    val app = context.applicationContext as? BartRunnerApplication
+    val nextArrivesTime = remember(departure, tick) {
+        if (pair != null && app != null) {
+            val snapshot = app.transitRepository.getLatestSnapshot()
+            if (snapshot != null) {
+                val projection = RouteDepartureProjection(pair, app.bartGtfsNetworkSupplier)
+                val candidateDepartures = projection.project(snapshot).getDepartures()
+                val nextDeparture = candidateDepartures.firstOrNull {
+                    it.identity != departure.identity &&
+                    it.getMeanEstimate() > departure.getMeanEstimate()
+                } ?: candidateDepartures.getOrNull(1)
+                nextDeparture?.let {
+                    DepartureTextFormatter.estimatedArrivalTime(context, it).ifBlank { null }
+                }
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    var keepScreenActive by remember {
+        mutableStateOf(KeepScreenOnPreferences.isKeepScreenOn(context))
+    }
+
+    val view = LocalView.current
+    DisposableEffect(keepScreenActive) {
+        view.keepScreenOn = keepScreenActive
+        onDispose {
+            view.keepScreenOn = false
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                // Top Header Row: Color-coded Train Icon + Name of the Line & Screen Active / Exit Full Screen Icons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Train,
+                            contentDescription = null,
+                            tint = lineColor(departure.line),
+                            modifier = Modifier.size(32.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = departure.line?.getDisplayName() ?: stringResource(R.string.trip_in_progress),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                val newValue = !keepScreenActive
+                                keepScreenActive = newValue
+                                KeepScreenOnPreferences.setKeepScreenOn(context, newValue)
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.WbSunny,
+                                contentDescription = stringResource(R.string.keep_screen_active),
+                                modifier = Modifier.size(28.dp),
+                                tint = if (keepScreenActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                            )
+                        }
+                        IconButton(onClick = onDismiss) {
+                            Icon(
+                                imageVector = Icons.Filled.FullscreenExit,
+                                contentDescription = stringResource(R.string.exit_full_screen),
+                                modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
+                    }
+                }
+
+                // Top Row: 3 Columns (Route, Arrives, If Missed), Justified center-center-center
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    // Column 1: Route Information (Center-justified)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.route),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.route_arrow, originName, destinationName),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        if (departure.trainDestination != null && departure.trainDestination != pair?.destination) {
+                            Spacer(Modifier.height(2.dp))
+                            TrainDestinationLabel(
+                                destination = departure.getTrainDestinationName().orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    // Column 2: Arrival Time (Center-justified)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.arrives),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = arrivesTime,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+
+                    // Column 3: Arrival Time If Missed (Center-justified)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.if_missed),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = nextArrivesTime ?: "—",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                }
+
+                // CENTER HERO: Countdown Timer ONLY in Large, Friendly Numbers
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                    shape = RoundedCornerShape(32.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 44.dp, horizontal = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = countdownText,
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontSize = 92.sp,
+                                fontWeight = FontWeight.Black,
+                                lineHeight = 96.sp,
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textAlign = TextAlign.Center,
+                        )
+                        if (platformAndLength.isNotBlank()) {
+                            Spacer(Modifier.height(18.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                            ) {
+                                Text(
+                                    text = platformAndLength,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Bottom Cards: Departs & Fare
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                Icons.Filled.AccessTime,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp),
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = stringResource(R.string.departs),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = departsTime,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    if (fare != null) {
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            ),
+                            shape = RoundedCornerShape(20.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_credit_card),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp),
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = stringResource(R.string.fare),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = fare,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

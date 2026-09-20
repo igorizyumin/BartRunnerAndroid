@@ -3,8 +3,10 @@ package `in`.izyum.bart.car
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.car.app.notification.CarAppExtender
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import `in`.izyum.bart.R
@@ -20,14 +22,16 @@ object CarNotificationHelper {
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
-                description = CHANNEL_DESC
-                enableVibration(true)
+            runCatching {
+                val importance = NotificationManager.IMPORTANCE_HIGH
+                val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
+                    description = CHANNEL_DESC
+                    enableVibration(true)
+                }
+                val notificationManager =
+                    context.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                notificationManager?.createNotificationChannel(channel)
             }
-            val notificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
         }
     }
 
@@ -37,26 +41,39 @@ object CarNotificationHelper {
         contentText: String,
         notificationId: Int = 1001,
     ) {
-        createNotificationChannel(context)
+        val appContext = context.applicationContext
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(
+                    appContext,
+                    android.Manifest.permission.POST_NOTIFICATIONS,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+        }
 
-        val carExtender = CarAppExtender.Builder()
-            .setImportance(NotificationManager.IMPORTANCE_HIGH)
-            .build()
-
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(routeTitle)
-            .setContentText(contentText)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
-            .setAutoCancel(true)
-            .extend(carExtender)
-
-        val notificationManager = NotificationManagerCompat.from(context)
         try {
+            createNotificationChannel(appContext)
+
+            val carExtender = CarAppExtender.Builder()
+                .setImportance(NotificationManager.IMPORTANCE_HIGH)
+                .build()
+
+            val builder = NotificationCompat.Builder(appContext, CHANNEL_ID)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(routeTitle)
+                .setContentText(contentText)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
+                .setAutoCancel(true)
+                .extend(carExtender)
+
+            val notificationManager = NotificationManagerCompat.from(appContext)
             notificationManager.notify(notificationId, builder.build())
         } catch (_: SecurityException) {
             // Permission for POST_NOTIFICATIONS may not be granted
+        } catch (_: Throwable) {
+            // Avoid crashing on notification errors
         }
     }
 }

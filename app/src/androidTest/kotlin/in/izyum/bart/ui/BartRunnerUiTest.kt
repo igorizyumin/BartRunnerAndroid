@@ -281,6 +281,89 @@ class BartRunnerUiTest {
     }
 
     @Test
+    fun followedTripCardOnHomeScreenOpensFullScreenView() {
+        val departure = testDeparture()
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false),
+                    followedTrip = departure,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Full screen").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Full screen").performClick()
+        composeRule.onNodeWithContentDescription("Exit full screen").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Keep screen active").assertIsDisplayed()
+        composeRule.onAllNodesWithText("Castro Valley → Milpitas").onFirst().assertIsDisplayed()
+    }
+
+    @Test
+    fun homeScreenSettingsIncludesHomeStationOption() {
+        setTestContent {
+            BartRunnerTheme {
+                HomeScreen(
+                    state = RoutesUiState(isLoading = false),
+                    followedTrip = null,
+                    timeSource = timeSource,
+                    onRouteSelected = {},
+                    onAddFavorite = {},
+                    onRemoveFavorite = {},
+                    onMoveFavorite = { _, _ -> },
+                    onInsertFavorite = { _, _ -> },
+                    onViewTrip = {},
+                    onViewMap = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("More options").performClick()
+        composeRule.onNodeWithText("Settings").performClick()
+        composeRule.onNodeWithText("Home station").assertIsDisplayed()
+        composeRule.onNodeWithText("Keep screen active").assertIsDisplayed()
+    }
+
+    @Test
+    fun tripScreenHeroShowsFullScreenButtonWhenFollowing() {
+        val departure = testDeparture()
+        setTestContent {
+            BartRunnerTheme {
+                TripScreen(
+                    departure = departure,
+                    route = `in`.izyum.bart.model.StationPair(Station.CAST, Station.MLPT),
+                    isFollowingInitially = true,
+                    alarmVisible = false,
+                    timeSource = timeSource,
+                    alarmPending = false,
+                    alarmLeadTimeMinutes = 0,
+                    onBack = {},
+                    onFollow = {},
+                    onSetAlarm = {},
+                    onCancelAlarm = {},
+                    onClear = {},
+                    onShare = {},
+                    onSilenceAlarm = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Full screen").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Full screen").performClick()
+        composeRule.onNodeWithContentDescription("Exit full screen").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Exit full screen").performClick()
+        composeRule.onNodeWithContentDescription("Exit full screen").assertDoesNotExist()
+    }
+
+    @Test
     fun systemMapExposesZoomControls() {
         setTestContent {
             BartRunnerTheme { SystemMapScreen(onBack = {}) }

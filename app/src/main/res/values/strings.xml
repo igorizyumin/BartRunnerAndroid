@@ -118,6 +118,14 @@
     <string name="departure_countdown">%1$dm %2$ds</string>
     <string name="departure_countdown_hours">%1$dh %2$dm %3$ds</string>
     <string name="estimated_arrival_unknown">Estimated arrival unknown</string>
+    <string name="full_screen">Full screen</string>
+    <string name="exit_full_screen">Exit full screen</string>
+    <string name="home_station">Home station</string>
+    <string name="home_station_description">Default origin in Trip Planner and Add Route.</string>
+    <string name="keep_screen_active">Keep screen active</string>
+    <string name="keep_screen_active_description">Keep screen awake while full-screen ride view is open.</string>
+    <string name="if_missed">If missed</string>
+    <string name="route">Route</string>
     <string name="arrived_at_destination">Arrived at destination</string>
     <string name="arrives_around_minutes">Arrives ~%1$s (%2$d min)</string>
     <string name="arrives_around_one_minute">Arrives ~%1$s (1 min)</string>

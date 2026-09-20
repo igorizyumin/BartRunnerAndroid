@@ -17,6 +17,10 @@ import androidx.car.app.model.Template
 class CarSettingsScreen(carContext: CarContext) : Screen(carContext) {
 
     override fun onGetTemplate(): Template {
+        return runCatching { buildTemplate() }.getOrElse { buildFallbackTemplate() }
+    }
+
+    private fun buildTemplate(): Template {
         val listBuilder = ItemList.Builder()
 
         // 1. Default Transfer View Setting
@@ -33,7 +37,7 @@ class CarSettingsScreen(carContext: CarContext) : Screen(carContext) {
                 .addText(transferSubtitle)
                 .setOnClickListener {
                     CarPreferences.setDefaultShowTransfers(carContext, !defaultShowTransfers)
-                    invalidate()
+                    runCatching { invalidate() }
                 }
                 .build(),
         )
@@ -52,7 +56,7 @@ class CarSettingsScreen(carContext: CarContext) : Screen(carContext) {
                 .addText(audioSubtitle)
                 .setOnClickListener {
                     CarPreferences.setDefaultAudioGuidance(carContext, !defaultAudioGuidance)
-                    invalidate()
+                    runCatching { invalidate() }
                 }
                 .build(),
         )
@@ -64,7 +68,7 @@ class CarSettingsScreen(carContext: CarContext) : Screen(carContext) {
                 .addText("Clear saved route-specific transfer view overrides and revert all routes to default.")
                 .setOnClickListener {
                     CarPreferences.clearRouteOverrides(carContext)
-                    invalidate()
+                    runCatching { invalidate() }
                 }
                 .build(),
         )
@@ -73,6 +77,25 @@ class CarSettingsScreen(carContext: CarContext) : Screen(carContext) {
             .setTitle("Android Auto Settings")
             .setStartHeaderAction(Action.BACK)
             .build()
+
+        return ListTemplate.Builder()
+            .setHeader(header)
+            .setSingleList(listBuilder.build())
+            .build()
+    }
+
+    private fun buildFallbackTemplate(): Template {
+        val header = Header.Builder()
+            .setTitle("Android Auto Settings")
+            .setStartHeaderAction(Action.BACK)
+            .build()
+
+        val listBuilder = ItemList.Builder().addItem(
+            Row.Builder()
+                .setTitle("Error loading settings")
+                .addText("Tap Back and try again.")
+                .build(),
+        )
 
         return ListTemplate.Builder()
             .setHeader(header)

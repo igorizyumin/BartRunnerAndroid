@@ -10,9 +10,8 @@ import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import `in`.izyum.bart.BartRunnerApplication
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -30,11 +29,11 @@ class SavedRoutePickerScreen(carContext: CarContext) : Screen(carContext), Defau
     }
 
     override fun onResume(owner: LifecycleOwner) {
-        val app = carContext.applicationContext as BartRunnerApplication
+        val app = carContext.applicationContext as? BartRunnerApplication ?: return
         observerJob?.cancel()
-        observerJob = CoroutineScope(Dispatchers.Main.immediate).launch {
+        observerJob = lifecycleScope.launch {
             app.favoritesRepository.uiState.collectLatest {
-                invalidate()
+                runCatching { invalidate() }
             }
         }
     }
@@ -45,15 +44,19 @@ class SavedRoutePickerScreen(carContext: CarContext) : Screen(carContext), Defau
     }
 
     override fun onGetTemplate(): Template {
-        val app = carContext.applicationContext as BartRunnerApplication
-        val favoritesState = app.favoritesRepository.uiState.value
-        val favorites = favoritesState.favorites
+        return runCatching { buildTemplate() }.getOrElse { buildFallbackTemplate() }
+    }
+
+    private fun buildTemplate(): Template {
+        val app = carContext.applicationContext as? BartRunnerApplication
+        val favoritesState = app?.favoritesRepository?.uiState?.value
+        val favorites = favoritesState?.favorites.orEmpty()
 
         val listBuilder = ItemList.Builder()
 
         if (favorites.isEmpty()) {
-            val emptyTitle = if (favoritesState.isLoading) "Loading Saved Commutes..." else "No Favorite Commutes Saved"
-            val emptySubtitle = if (favoritesState.isLoading) {
+            val emptyTitle = if (favoritesState?.isLoading == true) "Loading Saved Commutes..." else "No Favorite Commutes Saved"
+            val emptySubtitle = if (favoritesState?.isLoading == true) {
                 "Fetching saved favorites from storage..."
             } else {
                 "Add favorite routes on your phone to quickly access them in Android Auto."
@@ -65,10 +68,14 @@ class SavedRoutePickerScreen(carContext: CarContext) : Screen(carContext), Defau
                     .build(),
             )
         } else {
-            for (favorite in favorites) {
-                val originName = favorite.origin?.getName() ?: "Origin"
+            // Android Auto ListTemplate caps list to 6 items max per template guidelines
+            val displayFavorites = favorites.take(MAX_DISPLAY_FAVORITES)
+            for (favorite in displayFavorites) {
+                val origin = favorite.origin ?: continue
+
+                val originName = origin.getName()
                 val destName = favorite.destination?.getName() ?: "All Destinations"
-                val subtitle = "${favorite.origin?.abbreviation ?: "???"} → ${favorite.destination?.abbreviation ?: "ALL"}"
+                val subtitle = "${origin.abbreviation} → ${favorite.destination?.abbreviation ?: "ALL"}"
 
                 listBuilder.addItem(
                     Row.Builder()
@@ -87,6 +94,12 @@ class SavedRoutePickerScreen(carContext: CarContext) : Screen(carContext), Defau
             .setStartHeaderAction(Action.APP_ICON)
             .addEndHeaderAction(
                 Action.Builder()
+                    .setTitle("Refresh")
+                    .setOnClickListener { runCatching { invalidate() } }
+                    .build(),
+            )
+            .addEndHeaderAction(
+                Action.Builder()
                     .setTitle("Settings")
                     .setOnClickListener {
                         screenManager.push(CarSettingsScreen(carContext))
@@ -98,13 +111,35 @@ class SavedRoutePickerScreen(carContext: CarContext) : Screen(carContext), Defau
         return ListTemplate.Builder()
             .setHeader(header)
             .setSingleList(listBuilder.build())
-            .addAction(
+            .build()
+    }
+
+    private fun buildFallbackTemplate(): Template {
+        val header = Header.Builder()
+            .setTitle("Saved Route Picker")
+            .setStartHeaderAction(Action.APP_ICON)
+            .addEndHeaderAction(
                 Action.Builder()
                     .setTitle("Refresh")
-                    .setOnClickListener { invalidate() }
+                    .setOnClickListener { runCatching { invalidate() } }
                     .build(),
             )
             .build()
+
+        val listBuilder = ItemList.Builder().addItem(
+            Row.Builder()
+                .setTitle("Unable to load saved routes")
+                .addText("Tap Refresh to try again.")
+                .build(),
+        )
+
+        return ListTemplate.Builder()
+            .setHeader(header)
+            .setSingleList(listBuilder.build())
+            .build()
+    }
+
+    companion object {
+        private const val MAX_DISPLAY_FAVORITES = 6
     }
 }
-

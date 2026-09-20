@@ -74,14 +74,16 @@
             android:value="1" />
         <meta-data
             android:name="androidx.car.app.category"
-            android:value="category.navigation" />
+            android:value="poi" />
 
         <service
             android:name=".car.BartCarAppService"
-            android:exported="true">
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.NAVIGATION" />
+                <category android:name="androidx.car.app.category.POI" />
             </intent-filter>
         </service>
     </application>

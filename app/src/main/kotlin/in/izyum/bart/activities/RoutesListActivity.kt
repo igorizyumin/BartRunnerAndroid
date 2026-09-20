@@ -31,7 +31,10 @@ import `in`.izyum.bart.BartRunnerApplication
 import `in`.izyum.bart.R
 import `in`.izyum.bart.performance.PerformanceTrace
 import `in`.izyum.bart.data.BackgroundPollingPreferences
+import `in`.izyum.bart.data.HomeStationPreferences
+import `in`.izyum.bart.data.KeepScreenOnPreferences
 import `in`.izyum.bart.data.TransferPreferences
+import `in`.izyum.bart.model.Station
 import `in`.izyum.bart.platform.DeparturePollingWork
 import `in`.izyum.bart.networktasks.RiderCategory
 import `in`.izyum.bart.ui.BartRunnerTheme
@@ -47,6 +50,8 @@ class RoutesListActivity : ComponentActivity() {
     private var riderCategoryId by mutableStateOf<String?>(null)
     private var backgroundPollingEnabled by mutableStateOf(value = true)
     private var defaultTransferViewEnabled by mutableStateOf(value = true)
+    private var homeStation by mutableStateOf<Station?>(null)
+    private var keepScreenOnEnabled by mutableStateOf(value = false)
 
     fun addFavorite(route: `in`.izyum.bart.model.StationPair) {
         routesViewModel.addFavorite(route)
@@ -59,6 +64,8 @@ class RoutesListActivity : ComponentActivity() {
             .getRiderCategoryId(this)
         backgroundPollingEnabled = BackgroundPollingPreferences.isEnabled(this)
         defaultTransferViewEnabled = TransferPreferences.getDefaultShowTransfers(this)
+        homeStation = HomeStationPreferences.getHomeStation(this)
+        keepScreenOnEnabled = KeepScreenOnPreferences.isKeepScreenOn(this)
         val needsInitialStaticLoad = !application.gtfsStaticData.hasDatabaseCache()
         staticDataReady = !needsInitialStaticLoad
         lifecycleScope.launch(Dispatchers.IO) {
@@ -153,6 +160,16 @@ class RoutesListActivity : ComponentActivity() {
                         onDefaultTransferViewChanged = { enabled ->
                             defaultTransferViewEnabled = enabled
                             TransferPreferences.setDefaultShowTransfers(this, enabled)
+                        },
+                        homeStation = homeStation,
+                        onHomeStationChanged = { station ->
+                            homeStation = station
+                            HomeStationPreferences.setHomeStation(this, station)
+                        },
+                        keepScreenActive = keepScreenOnEnabled,
+                        onKeepScreenActiveChanged = { enabled ->
+                            keepScreenOnEnabled = enabled
+                            KeepScreenOnPreferences.setKeepScreenOn(this, enabled)
                         },
                     )
                 }
