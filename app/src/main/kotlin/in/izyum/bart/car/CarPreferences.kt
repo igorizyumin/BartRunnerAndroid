@@ -5,8 +5,8 @@ import androidx.core.content.edit
 import `in`.izyum.bart.model.StationPair
 
 /**
- * Persists Android Auto settings, including global default transfer view preferences
- * and per-route override states.
+ * Persists Android Auto settings, including global default transfer view preferences,
+ * audio guidance, and per-route override states.
  */
 object CarPreferences {
     private const val PREFS_NAME = "car_app_preferences"

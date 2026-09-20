@@ -6,7 +6,7 @@ import androidx.car.app.Session
 
 /**
  * Manages the lifecycle of the Android Auto session.
- * SavedRoutePickerScreen serves as the root main menu screen.
+ * Opens SavedRoutePickerScreen as the root screen.
  */
 class BartCarSession : Session() {
 

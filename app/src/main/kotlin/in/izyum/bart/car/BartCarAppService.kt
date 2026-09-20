@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 class BartCarAppService : CarAppService() {
 
     override fun createHostValidator(): HostValidator {
-        // Allows connection from Android Auto / Desktop Head Unit (DHU) during testing and production hosts
         return HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
     }
 

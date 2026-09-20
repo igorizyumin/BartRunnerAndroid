@@ -11,7 +11,7 @@ import androidx.car.app.model.Template
 
 /**
  * Android Auto Screen providing settings for Android Auto options.
- * Allows configuring the default transfer view setting, default audio guidance,
+ * Allows configuring default transfer view settings, default audio guidance,
  * and clearing per-route preference overrides.
  */
 class CarSettingsScreen(carContext: CarContext) : Screen(carContext) {

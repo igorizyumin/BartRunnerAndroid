@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 /**
  * Android Auto Screen providing a Saved Route Picker.
  * Displays user's favorite stations / commutes for fast 1-tap access while driving.
- * Also checks if a ride is followed on the handset to auto-navigate or show shortcut.
  */
 class SavedRoutePickerScreen(carContext: CarContext) : Screen(carContext), DefaultLifecycleObserver {
 
